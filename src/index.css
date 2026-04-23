@@ -1,71 +1,81 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700;800&family=Jost:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Fezzy Tickets — Editorial luxury design system.
-   All colors HSL. Dark-first. Navy + Amber. */
+/* Fezzy Tickets — Savannah Bright. Light theme, Acacia Green + Sun Gold + Cream.
+   All colors HSL. Inspired by Kenya. */
 
 @layer base {
   :root {
-    /* Dark is the default for Fezzy. Light tokens kept for shadcn primitives. */
-    --background: 222 50% 8%;
-    --foreground: 36 30% 96%;
+    /* Surfaces — cream paper */
+    --background: 38 60% 97%;          /* #FFF8EE cream */
+    --foreground: 215 35% 12%;         /* deep ink */
 
-    --card: 222 45% 10%;
-    --card-foreground: 36 30% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 35% 12%;
 
-    --popover: 222 45% 11%;
-    --popover-foreground: 36 30% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 35% 12%;
 
-    --primary: 36 91% 55%;            /* electric amber #F5A623 */
-    --primary-foreground: 222 60% 10%;
-    --primary-glow: 38 95% 65%;
+    --primary: 152 70% 40%;            /* acacia green #1FAD66 */
+    --primary-foreground: 38 60% 97%;
+    --primary-glow: 152 65% 52%;
 
-    --secondary: 222 35% 16%;
-    --secondary-foreground: 36 30% 96%;
+    --secondary: 38 50% 92%;           /* warm cream */
+    --secondary-foreground: 215 35% 12%;
 
-    --muted: 222 30% 14%;
-    --muted-foreground: 213 14% 64%;  /* slate */
+    --muted: 38 35% 93%;
+    --muted-foreground: 215 12% 38%;
 
-    --accent: 36 91% 55%;
-    --accent-foreground: 222 60% 10%;
+    --accent: 44 100% 61%;             /* sun gold #FFC93C */
+    --accent-foreground: 215 40% 12%;
 
     --destructive: 0 75% 55%;
-    --destructive-foreground: 36 30% 96%;
+    --destructive-foreground: 38 60% 97%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 16%;
-    --ring: 36 91% 55%;
+    --border: 38 30% 86%;
+    --input: 38 30% 88%;
+    --ring: 152 70% 40%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Brand surfaces */
-    --navy-deep: 222 60% 7%;
-    --navy: 222 50% 12%;
-    --slate: 213 14% 64%;
+    --ink: 215 35% 12%;
+    --cream: 38 60% 97%;
+    --cream-deep: 38 45% 92%;
+    --gold: 44 100% 61%;
+    --gold-deep: 38 95% 52%;
+    --acacia: 152 70% 40%;
+    --acacia-deep: 154 75% 28%;
+    --terracotta: 14 80% 60%;
 
     /* Gradients */
-    --gradient-amber: linear-gradient(135deg, hsl(36 91% 55%), hsl(28 95% 60%));
-    --gradient-radial: radial-gradient(ellipse at top, hsl(36 91% 55% / 0.18), transparent 60%);
-    --gradient-hero-overlay: linear-gradient(180deg, hsl(222 60% 7% / 0.55) 0%, hsl(222 60% 7% / 0.85) 70%, hsl(222 60% 7%) 100%);
+    --gradient-sun: linear-gradient(135deg, hsl(44 100% 61%), hsl(28 100% 60%));
+    --gradient-acacia: linear-gradient(135deg, hsl(152 70% 40%), hsl(168 60% 45%));
+    --gradient-warm: linear-gradient(180deg, hsl(38 60% 97%) 0%, hsl(44 80% 92%) 100%);
+    --gradient-hero-overlay: linear-gradient(180deg, hsl(215 35% 12% / 0.15) 0%, hsl(215 35% 12% / 0.55) 70%, hsl(215 35% 12% / 0.78) 100%);
+    --gradient-mesh: radial-gradient(ellipse 80% 50% at 50% -20%, hsl(44 100% 61% / 0.35), transparent 60%),
+                     radial-gradient(ellipse 60% 50% at 100% 50%, hsl(152 70% 40% / 0.18), transparent 60%);
 
     /* Shadows */
-    --shadow-amber: 0 20px 60px -20px hsl(36 91% 55% / 0.45);
-    --shadow-card: 0 10px 40px -15px hsl(222 60% 3% / 0.6);
+    --shadow-sun: 0 18px 50px -18px hsl(44 100% 50% / 0.45);
+    --shadow-acacia: 0 18px 50px -18px hsl(152 70% 35% / 0.45);
+    --shadow-soft: 0 12px 40px -18px hsl(215 35% 12% / 0.18);
+    --shadow-card: 0 6px 24px -8px hsl(215 35% 12% / 0.10);
 
     /* Motion */
     --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
-    --sidebar-background: 222 50% 8%;
-    --sidebar-foreground: 36 30% 96%;
-    --sidebar-primary: 36 91% 55%;
-    --sidebar-primary-foreground: 222 60% 10%;
-    --sidebar-accent: 222 35% 16%;
-    --sidebar-accent-foreground: 36 30% 96%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 36 91% 55%;
+    --sidebar-background: 38 60% 97%;
+    --sidebar-foreground: 215 35% 12%;
+    --sidebar-primary: 152 70% 40%;
+    --sidebar-primary-foreground: 38 60% 97%;
+    --sidebar-accent: 38 50% 92%;
+    --sidebar-accent-foreground: 215 35% 12%;
+    --sidebar-border: 38 30% 86%;
+    --sidebar-ring: 152 70% 40%;
   }
 }
 
@@ -78,26 +88,32 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11";
   }
 
   h1, h2, h3, h4, h5 {
-    font-family: 'Fraunces', ui-serif, Georgia, serif;
-    font-optical-sizing: auto;
+    font-family: 'Jost', 'Montserrat', ui-sans-serif, sans-serif;
     letter-spacing: -0.02em;
+    font-weight: 600;
   }
 }
 
 @layer components {
+  .script {
+    font-family: 'Great Vibes', 'Brittany Signature', cursive;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: 0;
+  }
   .display {
-    font-family: 'Fraunces', ui-serif, Georgia, serif;
-    font-optical-sizing: auto;
-    font-variation-settings: "opsz" 144;
+    font-family: 'Jost', 'Montserrat', ui-sans-serif, sans-serif;
     letter-spacing: -0.035em;
-    line-height: 0.95;
+    line-height: 1;
+    font-weight: 700;
   }
   .eyebrow {
-    @apply text-xs uppercase tracking-[0.22em] text-muted-foreground;
+    @apply text-[11px] uppercase tracking-[0.24em] text-muted-foreground font-semibold;
   }
   .container-px {
     @apply px-6 md:px-10 lg:px-16;
@@ -107,15 +123,23 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.07;
-    mix-blend-mode: overlay;
+    opacity: 0.05;
+    mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground shadow-sm;
   }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
-  .bg-gradient-amber { background-image: var(--gradient-amber); }
-  .shadow-amber { box-shadow: var(--shadow-amber); }
+  .bg-gradient-sun { background-image: var(--gradient-sun); }
+  .bg-gradient-acacia { background-image: var(--gradient-acacia); }
+  .bg-gradient-warm { background-image: var(--gradient-warm); }
+  .bg-mesh { background-image: var(--gradient-mesh); }
+  .shadow-sun { box-shadow: var(--shadow-sun); }
+  .shadow-acacia { box-shadow: var(--shadow-acacia); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-card-soft { box-shadow: var(--shadow-card); }
 }

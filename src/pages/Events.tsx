@@ -29,11 +29,8 @@ const Events = () => {
 
   const setCat = (c: EventCategory | typeof ALL) => {
     setActiveCat(c);
-    if (c === ALL) {
-      params.delete("cat");
-    } else {
-      params.set("cat", c);
-    }
+    if (c === ALL) params.delete("cat");
+    else params.set("cat", c);
     setParams(params, { replace: true });
   };
 
@@ -41,24 +38,17 @@ const Events = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main>
-        {/* Header */}
-        <section className="relative isolate overflow-hidden border-b border-border/60">
-          <div
-            className="absolute inset-0 -z-10"
-            style={{ background: "var(--gradient-radial)" }}
-          />
-          <div className="container-px mx-auto max-w-7xl pb-12 pt-20 md:pb-16 md:pt-28">
-            <p className="eyebrow mb-4">Discover</p>
-            <h1 className="display text-5xl font-medium text-foreground sm:text-6xl md:text-7xl">
-              Browse <span className="italic text-primary">live</span>.
+        <section className="relative isolate overflow-hidden border-b border-border bg-mesh">
+          <div className="container-px mx-auto max-w-7xl pb-12 pt-16 md:pb-16 md:pt-24">
+            <p className="eyebrow mb-3">Discover</p>
+            <h1 className="display text-5xl text-foreground sm:text-6xl md:text-7xl">
+              What's <span className="script font-normal text-primary text-[1.2em]">on</span>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
-              Hand-picked events across the continent and beyond. Filter by mood,
-              moment, or city.
+              Curated events across Kenya and the world. Filter by mood, moment, or city.
             </p>
 
-            {/* Search */}
-            <div className="mt-10 flex max-w-xl items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-3 backdrop-blur-md">
+            <div className="mt-10 flex max-w-xl items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card-soft">
               <Search className="h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
@@ -69,7 +59,6 @@ const Events = () => {
               />
             </div>
 
-            {/* Filter chips */}
             <div className="mt-6 flex flex-wrap gap-2">
               {[ALL, ...categories.map((c) => c.name)].map((c) => {
                 const active = c === activeCat;
@@ -77,10 +66,10 @@ const Events = () => {
                   <button
                     key={c}
                     onClick={() => setCat(c)}
-                    className={`rounded-full border px-4 py-2 text-xs uppercase tracking-wider transition-all duration-300 ${
+                    className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                       active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border/70 bg-transparent text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-card text-foreground hover:border-foreground/40"
                     }`}
                   >
                     {c}
@@ -91,21 +80,18 @@ const Events = () => {
           </div>
         </section>
 
-        {/* Grid */}
-        <section className="container-px mx-auto max-w-7xl py-16 md:py-24">
+        <section className="container-px mx-auto max-w-7xl py-12 md:py-16">
           <div className="mb-8 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{filtered.length}</span>{" "}
+              <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
               {filtered.length === 1 ? "event" : "events"}
             </p>
           </div>
 
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-card/30 p-16 text-center">
+            <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
               <p className="font-display text-2xl text-foreground">Nothing here, yet.</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Try a different search or category.
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground">Try a different search or category.</p>
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
