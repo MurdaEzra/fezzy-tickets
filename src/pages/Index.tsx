@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Quote, Star } from "lucide-react";
 import EventCard from "@/components/EventCard";
 import { events, categories } from "@/data/events";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
+import organizerImg from "@/assets/scene-organizer.jpg";
 
 const Index = () => {
   const featured = events.filter((e) => e.featured);
@@ -17,21 +18,19 @@ const Index = () => {
       <main>
         <Hero />
 
-        {/* Categories marquee strip */}
-        <section className="border-y border-border/60 bg-navy-deep py-5">
-          <div className="container-px mx-auto max-w-7xl">
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-              <span className="eyebrow">Browse by</span>
+        {/* Categories chips */}
+        <section className="border-y border-border bg-card">
+          <div className="container-px mx-auto max-w-7xl py-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="eyebrow mr-2">Browse</span>
               {categories.map((c) => (
                 <Link
                   key={c.name}
                   to={`/events?cat=${encodeURIComponent(c.name)}`}
-                  className="group flex items-baseline gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-foreground hover:text-background"
                 >
+                  <span>{c.emoji}</span>
                   <span>{c.name}</span>
-                  <span className="text-[10px] text-muted-foreground/60 group-hover:text-primary">
-                    {c.count}
-                  </span>
                 </Link>
               ))}
             </div>
@@ -39,12 +38,12 @@ const Index = () => {
         </section>
 
         {/* Featured */}
-        <section className="container-px mx-auto max-w-7xl py-24 md:py-32">
+        <section className="container-px mx-auto max-w-7xl py-20 md:py-28">
           <div className="mb-12 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <p className="eyebrow mb-4">Editor's pick</p>
-              <h2 className="display text-4xl font-medium text-foreground sm:text-5xl md:text-6xl">
-                Featured this season
+              <p className="eyebrow mb-3">Editor's pick</p>
+              <h2 className="display text-4xl text-foreground sm:text-5xl md:text-6xl">
+                Featured this <span className="script font-normal text-primary text-[1.2em]">season</span>
               </h2>
             </div>
             <Button variant="ghost" asChild className="gap-2">
@@ -61,53 +60,65 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Editorial promo strip */}
-        <section className="relative overflow-hidden border-y border-border/60 bg-navy">
-          <div className="container-px mx-auto grid max-w-7xl gap-12 py-24 md:grid-cols-2 md:py-32">
+        {/* Organizer promo */}
+        <section className="relative overflow-hidden border-y border-border bg-cream-deep">
+          <div className="container-px mx-auto grid max-w-7xl gap-12 py-20 md:grid-cols-2 md:py-28 md:items-center">
             <div className="animate-fade-up">
-              <p className="eyebrow mb-4">For organizers</p>
-              <h2 className="display text-4xl font-medium text-foreground sm:text-5xl md:text-6xl">
-                Sell tickets like the
-                <span className="italic text-primary"> cover story</span>.
+              <p className="eyebrow mb-3">For organizers</p>
+              <h2 className="display text-4xl text-foreground sm:text-5xl md:text-6xl">
+                Sell tickets like a{" "}
+                <span className="script font-normal text-primary text-[1.2em]">pro</span>.
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-                Launch in minutes. Tier your pricing, scan tickets at the door,
-                and pay out anywhere — from M-Pesa to a US bank, in one
-                dashboard.
+                Launch in minutes. Tier your pricing, scan tickets at the door, get paid out
+                via M-Pesa, bank transfer or international wire — all in one dashboard.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button variant="hero" size="lg" asChild>
-                  <Link to="/organizer">Start selling <ArrowRight className="h-4 w-4" /></Link>
+                <Button variant="acacia" size="lg" asChild>
+                  <Link to="/start-selling">Start selling <ArrowRight className="h-4 w-4" /></Link>
                 </Button>
-                <Button variant="glass" size="lg">See pricing</Button>
+                <Button variant="outline" size="lg" asChild>
+                  <Link to="/pricing">See pricing</Link>
+                </Button>
+              </div>
+
+              <div className="mt-10 grid grid-cols-3 gap-4">
+                {[
+                  { k: "Free", v: "to list" },
+                  { k: "T+2", v: "M-Pesa payouts" },
+                  { k: "5%", v: "platform fee" },
+                ].map((s) => (
+                  <div key={s.v}>
+                    <p className="font-display text-2xl font-bold text-foreground">{s.k}</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{s.v}</p>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 self-center">
-              {[
-                { k: "5%", v: "Flat platform fee" },
-                { k: "T+2", v: "Payouts after event" },
-                { k: "32", v: "Currencies supported" },
-                { k: "0", v: "Setup fees, ever" },
-              ].map((s) => (
-                <div
-                  key={s.v}
-                  className="rounded-2xl border border-border/60 bg-background/40 p-6 backdrop-blur-sm transition-colors hover:border-primary/40"
-                >
-                  <p className="font-display text-4xl font-medium text-foreground">{s.k}</p>
-                  <p className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">{s.v}</p>
+            <div className="relative">
+              <div className="aspect-[4/5] overflow-hidden rounded-[2rem] border border-border shadow-soft">
+                <img src={organizerImg} alt="Event organizer" loading="lazy" width={1280} height={960} className="h-full w-full object-cover" />
+              </div>
+              <div className="absolute -left-4 bottom-6 hidden rounded-2xl bg-card border border-border p-4 shadow-soft md:block">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-acacia font-bold text-primary-foreground">JM</div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">+KES 1.2M</p>
+                    <p className="text-[11px] text-muted-foreground">Sold this week</p>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </section>
 
         {/* Trending */}
-        <section className="container-px mx-auto max-w-7xl py-24 md:py-32">
+        <section className="container-px mx-auto max-w-7xl py-20 md:py-28">
           <div className="mb-12 flex items-end justify-between gap-6">
             <div>
-              <p className="eyebrow mb-4">On the rise</p>
-              <h2 className="display text-4xl font-medium text-foreground sm:text-5xl md:text-6xl">
-                Trending now
+              <p className="eyebrow mb-3">On the rise</p>
+              <h2 className="display text-4xl text-foreground sm:text-5xl md:text-6xl">
+                Trending <span className="script font-normal text-primary text-[1.2em]">now</span>
               </h2>
             </div>
           </div>
@@ -115,6 +126,41 @@ const Index = () => {
             {trending.map((e, i) => (
               <EventCard key={e.id} event={e} index={i} />
             ))}
+          </div>
+        </section>
+
+        {/* Testimonials */}
+        <section className="border-t border-border bg-cream-deep">
+          <div className="container-px mx-auto max-w-7xl py-20 md:py-28">
+            <div className="mb-12 max-w-2xl">
+              <p className="eyebrow mb-3">Loved across the continent</p>
+              <h2 className="display text-4xl text-foreground sm:text-5xl">
+                What people are <span className="script font-normal text-primary text-[1.2em]">saying</span>
+              </h2>
+            </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {[
+                { name: "Wanjiku M.", role: "Attendee · Nairobi", body: "Bought my Sol Fest pass on M-Pesa in under 30 seconds. The QR ticket loaded even with bad reception at the gate.", rating: 5 },
+                { name: "Kelvin O.", role: "Organizer · Kisumu", body: "Switched from spreadsheets to Fezzy. We tripled ticket sales and the payout hit our bank in two days.", rating: 5 },
+                { name: "Amina H.", role: "Attendee · Mombasa", body: "Beautiful app, real events, no scams. I trust nothing else for live shows now.", rating: 5 },
+              ].map((t) => (
+                <figure key={t.name} className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                  <Quote className="h-6 w-6 text-primary" />
+                  <blockquote className="mt-4 text-base leading-relaxed text-foreground">"{t.body}"</blockquote>
+                  <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+                    <figcaption>
+                      <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.role}</p>
+                    </figcaption>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: t.rating }).map((_, i) => (
+                        <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent" />
+                      ))}
+                    </div>
+                  </div>
+                </figure>
+              ))}
+            </div>
           </div>
         </section>
       </main>

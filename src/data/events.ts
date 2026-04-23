@@ -22,7 +22,7 @@ export interface EventItem {
   description: string;
   category: EventCategory;
   image: string;
-  date: string; // ISO
+  date: string;
   endDate?: string;
   city: string;
   venue: string;
@@ -36,39 +36,40 @@ export interface EventItem {
   lineup?: string[];
 }
 
+// Prices in KES — Kenya-first.
 export const events: EventItem[] = [
   {
     id: "1",
-    slug: "midnight-sessions-vol-iv",
-    title: "Midnight Sessions, Vol. IV",
-    tagline: "An intimate jazz night under amber light",
+    slug: "blankets-and-wine-april",
+    title: "Blankets & Wine — April Edition",
+    tagline: "Sunday afternoons, soundtracked.",
     description:
-      "A curated evening of contemporary jazz featuring rising voices and seasoned virtuosos. Doors at 8, first set at 9. Limited seating, full sound.",
+      "Spread the blanket, open a bottle, and lose the afternoon to live afro-fusion sets at the Ngong Racecourse lawns. Family-friendly, picnic-ready.",
     category: "Music",
     image: jazz,
-    date: "2026-05-14T20:00:00Z",
+    date: "2026-04-26T14:00:00Z",
     city: "Nairobi",
-    venue: "The Alchemist Cellar",
+    venue: "Ngong Racecourse",
     country: "Kenya",
-    priceFrom: 35,
-    currency: "USD",
+    priceFrom: 2500,
+    currency: "KES",
     featured: true,
     trending: true,
-    organizer: { name: "Sessions Collective", tag: "Verified" },
+    organizer: { name: "Blankets & Wine", tag: "Verified" },
     tiers: [
-      { name: "General", price: 35, perks: ["Standing room", "Welcome drink"], remaining: 142 },
-      { name: "Reserved", price: 65, perks: ["Reserved seating", "Welcome drink", "Cloakroom"], remaining: 48 },
-      { name: "Front Row", price: 120, perks: ["Front row seat", "Meet the artists", "Signed program"], remaining: 8 },
+      { name: "Early Bird", price: 2500, perks: ["General entry", "Picnic space"], remaining: 142 },
+      { name: "Standard", price: 3500, perks: ["General entry", "Picnic space"], remaining: 480 },
+      { name: "VIP Lounge", price: 8500, perks: ["VIP lounge access", "Welcome drink", "Premium washrooms"], remaining: 28 },
     ],
-    lineup: ["Aluna Quartet", "Idris Adan", "Maya Sol Trio"],
+    lineup: ["Sauti Sol", "Nyashinski", "Bensoul", "Karun"],
   },
   {
     id: "2",
-    slug: "solstice-festival-2026",
-    title: "Solstice Festival 2026",
-    tagline: "Three days. One horizon. Endless sound.",
+    slug: "sol-fest-naivasha-2026",
+    title: "Sol Fest Naivasha 2026",
+    tagline: "Three days. Lake views. Endless sound.",
     description:
-      "The flagship summer gathering returns with a headline-strong lineup spanning electronic, afrobeats and indie. Camping, food halls and lake-side stages.",
+      "The lakeside flagship returns with afrobeats, amapiano and indie headliners. Camping, food halls, art installations and sunrise yoga by the water.",
     category: "Festival",
     image: festival,
     date: "2026-06-19T15:00:00Z",
@@ -76,25 +77,25 @@ export const events: EventItem[] = [
     city: "Naivasha",
     venue: "Hell's Gate Plains",
     country: "Kenya",
-    priceFrom: 95,
-    currency: "USD",
+    priceFrom: 4500,
+    currency: "KES",
     featured: true,
     trending: true,
     organizer: { name: "Solstice Collective", tag: "Verified" },
     tiers: [
-      { name: "Day Pass", price: 95, perks: ["Single day access"], remaining: 1240 },
-      { name: "3-Day GA", price: 220, perks: ["Full festival access", "Camping spot"], remaining: 480 },
-      { name: "VIP", price: 520, perks: ["VIP viewing decks", "Private bars", "Express entry", "Lounge access"], remaining: 60 },
+      { name: "Day Pass", price: 4500, perks: ["Single day access"], remaining: 1240 },
+      { name: "3-Day GA", price: 11500, perks: ["Full festival access", "Camping spot"], remaining: 480 },
+      { name: "VIP", price: 28000, perks: ["VIP decks", "Private bars", "Express entry", "Lounge"], remaining: 60 },
     ],
-    lineup: ["Black Coffee", "Sampa the Great", "Burna Boy", "Romy"],
+    lineup: ["Black Coffee", "Sampa the Great", "Burna Boy", "Bien"],
   },
   {
     id: "3",
-    slug: "of-light-and-form",
+    slug: "of-light-and-form-lagos",
     title: "Of Light and Form",
-    tagline: "A retrospective of contemporary African art",
+    tagline: "Twelve voices, one continent.",
     description:
-      "Twelve artists, eighty works, one continent's bold new voice. Curated walkthroughs nightly.",
+      "A retrospective of contemporary African art — twelve artists, eighty works. Curated walkthroughs nightly at The Yard.",
     category: "Arts",
     image: art,
     date: "2026-04-30T18:00:00Z",
@@ -102,20 +103,20 @@ export const events: EventItem[] = [
     city: "Lagos",
     venue: "The Yard Gallery",
     country: "Nigeria",
-    priceFrom: 18,
-    currency: "USD",
+    priceFrom: 1500,
+    currency: "KES",
     featured: true,
     organizer: { name: "Yard Curatorial", tag: "Verified" },
     tiers: [
-      { name: "General Admission", price: 18, perks: ["All exhibits"], remaining: 600 },
-      { name: "Curator's Tour", price: 55, perks: ["Guided tour", "Artist Q&A", "Catalog"], remaining: 24 },
+      { name: "General Admission", price: 1500, perks: ["All exhibits"], remaining: 600 },
+      { name: "Curator's Tour", price: 4800, perks: ["Guided tour", "Artist Q&A", "Catalog"], remaining: 24 },
     ],
   },
   {
     id: "4",
     slug: "frontier-summit-2026",
     title: "Frontier Summit 2026",
-    tagline: "The future of African tech, in one room",
+    tagline: "African tech. One room.",
     description:
       "Two days of keynote talks, workshops and deal-making with founders, operators and investors shaping the next decade.",
     category: "Tech",
@@ -125,20 +126,20 @@ export const events: EventItem[] = [
     city: "Kigali",
     venue: "Kigali Convention Center",
     country: "Rwanda",
-    priceFrom: 240,
-    currency: "USD",
+    priceFrom: 18500,
+    currency: "KES",
     trending: true,
     organizer: { name: "Frontier Group", tag: "Verified" },
     tiers: [
-      { name: "Standard", price: 240, perks: ["All keynotes", "Exhibit hall"], remaining: 320 },
-      { name: "Investor Pass", price: 780, perks: ["All sessions", "Deal room", "Private dinners"], remaining: 40 },
+      { name: "Standard", price: 18500, perks: ["All keynotes", "Exhibit hall"], remaining: 320 },
+      { name: "Investor", price: 65000, perks: ["All sessions", "Deal room", "Private dinners"], remaining: 40 },
     ],
   },
   {
     id: "5",
     slug: "chefs-table-no-7",
     title: "Chef's Table, No. 7",
-    tagline: "A nine-course tasting by candlelight",
+    tagline: "Nine courses. Candlelight. One night.",
     description:
       "A single evening, a single table, a menu written that morning. Pairings included.",
     category: "Food & Drink",
@@ -147,58 +148,58 @@ export const events: EventItem[] = [
     city: "Cape Town",
     venue: "Salt & Smoke",
     country: "South Africa",
-    priceFrom: 145,
-    currency: "USD",
+    priceFrom: 12000,
+    currency: "KES",
     organizer: { name: "Salt & Smoke", tag: "Verified" },
     tiers: [
-      { name: "Seat", price: 145, perks: ["Nine-course menu", "Wine pairings"], remaining: 14 },
+      { name: "Seat", price: 12000, perks: ["Nine-course menu", "Wine pairings"], remaining: 14 },
     ],
   },
   {
     id: "6",
-    slug: "derby-night-classico",
-    title: "Derby Night — Clásico",
-    tagline: "The rivalry returns under the floodlights",
+    slug: "mashemeji-derby",
+    title: "Mashemeji Derby — Gor vs AFC",
+    tagline: "The rivalry. Under the lights.",
     description:
       "The biggest night in the league calendar. All stands open. Wear your colors.",
     category: "Sports",
     image: sports,
-    date: "2026-08-02T21:00:00Z",
+    date: "2026-08-02T16:00:00Z",
     city: "Nairobi",
     venue: "Kasarani Stadium",
     country: "Kenya",
-    priceFrom: 12,
-    currency: "USD",
+    priceFrom: 500,
+    currency: "KES",
     trending: true,
-    organizer: { name: "Premier League KE", tag: "Verified" },
+    organizer: { name: "FKF Premier League", tag: "Verified" },
     tiers: [
-      { name: "Terrace", price: 12, perks: ["Open stand seating"], remaining: 8400 },
-      { name: "Main Stand", price: 38, perks: ["Covered seating"], remaining: 2200 },
-      { name: "Corporate Box", price: 220, perks: ["Private box for 4", "Catering"], remaining: 18 },
+      { name: "Terrace", price: 500, perks: ["Open stand seating"], remaining: 8400 },
+      { name: "Main Stand", price: 1500, perks: ["Covered seating"], remaining: 2200 },
+      { name: "Corporate Box", price: 25000, perks: ["Private box for 4", "Catering"], remaining: 18 },
     ],
   },
 ];
 
-export const categories: { name: EventCategory; count: number }[] = [
-  { name: "Music", count: 128 },
-  { name: "Festival", count: 32 },
-  { name: "Sports", count: 84 },
-  { name: "Arts", count: 56 },
-  { name: "Tech", count: 41 },
-  { name: "Food & Drink", count: 67 },
-  { name: "Nightlife", count: 92 },
+export const categories: { name: EventCategory; emoji: string; count: number }[] = [
+  { name: "Music", emoji: "🎵", count: 128 },
+  { name: "Festival", emoji: "🎪", count: 32 },
+  { name: "Sports", emoji: "⚽", count: 84 },
+  { name: "Arts", emoji: "🎨", count: 56 },
+  { name: "Tech", emoji: "💻", count: 41 },
+  { name: "Food & Drink", emoji: "🍷", count: 67 },
+  { name: "Nightlife", emoji: "🌙", count: 92 },
 ];
 
-export const formatPrice = (n: number, currency = "USD") =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+export const formatPrice = (n: number, currency = "KES") =>
+  new Intl.NumberFormat("en-KE", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
 
 export const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  new Date(iso).toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" });
 
 export const formatDateLong = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", {
+  new Date(iso).toLocaleDateString("en-GB", {
     weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
 
 export const formatTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
