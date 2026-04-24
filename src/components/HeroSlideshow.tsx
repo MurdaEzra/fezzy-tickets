@@ -72,7 +72,7 @@ const HeroSlideshow = () => {
         {/* Heading + search */}
         <div className="mb-8 max-w-3xl animate-fade-up md:mb-12">
           <span className="chip">
-            <Sparkles className="h-3 w-3 text-primary" />
+            
             Live in 14 cities · Born in Nairobi
           </span>
           <h1 className="display mt-5 text-5xl text-foreground sm:text-6xl md:text-7xl">
@@ -158,19 +158,6 @@ const HeroSlideshow = () => {
             ))}
           </div>
         </div>
-
-        <dl className="mx-auto mt-10 grid max-w-2xl grid-cols-3 gap-6 border-t border-border pt-8 md:mt-14">
-          {[
-            { k: "1.2M+", v: "Tickets sold" },
-            { k: "8,400", v: "Live events" },
-            { k: "14", v: "Cities" },
-          ].map((s) => (
-            <div key={s.v} className="text-center">
-              <dt className="font-display text-3xl font-bold text-foreground">{s.k}</dt>
-              <dd className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{s.v}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </section>
   );

@@ -84,7 +84,7 @@ const Hero = () => {
             </div>
           </div>
           <div className="absolute -right-3 -top-3 hidden rotate-6 rounded-2xl bg-accent px-4 py-2 text-xs font-bold text-accent-foreground shadow-sun md:block">
-            🔥 Trending
+             Trending
           </div>
         </div>
       </div>
