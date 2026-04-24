@@ -85,9 +85,10 @@ const EventEditor = () => {
         setLat(ev.latitude); setLng(ev.longitude);
         setStartsAt(ev.starts_at?.slice(0, 16) ?? ""); setEndsAt(ev.ends_at?.slice(0, 16) ?? "");
         setIsStream(ev.is_stream); setStreamUrl(ev.stream_url ?? "");
-        setAccent(ev.ticket_design?.accent ?? "#1FAD66");
-        setTheme(ev.ticket_design?.theme ?? "savannah");
-        setPattern(ev.ticket_design?.pattern ?? "none");
+        const td = (ev.ticket_design ?? {}) as { accent?: string; theme?: string; pattern?: string };
+        setAccent(td.accent ?? "#1FAD66");
+        setTheme(td.theme ?? "savannah");
+        setPattern(td.pattern ?? "none");
         setFeeWaived(ev.fee_waived);
 
         const { data: ts } = await supabase.from("ticket_tiers").select("*").eq("event_id", id).order("sort_order");
