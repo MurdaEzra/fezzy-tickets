@@ -10,7 +10,6 @@ const Hero = () => {
         {/* Left: copy */}
         <div className="animate-fade-up">
           <span className="chip">
-            <Sparkles className="h-3 w-3 text-primary" />
             Live in 14 cities · Born in Nairobi
           </span>
           <h1 className="display mt-6 text-5xl text-foreground sm:text-6xl md:text-7xl lg:text-[5.5rem]">
@@ -54,19 +53,6 @@ const Hero = () => {
               </Link>
             </Button>
           </div>
-
-          <dl className="mt-12 grid max-w-xl grid-cols-3 gap-6 border-t border-border pt-8">
-            {[
-              { k: "1.2M+", v: "Tickets sold" },
-              { k: "8,400", v: "Live events" },
-              { k: "14", v: "Cities" },
-            ].map((s) => (
-              <div key={s.v}>
-                <dt className="font-display text-3xl font-bold text-foreground">{s.k}</dt>
-                <dd className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{s.v}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
 
         {/* Right: photo collage */}
