@@ -5,7 +5,7 @@ import { events, categories } from "@/data/events";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import Hero from "@/components/Hero";
+import Hero from "@/components/HeroSlideshow";
 import organizerImg from "@/assets/scene-organizer.jpg";
 
 const Index = () => {
@@ -84,9 +84,9 @@ const Index = () => {
 
               <div className="mt-10 grid grid-cols-3 gap-4">
                 {[
-                  { k: "Free", v: "to list" },
+                  { k: "1st", v: "event free" },
                   { k: "T+2", v: "M-Pesa payouts" },
-                  { k: "5%", v: "platform fee" },
+                  { k: "5%", v: "fee — paid by you, not buyers" },
                 ].map((s) => (
                   <div key={s.v}>
                     <p className="font-display text-2xl font-bold text-foreground">{s.k}</p>
