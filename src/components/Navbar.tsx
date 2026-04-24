@@ -10,6 +10,7 @@ import {
 
 const navItems = [
   { to: "/events", label: "Browse" },
+  { to: "/streams", label: "Streams" },
   { to: "/organizer", label: "For Organizers" },
   { to: "/pricing", label: "Pricing" },
 ];
@@ -64,8 +65,8 @@ const Navbar = () => {
                 <DropdownMenuItem onClick={() => navigate("/account")}>
                   <UserIcon className="mr-2 h-4 w-4" /> My account
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/organizer")}>
-                  <Ticket className="mr-2 h-4 w-4" /> For organizers
+                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <Ticket className="mr-2 h-4 w-4" /> Organizer dashboard
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut().then(() => navigate("/"))}>

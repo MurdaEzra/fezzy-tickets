@@ -11,6 +11,9 @@ import Auth from "./pages/Auth.tsx";
 import Account from "./pages/Account.tsx";
 import Checkout from "./pages/Checkout.tsx";
 import Organizer from "./pages/Organizer.tsx";
+import OrganizerDashboard from "./pages/OrganizerDashboard.tsx";
+import EventEditor from "./pages/EventEditor.tsx";
+import Streams from "./pages/Streams.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -32,6 +35,9 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             <Route path="/organizer" element={<Organizer />} />
+            <Route path="/dashboard" element={<OrganizerDashboard />} />
+            <Route path="/dashboard/events/:id" element={<EventEditor />} />
+            <Route path="/streams" element={<Streams />} />
             <Route path="/start-selling" element={<StartSelling />} />
             <Route path="/pricing" element={<Pricing />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
