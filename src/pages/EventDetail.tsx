@@ -33,8 +33,8 @@ const EventDetail = () => {
 
   const tier = event.tiers[selectedTier];
   const subtotal = tier.price * qty;
-  const fee = Math.round(subtotal * 0.05);
-  const total = subtotal + fee;
+  // Platform fee is paid by the organizer — buyers see no service fee.
+  const total = subtotal;
   const related = events.filter((e) => e.id !== event.id && e.category === event.category).slice(0, 3);
 
   const goCheckout = () => {
@@ -211,14 +211,13 @@ const EventDetail = () => {
                   <dt>Subtotal</dt>
                   <dd className="text-foreground font-medium">{formatPrice(subtotal, event.currency)}</dd>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <dt>Service fee (5%)</dt>
-                  <dd className="text-foreground font-medium">{formatPrice(fee, event.currency)}</dd>
-                </div>
                 <div className="flex justify-between border-t border-border pt-3">
-                  <dt className="font-semibold text-foreground">Total</dt>
+                  <dt className="font-semibold text-foreground">You pay</dt>
                   <dd className="font-display text-xl font-bold text-foreground">{formatPrice(total, event.currency)}</dd>
                 </div>
+                <p className="rounded-xl bg-primary/10 p-2.5 text-[11px] leading-snug text-primary">
+                  No buyer fees — the organizer covers the platform fee.
+                </p>
               </dl>
 
               <Button variant="acacia" size="lg" className="mt-6 w-full" onClick={goCheckout}>
