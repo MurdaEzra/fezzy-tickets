@@ -22,6 +22,7 @@ const StartSelling = () => {
   const [form, setForm] = useState({
     name: (user?.user_metadata as { full_name?: string })?.full_name ?? "",
     email: user?.email ?? "",
+    phone: "",
     org: "",
     country: "Kenya",
     eventName: "",
@@ -112,6 +113,7 @@ const StartSelling = () => {
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="sm:col-span-2"><Label htmlFor="n">Full name</Label><Input id="n" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Wanjiku Mwangi" required /></div>
                 <div><Label htmlFor="e">Email</Label><Input id="e" type="email" value={form.email} onChange={(e) => update("email", e.target.value)} required /></div>
+                <div><Label htmlFor="p">Phone number</Label><Input id="p" type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="+254 712 345 678" required /></div>
                 <div><Label htmlFor="o">Organization</Label><Input id="o" value={form.org} onChange={(e) => update("org", e.target.value)} placeholder="Solstice Collective" /></div>
                 <div><Label htmlFor="c">Country</Label><Input id="c" value={form.country} onChange={(e) => update("country", e.target.value)} required /></div>
               </div>
@@ -137,6 +139,7 @@ const StartSelling = () => {
                   {[
                     ["Organizer", `${form.name}${form.org ? ` · ${form.org}` : ""}`],
                     ["Email", form.email],
+                    ["Phone", form.phone || "—"],
                     ["Country", form.country],
                     ["Event", form.eventName],
                     ["Category", form.category],

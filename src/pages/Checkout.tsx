@@ -111,6 +111,8 @@ const Checkout = () => {
 
   const tier = evt.tiers[tierIdx] ?? evt.tiers[0];
   const [calc, setCalc] = useState<{ price: number; subtotal: number; fee: number; total: number } | null>(null);
+  const total = calc?.total ?? tier.price * qty;
+
   useEffect(() => {
     let cancelled = false;
     async function fetchCalc() {
