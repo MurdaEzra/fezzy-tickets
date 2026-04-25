@@ -110,9 +110,23 @@ const Checkout = () => {
   }
 
   const tier = evt.tiers[tierIdx] ?? evt.tiers[0];
-  const subtotal = tier.price * qty;
-  // Fee paid by ORGANIZER, not added to buyer total
-  const total = subtotal;
+  const [calc, setCalc] = useState<{ price: number; subtotal: number; fee: number; total: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchCalc() {
+      if (!evt || !tier?.id) return;
+      const res = await fetch('/functions/v1/calculate-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: evt.id, tierId: tier.id, quantity: qty })
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!cancelled) setCalc(data);
+    }
+    fetchCalc();
+    return () => { cancelled = true; };
+  }, [evt, tier?.id, qty]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,9 +142,8 @@ const Checkout = () => {
 
       let ref = `FZ-${Date.now().toString().slice(-8)}`;
 
-      if (evt.isReal && evt.id && tier.id) {
+      if (evt.isReal && evt.id && tier.id && calc) {
         // Real DB write — fee charged to organizer
-        const fee = Math.round(subtotal * 0.05);
         const { data: order, error: orderErr } = await supabase
           .from("orders")
           .insert({
@@ -139,9 +152,9 @@ const Checkout = () => {
             guest_name: name,
             guest_email: email,
             guest_phone: phone,
-            subtotal_kes: subtotal,
-            organizer_fee_kes: fee,
-            total_kes: total,
+            subtotal_kes: calc.subtotal,
+            organizer_fee_kes: calc.fee,
+            total_kes: calc.total,
             payment_method: method,
             status: "paid",
             payment_ref: ref,
@@ -281,9 +294,9 @@ const Checkout = () => {
                 </p>
               </div>
 
-              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing}>
+              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc}>
                 {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Pay {formatPrice(total)}
+                Pay {calc ? formatPrice(calc.total) : '...'}
               </Button>
             </form>
 
@@ -307,11 +320,11 @@ const Checkout = () => {
                 </div>
                 <dl className="mt-5 space-y-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <dt>Subtotal</dt><dd className="text-foreground">{formatPrice(subtotal)}</dd>
+                    <dt>Subtotal</dt><dd className="text-foreground">{calc ? formatPrice(calc.subtotal) : '...'}</dd>
                   </div>
                   <div className="flex justify-between border-t border-border pt-3">
                     <dt className="font-semibold text-foreground">You pay</dt>
-                    <dd className="font-display text-xl font-bold text-foreground">{formatPrice(total)}</dd>
+                    <dd className="font-display text-xl font-bold text-foreground">{calc ? formatPrice(calc.total) : '...'}</dd>
                   </div>
                   <p className="rounded-xl bg-primary/10 p-3 text-xs text-primary">
                     🎉 No service fees on your end — the organizer covers it.

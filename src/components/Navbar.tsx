@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, Ticket, X, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,22 +17,40 @@ const navItems = [
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const [atTop, setAtTop] = useState(true);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const onScroll = () => setAtTop(window.scrollY < 10);
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const initials = user?.email?.[0]?.toUpperCase() ?? "U";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-xl">
+    <header
+      className={
+        `sticky top-0 z-40 transition-all duration-300 ` +
+        (atTop
+          ? 'border-b-0 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-none'
+          : 'border-b border-border/70 bg-background/85 backdrop-blur-xl')
+      }
+    >
       <div className="container-px mx-auto flex h-16 max-w-7xl items-center justify-between">
         <Link to="/" className="group flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-acacia shadow-acacia transition-transform duration-500 group-hover:rotate-12">
-            <Ticket className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
-          </span>
-          <span className="font-display text-xl font-bold tracking-tight text-foreground">
-            Fezzy
-            <span className="script ml-0.5 text-2xl text-primary align-baseline">tickets</span>
-          </span>
+
+          <div
+            className="flex items gap-2 cursor-pointer"
+            onClick={() => navigate('landing')}>
+              <img
+              src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png"
+              alt="Lashawn Driving & Computer College"
+              className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
+          </div>  
+          
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
