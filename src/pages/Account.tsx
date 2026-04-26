@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Ticket, Calendar, MapPin } from "lucide-react";
+import { Ticket, Calendar, MapPin, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { events, formatDate, formatPrice } from "@/data/events";
+import { toast } from "sonner";
 
 const Account = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, deleteAccount } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +20,18 @@ const Account = () => {
 
   const upcoming = events.slice(0, 2);
   const name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "there";
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm("Delete your Fezzy Tickets account permanently? This cannot be undone.");
+    if (!confirmed) return;
+    try {
+      await deleteAccount();
+      toast.success("Account deleted");
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast.error("Could not delete account", { description: error instanceof Error ? error.message : "Please try again." });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -72,6 +85,20 @@ const Account = () => {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="container-px mx-auto max-w-7xl pb-12">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-display text-lg font-bold text-foreground">Delete account</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Permanently remove your buyer account and sign out.</p>
+              </div>
+              <Button variant="destructive" onClick={handleDeleteAccount}>
+                <Trash2 className="h-4 w-4" /> Delete account
+              </Button>
+            </div>
+          </div>
         </section>
       </main>
       <Footer />
