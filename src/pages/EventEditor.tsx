@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
-import TicketPreview from "@/components/TicketPreview";
+import TicketPreview, { ticketTemplateOptions } from "@/components/TicketPreview";
 import PosterDesigner from "@/components/PosterDesigner";
 import { formatEventDate } from "@/lib/eventsApi";
 
@@ -330,16 +330,11 @@ const EventEditor = () => {
               <Card title="Ticket designer">
                 <div className="space-y-4">
                   <Field label="Theme">
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { id: "savannah", label: "Savannah", color: "bg-gradient-acacia" },
-                        { id: "sunset", label: "Sunset", color: "bg-gradient-sun" },
-                        { id: "ocean", label: "Ocean", color: "bg-gradient-to-br from-sky-500 to-emerald-500" },
-                        { id: "midnight", label: "Midnight", color: "bg-gradient-to-br from-slate-900 to-slate-700" },
-                      ].map((th) => (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {ticketTemplateOptions.map((th) => (
                         <button key={th.id} type="button" onClick={() => setTheme(th.id)}
                           className={`overflow-hidden rounded-xl border-2 transition ${theme === th.id ? "border-primary scale-105" : "border-transparent"}`}>
-                          <div className={`h-12 w-full ${th.color}`} />
+                          <div className="h-12 w-full" style={{ background: th.header }} />
                           <p className="bg-card py-1 text-[10px] font-semibold">{th.label}</p>
                         </button>
                       ))}
@@ -350,7 +345,7 @@ const EventEditor = () => {
                   </Field>
                   <Field label="Pattern">
                     <div className="flex gap-2">
-                      {["none", "dots", "stripes"].map((p) => (
+                      {["none", "dots", "stripes", "waves", "confetti"].map((p) => (
                         <button key={p} type="button" onClick={() => setPattern(p)}
                           className={`rounded-full border px-4 py-1.5 text-xs font-semibold capitalize ${pattern === p ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
                           {p}
