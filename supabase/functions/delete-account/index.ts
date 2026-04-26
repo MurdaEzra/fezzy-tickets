@@ -36,6 +36,32 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: organizerProfiles } = await adminClient
+      .from("organizer_profiles")
+      .select("id")
+      .eq("user_id", user.id);
+    const organizerIds = (organizerProfiles ?? []).map((profile) => profile.id);
+
+    if (organizerIds.length > 0) {
+      const { data: organizerEvents } = await adminClient
+        .from("events")
+        .select("id")
+        .in("organizer_id", organizerIds);
+      const eventIds = (organizerEvents ?? []).map((event) => event.id);
+
+      if (eventIds.length > 0) {
+        await adminClient.from("tickets").delete().in("event_id", eventIds);
+        await adminClient.from("orders").delete().in("event_id", eventIds);
+        await adminClient.from("ticket_tiers").delete().in("event_id", eventIds);
+        await adminClient.from("events").delete().in("id", eventIds);
+      }
+    }
+
+    await adminClient.from("orders").delete().eq("user_id", user.id);
+    await adminClient.from("organizer_profiles").delete().eq("user_id", user.id);
+    await adminClient.from("user_roles").delete().eq("user_id", user.id);
+    await adminClient.from("profiles").delete().eq("id", user.id);
+
     const { error } = await adminClient.auth.admin.deleteUser(user.id);
     if (error) throw error;
 
