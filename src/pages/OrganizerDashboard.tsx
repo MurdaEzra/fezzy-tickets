@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Calendar, Users, MapPin, Sparkles, ExternalLink, Pencil, Loader2, TrendingUp, DollarSign, Ticket as TicketIcon } from "lucide-react";
+import { Plus, Calendar, Users, MapPin, Sparkles, ExternalLink, Pencil, Loader2, TrendingUp, DollarSign, Ticket as TicketIcon, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ interface OrgProfile {
 }
 
 const OrganizerDashboard = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, deleteAccount } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<OrgProfile | null>(null);
   const [events, setEvents] = useState<DbEvent[]>([]);
@@ -71,6 +71,18 @@ const OrganizerDashboard = () => {
     if (error) { toast.error("Could not create organizer profile", { description: error.message }); return; }
     setProfile(data as OrgProfile);
     toast.success("Welcome aboard!", { description: "Let's create your first event." });
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm("Delete your organizer account permanently? Your profile access will be removed and this cannot be undone.");
+    if (!confirmed) return;
+    try {
+      await deleteAccount();
+      toast.success("Account deleted");
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast.error("Could not delete account", { description: error instanceof Error ? error.message : "Please try again." });
+    }
   };
 
   if (authLoading || loading) {
@@ -202,6 +214,18 @@ const OrganizerDashboard = () => {
             ))}
           </div>
         )}
+
+        <section className="mt-12 rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-display text-lg font-bold text-foreground">Delete account</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Permanently remove your organizer login and sign out.</p>
+            </div>
+            <Button variant="destructive" onClick={handleDeleteAccount}>
+              <Trash2 className="h-4 w-4" /> Delete account
+            </Button>
+          </div>
+        </section>
       </main>
       <Footer />
     </div>
