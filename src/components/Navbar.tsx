@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, Ticket, X, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { FEZZY_LOGO_URL } from "@/lib/brand";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -46,7 +47,7 @@ const Navbar = () => {
             className="flex items gap-2 cursor-pointer"
             onClick={() => navigate('landing')}>
               <img
-              src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png"
+              src={FEZZY_LOGO_URL}
               alt="Lashawn Driving & Computer College"
               className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
           </div>  
