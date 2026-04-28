@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     const renderedTickets: Array<{ ticketId: string; html: string; qrDataUrl: string }> = [];
 
     for (const ticket of order.tickets) {
-      const qrDataUrl = await qrcode(ticket.qr_token, { size: 300 });
+      const qrDataUrl = String(await qrcode(ticket.qr_token, { size: 300 }));
       const html = renderTicketHtml({
         eventTitle: event.title,
         date: dateStr,

@@ -1,7 +1,6 @@
-import { serve } from 'std/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   try {
     const { eventId, tierId, quantity } = await req.json();
     if (!eventId || !tierId || !quantity) {
@@ -13,7 +12,7 @@ serve(async (req) => {
 
     // Fetch tier price from DB
     const { data: tier, error: tierError } = await supabase
-      .from('tiers')
+      .from('ticket_tiers')
       .select('price_kes')
       .eq('id', tierId)
       .single();
@@ -30,6 +29,6 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Internal error', details: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Internal error', details: err instanceof Error ? err.message : String(err) }), { status: 500 });
   }
 });
