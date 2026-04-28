@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { events as fallbackEvents, formatPrice, formatDateLong } from "@/data/events";
+import { formatPrice, formatDateLong } from "@/data/events";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchEventBySlug, fetchTiers, type DbEvent, type DbTier } from "@/lib/eventsApi";
@@ -64,15 +64,7 @@ const Checkout = () => {
           isReal: true,
         });
       } else {
-        const m = fallbackEvents.find((e) => e.slug === slug);
-        if (m) {
-          setEvt({
-            title: m.title, slug: m.slug, image: m.image,
-            date: m.date, venue: m.venue, city: m.city, currency: m.currency,
-            tiers: m.tiers.map((t) => ({ name: t.name, price: t.price })),
-            isReal: false,
-          });
-        }
+        setEvt(null);
       }
       setLoading(false);
     })();
@@ -128,60 +120,17 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [evt, tier?.id, qty]);
 
+  // Secure backend payment flow placeholder
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
     try {
-      // Mock M-Pesa STK delay
-      if (method === "mpesa") {
-        toast.info("STK push sent", { description: `Check ${phone} to authorize.` });
-        await new Promise((r) => setTimeout(r, 1300));
-      } else {
-        await new Promise((r) => setTimeout(r, 900));
-      }
-
-      let ref = `FZ-${Date.now().toString().slice(-8)}`;
-
-      if (evt.isReal && evt.id && tier.id && calc) {
-        // Real DB write — fee charged to organizer
-        const { data: order, error: orderErr } = await supabase
-          .from("orders")
-          .insert({
-            event_id: evt.id,
-            user_id: user?.id ?? null,
-            guest_name: name,
-            guest_email: email,
-            guest_phone: phone,
-            subtotal_kes: calc.subtotal,
-            organizer_fee_kes: calc.fee,
-            total_kes: calc.total,
-            payment_method: method,
-            status: "paid",
-            payment_ref: ref,
-          })
-          .select()
-          .single();
-        if (orderErr || !order) throw orderErr ?? new Error("Order failed");
-
-        const ticketRows = Array.from({ length: qty }).map(() => ({
-          order_id: order.id,
-          event_id: evt.id!,
-          tier_id: tier.id!,
-          holder_name: name,
-          holder_email: email,
-        }));
-        const { error: tixErr } = await supabase.from("tickets").insert(ticketRows);
-        if (tixErr) throw tixErr;
-
-        ref = `FZ-${order.id.slice(0, 8).toUpperCase()}`;
-
-        // Trigger ticket email + QR generation (best-effort)
-        supabase.functions.invoke("send-ticket-email", { body: { orderId: order.id } })
-          .catch((err) => console.warn("ticket email", err));
-      }
-
-      setDone({ ref });
-      toast.success("Tickets confirmed!", { description: `Sent to ${email}.` });
+      if (!evt?.id || !tier?.id || !calc) throw new Error("Event or tier not loaded");
+      // TODO: Replace with call to secure backend API (Render) for payment session creation and initiation
+      // Example:
+      // const res = await fetch('/api/checkout/sessions', { ... })
+      // Handle payment initiation, polling, and confirmation via backend
+      toast.info("Payment flow not yet implemented. Secure backend required.");
     } catch (err) {
       console.error(err);
       toast.error("Payment failed", { description: (err as Error).message });

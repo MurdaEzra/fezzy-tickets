@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatKES, formatEventDate, type DbEvent } from "@/lib/eventsApi";
+import OrganizerDashboardTabs from "./OrganizerDashboardTabs";
 import { toast } from "sonner";
 
 interface OrgProfile {
@@ -147,6 +148,10 @@ const OrganizerDashboard = () => {
           <Stat icon={DollarSign} label="Revenue" value={formatKES(totalRevenue)} />
         </div>
 
+        {/* Organizer dashboard tabs for event creation, withdrawal, poster editing, QR scanning */}
+        <OrganizerDashboardTabs />
+
+        {/* Existing event list remains below tabs for reference */}
         <h2 className="mt-12 font-display text-2xl font-bold">Your events</h2>
         {events.length === 0 ? (
           <div className="mt-6 rounded-3xl border border-dashed border-border bg-card p-12 text-center">

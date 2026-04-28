@@ -26,7 +26,7 @@ const Hero = () => {
           </h1>
           <p className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
             From sold-out shows at Carnivore to lakeside festivals in Naivasha and stages
-            across the world — discover events you'll talk about for years.
+            across the world  discover events you'll talk about for years.
           </p>
 
           {/* Search */}

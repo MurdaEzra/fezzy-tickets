@@ -24,7 +24,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/account", { replace: true });
+    if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
 
   const switchMode = (m: "signin" | "signup") => {
@@ -42,18 +42,18 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/account`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
             data: { full_name: fullName, country },
           },
         });
         if (error) throw error;
         toast.success("Account created", { description: "Check your inbox to verify your email." });
-        navigate("/account");
+        navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate("/account");
+        navigate("/dashboard");
       }
     } catch (err) {
       const e = err as { message?: string };
@@ -90,7 +90,7 @@ const Auth = () => {
               <br />Be there.
             </h1>
             <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-              Join 1.2M+ fans across Kenya and the world. One account for every event,
+              Join fans across Kenya and the world. One account for every event,
               every ticket, every memory.
             </p>
             <ul className="mt-10 space-y-3 text-sm text-foreground">
@@ -106,14 +106,14 @@ const Auth = () => {
           {/* Right: form */}
           <div className="mx-auto w-full max-w-md">
             <div className="rounded-3xl border border-border bg-card p-7 shadow-soft md:p-9">
-              <div className="mb-6 flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-acacia">
-                  <Ticket className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
-                </span>
-                <span className="font-display text-lg font-bold">
-                  Fezzy<span className="script ml-0.5 text-xl text-primary">tickets</span>
-                </span>
-              </div>
+              <div
+            className="flex items gap-2 cursor-pointer"
+            onClick={() => navigate('landing')}>
+              <img
+              src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png"
+              alt="Lashawn Driving & Computer College"
+              className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
+          </div>  
 
               <h2 className="font-display text-3xl font-bold text-foreground">
                 {mode === "signin" ? "Welcome back" : "Create your account"}

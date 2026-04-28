@@ -18,24 +18,7 @@ const Index = () => {
       <main>
         <Hero />
 
-        {/* Categories chips */}
-        <section className="border-y border-border bg-card">
-          <div className="container-px mx-auto max-w-7xl py-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="eyebrow mr-2">Browse</span>
-              {categories.map((c) => (
-                <Link
-                  key={c.name}
-                  to={`/events?cat=${encodeURIComponent(c.name)}`}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-foreground hover:text-background"
-                >
-                  <span>{c.emoji}</span>
-                  <span>{c.name}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+
 
         {/* Featured */}
         <section className="container-px mx-auto max-w-7xl py-20 md:py-28">

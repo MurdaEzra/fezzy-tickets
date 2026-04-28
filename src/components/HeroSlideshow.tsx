@@ -88,7 +88,7 @@ const HeroSlideshow = () => {
             </span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Festivals, gigs, derbies, livestreams — discover what's next, anywhere in the world.
+            Festivals, gigs, derbies, livestreams & discover what's next, anywhere in the world.
           </p>
 
           <div className="mt-7 flex max-w-2xl flex-col gap-1 rounded-3xl border border-border bg-card p-1.5 shadow-soft sm:flex-row">

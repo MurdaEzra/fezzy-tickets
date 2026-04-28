@@ -29,7 +29,7 @@ const Organizer = () => {
                 <span className="script font-normal text-primary text-[1.2em]">tickets</span>.
               </h1>
               <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                From a 60-seat poetry night to a 30,000-strong stadium show — Fezzy gives you
+                From a 60-seat poetry night to a 30,000-strong stadium show Fezzy gives you
                 a beautiful storefront, fast check-in, and money in your account on time.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -44,7 +44,7 @@ const Organizer = () => {
             </div>
             <div className="relative">
               <div className="aspect-[4/5] overflow-hidden rounded-[2rem] border border-border shadow-soft">
-                <img src={organizer} alt="Event organizer using Fezzy dashboard" loading="lazy" width={1280} height={960} className="h-full w-full object-cover" />
+                <img src={"https://res.cloudinary.com/dgfmhyebp/image/upload/v1777186589/platform_kcb0sg.png"} alt="Event organizer using Fezzy dashboard" loading="lazy" width={1280} height={960} className="h-full w-full object-cover" />
               </div>
               <div className="absolute -right-4 top-8 hidden rounded-2xl border border-border bg-card p-4 shadow-soft md:block">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Today</p>
