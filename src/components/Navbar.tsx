@@ -97,6 +97,11 @@ const Navbar = () => {
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   <Ticket className="mr-2 h-4 w-4" /> Organizer dashboard
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/admin")}>
+                    <Shield className="mr-2 h-4 w-4" /> Super admin
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut().then(() => navigate("/"))}>
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
