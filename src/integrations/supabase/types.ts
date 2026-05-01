@@ -167,6 +167,9 @@ export type Database = {
       }
       organizer_profiles: {
         Row: {
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
           bio: string | null
           contact_email: string | null
           contact_phone: string | null
@@ -174,14 +177,19 @@ export type Database = {
           events_published_count: number
           id: string
           logo_url: string | null
+          mpesa_phone: string | null
           mpesa_till: string | null
           org_name: string
           payout_method: string | null
+          preferred_payout_channel: string | null
           updated_at: string
           user_id: string
           website: string | null
         }
         Insert: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           bio?: string | null
           contact_email?: string | null
           contact_phone?: string | null
@@ -189,14 +197,19 @@ export type Database = {
           events_published_count?: number
           id?: string
           logo_url?: string | null
+          mpesa_phone?: string | null
           mpesa_till?: string | null
           org_name: string
           payout_method?: string | null
+          preferred_payout_channel?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
         }
         Update: {
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           bio?: string | null
           contact_email?: string | null
           contact_phone?: string | null
@@ -204,9 +217,11 @@ export type Database = {
           events_published_count?: number
           id?: string
           logo_url?: string | null
+          mpesa_phone?: string | null
           mpesa_till?: string | null
           org_name?: string
           payout_method?: string | null
+          preferred_payout_channel?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
@@ -369,6 +384,45 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawals: {
+        Row: {
+          amount_kes: number
+          channel: string
+          created_at: string
+          destination: string
+          failure_reason: string | null
+          id: string
+          organizer_id: string
+          payhero_reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_kes: number
+          channel: string
+          created_at?: string
+          destination: string
+          failure_reason?: string | null
+          id?: string
+          organizer_id: string
+          payhero_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_kes?: number
+          channel?: string
+          created_at?: string
+          destination?: string
+          failure_reason?: string | null
+          id?: string
+          organizer_id?: string
+          payhero_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -383,7 +437,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "organizer" | "attendee"
+      app_role: "admin" | "organizer" | "attendee" | "super_admin"
       event_status: "draft" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
       ticket_status: "valid" | "used" | "refunded" | "cancelled"
@@ -514,7 +568,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "organizer", "attendee"],
+      app_role: ["admin", "organizer", "attendee", "super_admin"],
       event_status: ["draft", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
       ticket_status: ["valid", "used", "refunded", "cancelled"],
