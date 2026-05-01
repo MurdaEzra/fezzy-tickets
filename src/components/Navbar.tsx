@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, Ticket, X, LogOut, User as UserIcon } from "lucide-react";
+import { Menu, Ticket, X, LogOut, User as UserIcon, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -19,6 +20,7 @@ const navItems = [
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [atTop, setAtTop] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -28,6 +30,14 @@ const Navbar = () => {
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      const roles = (data ?? []).map((r) => r.role);
+      setIsAdmin(roles.includes("super_admin") || roles.includes("admin"));
+    });
+  }, [user]);
 
   const initials = user?.email?.[0]?.toUpperCase() ?? "U";
 
