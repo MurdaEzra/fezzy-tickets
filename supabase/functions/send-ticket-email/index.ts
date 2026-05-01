@@ -7,7 +7,7 @@ import { qrcode } from "https://deno.land/x/qrcode@v2.0.0/mod.ts";
 // Strict CORS allowlist for browser origins
 const ALLOWED_ORIGINS = [
   "https://fezzy.app", // production
-  "http://localhost:5173", // local dev
+  "http://localhost:8080", // local dev
 ];
 
 function getCorsHeaders(origin: string | null) {
