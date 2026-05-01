@@ -14,6 +14,7 @@ import Organizer from "./pages/Organizer.tsx";
 import OrganizerDashboard from "./pages/OrganizerDashboard.tsx";
 import EventEditor from "./pages/EventEditor.tsx";
 import OrganizerPublicPage from "./pages/OrganizerPublicPage.tsx";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard.tsx";
 import Streams from "./pages/Streams.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 import Pricing from "./pages/Pricing.tsx";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
             <Route path="/dashboard" element={<OrganizerDashboard />} />
             <Route path="/dashboard/events/:id" element={<EventEditor />} />
+            <Route path="/admin" element={<SuperAdminDashboard />} />
             <Route path="/streams" element={<Streams />} />
             <Route path="/start-selling" element={<StartSelling />} />
             <Route path="/pricing" element={<Pricing />} />
