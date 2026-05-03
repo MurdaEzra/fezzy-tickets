@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Calendar } from "lucide-react";
+import { ArrowUpRight, MapPin, Calendar } from "lucide-react";
 import { type EventItem, formatDate, formatPrice } from "@/data/events";
 
 interface Props {
@@ -12,42 +12,48 @@ const EventCard = ({ event, index = 0 }: Props) => {
     <Link
       to={`/events/${event.slug}`}
       className="group block animate-fade-up"
-      style={{ animationDelay: `${index * 50}ms` }}
+      style={{ animationDelay: `${index * 60}ms` }}
     >
-      <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-soft">
-        <div className="relative aspect-[3/4] overflow-hidden bg-muted">
+      <article className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft transition-all duration-500 hover:-translate-y-1 hover:shadow-soft hover:border-foreground/20">
+        <div className="relative aspect-[4/3] overflow-hidden">
           <img
             src={event.image}
             alt={event.title}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110"
           />
-          <div className="absolute left-3 top-3 flex items-center gap-2">
+          <div className="absolute left-4 top-4 flex items-center gap-2">
             <span className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground shadow-sm">
               {event.category}
             </span>
+            {event.trending && (
+              <span className="rounded-full bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
+                🔥 Hot
+              </span>
+            )}
           </div>
-          {event.trending && (
-            <span className="absolute right-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
-              🔥 Hot
-            </span>
-          )}
+          <div className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white text-foreground opacity-0 shadow-soft transition-all duration-500 group-hover:opacity-100">
+            <ArrowUpRight className="h-4 w-4" />
+          </div>
         </div>
 
-        <div className="p-4">
-          <h3 className="line-clamp-2 min-h-[2.75rem] font-display text-base font-bold leading-snug text-foreground">
+        <div className="p-5">
+          <div className="flex items-center gap-3 text-xs text-primary">
+            <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
+              <Calendar className="h-3 w-3" />
+              {formatDate(event.date)}
+            </span>
+          </div>
+          <h3 className="mt-3 font-display text-xl font-bold leading-tight tracking-tight text-foreground text-balance">
             {event.title}
           </h3>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3 text-primary" />
-            {formatDate(event.date)}
-          </div>
-          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3 text-primary" />
-            <span className="truncate">{event.venue}, {event.city}</span>
-          </div>
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="text-sm font-bold text-primary">
+          <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              {event.city}
+            </p>
+            <p className="text-sm font-bold text-foreground">
+              <span className="text-muted-foreground font-normal">from </span>
               {formatPrice(event.priceFrom, event.currency)}
             </p>
           </div>
