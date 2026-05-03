@@ -94,7 +94,7 @@ const Events = () => {
               <p className="mt-2 text-sm text-muted-foreground">Try a different search or category.</p>
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filtered.map((e, i) => (
                 <EventCard key={e.id} event={e} index={i} />
               ))}

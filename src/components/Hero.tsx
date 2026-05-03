@@ -1,90 +1,118 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, Search, MapPin, Sparkles } from "lucide-react";
-import hero from "@/assets/hero-festival.jpg";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Search, MapPin, Ticket, Plane, Palmtree, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { events, formatPrice, formatDate } from "@/data/events";
+import hero from "@/assets/hero-festival.jpg";
+
+const tabs = [
+  { key: "events", label: "Events", icon: Ticket },
+  { key: "streams", label: "Streams", icon: Calendar },
+  { key: "experiences", label: "Experiences", icon: Palmtree },
+];
 
 const Hero = () => {
-  return (
-    <section className="relative isolate overflow-hidden bg-mesh">
-      <div className="container-px mx-auto grid max-w-7xl gap-12 pb-20 pt-16 md:pb-28 md:pt-24 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16 lg:pt-28">
-        {/* Left: copy */}
-        <div className="animate-fade-up">
-          <span className="chip">
-            Live in 14 cities · Born in Nairobi
-          </span>
-          <h1 className="display mt-6 text-5xl text-foreground sm:text-6xl md:text-7xl lg:text-[5.5rem]">
-            The night is{" "}
-            <span className="script font-normal text-primary text-[1.15em] leading-[0.7]">yours</span>
-            <br />
-            the ticket is{" "}
-            <span className="relative inline-block">
-              ours.
-              <svg className="absolute -bottom-3 left-0 w-full" viewBox="0 0 200 10" fill="none">
-                <path d="M2 7C40 2 80 2 120 5C150 7 180 6 198 4" stroke="hsl(var(--accent))" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            </span>
-          </h1>
-          <p className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            From sold-out shows at Carnivore to lakeside festivals in Naivasha and stages
-            across the world  discover events you'll talk about for years.
-          </p>
+  const [tab, setTab] = useState("events");
+  const [q, setQ] = useState("");
+  const [city, setCity] = useState("");
+  const navigate = useNavigate();
+  const featured = events.find((e) => e.featured) ?? events[0];
 
-          {/* Search */}
-          <div className="mt-8 flex max-w-2xl flex-col gap-1 rounded-3xl border border-border bg-card p-1.5 shadow-soft sm:flex-row">
-            <div className="flex flex-1 items-center gap-3 rounded-2xl px-4 py-3">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search artists, venues, vibes…"
-                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (city) params.set("city", city);
+    navigate(`/events?${params.toString()}`);
+  };
+
+  return (
+    <section className="relative isolate overflow-hidden bg-cream-deep">
+      <div className="absolute inset-0 -z-10 opacity-30">
+        <img src={hero} alt="" className="h-full w-full object-cover" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-b from-cream-deep/60 via-cream-deep/85 to-cream-deep" />
+      </div>
+
+      <div className="container-px mx-auto grid max-w-7xl gap-10 py-12 md:py-20 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+        {/* Left: Search card */}
+        <div className="animate-fade-up">
+          <p className="eyebrow mb-3">Find. Book. Vibe.</p>
+          <h1 className="display text-4xl text-foreground sm:text-5xl md:text-6xl">
+            Your next great <span className="script font-normal text-primary text-[1.2em]">night</span> starts here.
+          </h1>
+
+          <div className="mt-8 max-w-2xl rounded-3xl border border-border bg-card p-2 shadow-soft">
+            <div className="flex gap-1 px-2 pt-2">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                const active = tab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={`flex items-center gap-2 rounded-t-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                      active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" /> {t.label}
+                  </button>
+                );
+              })}
             </div>
-            <div className="hidden items-center gap-3 border-l border-border px-4 py-3 sm:flex">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                defaultValue="Nairobi"
-                className="w-32 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-            </div>
-            <Button variant="acacia" size="lg" asChild>
-              <Link to="/events">
-                Find events <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+
+            <form onSubmit={onSearch} className="space-y-2 rounded-2xl bg-background p-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  type="text"
+                  placeholder="Event name, artist or venue…"
+                  className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  type="text"
+                  placeholder="City (Nairobi, Mombasa, Kisumu…)"
+                  className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+              </div>
+              <Button variant="acacia" size="lg" type="submit" className="w-full rounded-xl font-semibold">
+                Find Your Event <ArrowRight className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+            <span>✓ M-Pesa & Card</span>
+            <span>✓ Instant QR delivery</span>
+            <span>✓ No buyer fees</span>
           </div>
         </div>
 
-        {/* Right: photo collage */}
+        {/* Right: featured ticket-poster */}
         <div className="relative animate-fade-up" style={{ animationDelay: "120ms" }}>
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border shadow-soft">
-            <img
-              src={hero}
-              alt="Joyful festival crowd at golden hour in Kenya"
-              className="h-full w-full object-cover"
-              fetchPriority="high"
-              width={1920}
-              height={1280}
-            />
-            <div className="absolute inset-0" style={{ background: "var(--gradient-hero-overlay)" }} />
-            {/* Floating ticket card */}
-            <div className="absolute bottom-6 left-6 right-6 animate-float">
-              <div className="rounded-2xl border border-white/30 bg-white/95 p-4 backdrop-blur-md shadow-soft">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Now selling</p>
-                    <p className="mt-0.5 font-display text-base font-bold text-foreground">Sol Fest · Naivasha</p>
-                    <p className="text-xs text-muted-foreground">Sat · 19 June · from KES 2,500</p>
-                  </div>
-                  <Button variant="acacia" size="sm" asChild>
-                    <Link to="/events">Get tickets</Link>
-                  </Button>
+          <Link to={`/events/${featured.slug}`} className="group block">
+            <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card shadow-soft">
+              <div className="aspect-[4/5] overflow-hidden">
+                <img src={featured.image} alt={featured.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              </div>
+              <div className="absolute inset-x-4 bottom-4 rounded-2xl bg-card/95 p-4 backdrop-blur-md shadow-card-soft">
+                <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Now selling</p>
+                <p className="mt-1 font-display text-lg font-bold leading-tight text-foreground">{featured.title}</p>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{formatDate(featured.date)} · {featured.city}</span>
+                  <span className="text-sm font-bold text-foreground">{formatPrice(featured.priceFrom, featured.currency)}</span>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="absolute -right-3 -top-3 hidden rotate-6 rounded-2xl bg-accent px-4 py-2 text-xs font-bold text-accent-foreground shadow-sun md:block">
-             Trending
+          </Link>
+          <div className="absolute -right-3 -top-3 rotate-6 rounded-2xl bg-accent px-4 py-2 text-xs font-bold text-accent-foreground shadow-sun">
+            🔥 Trending
           </div>
         </div>
       </div>
