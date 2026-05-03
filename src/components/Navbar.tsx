@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, Ticket, X, LogOut, User as UserIcon, Shield } from "lucide-react";
+import { Menu, Ticket, X, LogOut, User as UserIcon, Shield, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,25 +11,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navItems = [
-  { to: "/events", label: "Browse" },
+  { to: "/events", label: "Events" },
   { to: "/streams", label: "Streams" },
-  { to: "/organizer", label: "For Organizers" },
   { to: "/pricing", label: "Pricing" },
+  { to: "/organizer", label: "For Organizers" },
 ];
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
-  const [atTop, setAtTop] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const onScroll = () => setAtTop(window.scrollY < 10);
-    window.addEventListener('scroll', onScroll);
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     if (!user) { setIsAdmin(false); return; }
@@ -42,36 +34,20 @@ const Navbar = () => {
   const initials = user?.email?.[0]?.toUpperCase() ?? "U";
 
   return (
-    <header
-      className={
-        `sticky top-0 z-40 transition-all duration-300 ` +
-        (atTop
-          ? 'border-b-0 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-none'
-          : 'border-b border-border/70 bg-background/85 backdrop-blur-xl')
-      }
-    >
-      <div className="container-px mx-auto flex h-16 max-w-7xl items-center justify-between">
-        <Link to="/" className="group flex items-center gap-2.5">
-
-          <div
-            className="flex items gap-2 cursor-pointer"
-            onClick={() => navigate('landing')}>
-              <img
-              src={FEZZY_LOGO_URL}
-              alt="Lashawn Driving & Computer College"
-              className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
-          </div>  
-          
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-card/95 backdrop-blur-xl">
+      <div className="container-px mx-auto flex h-20 max-w-7xl items-center justify-between gap-6">
+        <Link to="/" className="flex shrink-0 items-center gap-2">
+          <img src={FEZZY_LOGO_URL} alt="Fezzy Tickets" className="h-12 md:h-14 w-auto object-contain" />
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-9 md:flex">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `text-sm font-medium transition-colors duration-200 ${
-                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                `relative text-[15px] font-semibold transition-colors duration-200 ${
+                  isActive ? "text-foreground after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:w-full after:bg-primary" : "text-foreground/70 hover:text-foreground"
                 }`
               }
             >
@@ -80,7 +56,10 @@ const Navbar = () => {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
+          <a href="#help" className="flex items-center gap-1.5 text-sm font-medium text-foreground/70 hover:text-foreground">
+            <HelpCircle className="h-4 w-4" /> Help
+          </a>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -109,15 +88,15 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/auth?mode=signin">Sign in</Link>
-              </Button>
-              <Button variant="acacia" size="sm" asChild>
-                <Link to="/auth?mode=signup">Get started</Link>
-              </Button>
-            </>
+            <Button variant="ghost" size="sm" asChild className="font-semibold">
+              <Link to="/auth?mode=signin">Log In</Link>
+            </Button>
           )}
+          <Button variant="acacia" size="lg" asChild className="rounded-full px-5 font-semibold">
+            <Link to={user ? "/dashboard" : "/auth?mode=signup&redirect=/dashboard"}>
+              Sell Your Event
+            </Link>
+          </Button>
         </div>
 
         <button
@@ -133,30 +112,21 @@ const Navbar = () => {
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container-px mx-auto flex max-w-7xl flex-col py-4">
             {navItems.map((it) => (
-              <Link
-                key={it.to}
-                to={it.to}
-                onClick={() => setOpen(false)}
-                className="py-3 text-sm font-medium text-foreground"
-              >
+              <Link key={it.to} to={it.to} onClick={() => setOpen(false)} className="py-3 text-sm font-semibold text-foreground">
                 {it.label}
               </Link>
             ))}
             <div className="mt-2 flex gap-2 border-t border-border pt-4">
               {user ? (
-                <Button variant="outline" className="flex-1" onClick={() => { signOut(); setOpen(false); }}>
-                  Sign out
-                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => { signOut(); setOpen(false); }}>Sign out</Button>
               ) : (
-                <>
-                  <Button variant="outline" className="flex-1" asChild>
-                    <Link to="/auth?mode=signin" onClick={() => setOpen(false)}>Sign in</Link>
-                  </Button>
-                  <Button variant="acacia" className="flex-1" asChild>
-                    <Link to="/auth?mode=signup" onClick={() => setOpen(false)}>Get started</Link>
-                  </Button>
-                </>
+                <Button variant="outline" className="flex-1" asChild>
+                  <Link to="/auth?mode=signin" onClick={() => setOpen(false)}>Log in</Link>
+                </Button>
               )}
+              <Button variant="acacia" className="flex-1" asChild>
+                <Link to={user ? "/dashboard" : "/auth?mode=signup&redirect=/dashboard"} onClick={() => setOpen(false)}>Sell Your Event</Link>
+              </Button>
             </div>
           </nav>
         </div>
