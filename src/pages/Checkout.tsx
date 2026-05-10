@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Check, CreditCard, Loader2, Smartphone, Info } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Smartphone, Info } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -10,19 +10,17 @@ import { toast } from "sonner";
 import { formatPrice, formatDateLong } from "@/data/events";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEventBySlug, fetchTiers, type DbEvent, type DbTier } from "@/lib/eventsApi";
+import { fetchEventBySlug, fetchTiers } from "@/lib/eventsApi";
 
 interface EventLike {
-  id?: string;
+  id: string;
   title: string;
   slug: string;
   image: string;
   date: string;
   venue: string;
   city: string;
-  currency?: string;
-  tiers: { id?: string; name: string; price: number }[];
-  isReal: boolean;
+  tiers: { id: string; name: string; price: number }[];
 }
 
 const Checkout = () => {
@@ -33,6 +31,7 @@ const Checkout = () => {
 
   const [evt, setEvt] = useState<EventLike | null>(null);
   const [loading, setLoading] = useState(true);
+  const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number } | null>(null);
 
   const tierIdx = Number(params.get("tier") ?? 0);
   const qty = Number(params.get("qty") ?? 1);
@@ -40,9 +39,10 @@ const Checkout = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [method, setMethod] = useState<"mpesa" | "card">("mpesa");
   const [processing, setProcessing] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
+  const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,10 +61,7 @@ const Checkout = () => {
           venue: dbEvent.venue_name ?? "TBA",
           city: dbEvent.city ?? "",
           tiers: tiers.map((t) => ({ id: t.id, name: t.name, price: t.price_kes })),
-          isReal: true,
         });
-      } else {
-        setEvt(null);
       }
       setLoading(false);
     })();
@@ -79,6 +76,63 @@ const Checkout = () => {
     }
   }, [user]);
 
+  const tier = evt?.tiers[tierIdx] ?? evt?.tiers[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!evt || !tier?.id) return;
+      const { data, error } = await supabase.functions.invoke('calculate-order', {
+        body: { eventId: evt.id, tierId: tier.id, quantity: qty },
+      });
+      if (!cancelled && !error && data) setCalc(data as typeof calc);
+    })();
+    return () => { cancelled = true; };
+  }, [evt, tier?.id, qty]);
+
+  useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!evt || !tier?.id || !calc) return;
+    setProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mpesa-stk-push', {
+        body: { eventId: evt.id, tierId: tier.id, quantity: qty, name, email, phone },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+
+      const orderId = (data as { orderId: string }).orderId;
+      toast.success("Check your phone — STK push sent");
+      setWaiting(true);
+
+      let attempts = 0;
+      pollRef.current = window.setInterval(async () => {
+        attempts++;
+        const { data: status } = await supabase.functions.invoke('mpesa-status', { body: { orderId } });
+        const s = status as { paymentStatus: string; orderStatus: string; receipt?: string; message?: string };
+        if (s?.paymentStatus === 'success') {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          setWaiting(false);
+          setDone({ ref: s.receipt || orderId.slice(0, 8).toUpperCase() });
+        } else if (s?.paymentStatus === 'failed') {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          setWaiting(false);
+          toast.error("Payment failed", { description: s.message || 'Please try again' });
+        } else if (attempts > 40) {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          setWaiting(false);
+          toast.error("Payment timed out — please try again");
+        }
+      }, 3000);
+    } catch (err) {
+      toast.error("Payment failed", { description: (err as Error).message });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -89,7 +143,7 @@ const Checkout = () => {
       </div>
     );
   }
-  if (!evt) {
+  if (!evt || !tier) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -101,45 +155,7 @@ const Checkout = () => {
     );
   }
 
-  const tier = evt.tiers[tierIdx] ?? evt.tiers[0];
-  const [calc, setCalc] = useState<{ price: number; subtotal: number; fee: number; total: number } | null>(null);
   const total = calc?.total ?? tier.price * qty;
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchCalc() {
-      if (!evt || !tier?.id) return;
-      const res = await fetch('/functions/v1/calculate-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: evt.id, tierId: tier.id, quantity: qty })
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!cancelled) setCalc(data);
-    }
-    fetchCalc();
-    return () => { cancelled = true; };
-  }, [evt, tier?.id, qty]);
-
-  // Secure backend payment flow placeholder
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProcessing(true);
-    try {
-      if (!evt?.id || !tier?.id || !calc) throw new Error("Event or tier not loaded");
-      // TODO: Replace with call to secure backend API (Render) for payment session creation and initiation
-      // Example:
-      // const res = await fetch('/api/checkout/sessions', { ... })
-      // Handle payment initiation, polling, and confirmation via backend
-      toast.info("Payment flow not yet implemented. Secure backend required.");
-    } catch (err) {
-      console.error(err);
-      toast.error("Payment failed", { description: (err as Error).message });
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   if (done) {
     return (
@@ -158,7 +174,7 @@ const Checkout = () => {
               {qty} × {tier.name} for <span className="text-foreground font-semibold">{evt.title}</span>.
             </p>
             <div className="mt-8 rounded-2xl border border-dashed border-border bg-background p-6 text-left">
-              <Row k="Booking ref" v={<span className="font-mono font-bold">{done.ref}</span>} />
+              <Row k="M-Pesa receipt" v={<span className="font-mono font-bold">{done.ref}</span>} />
               <Row k="Date" v={formatDateLong(evt.date)} />
               <Row k="Total paid" v={<span className="font-bold">{formatPrice(total)}</span>} />
             </div>
@@ -188,12 +204,6 @@ const Checkout = () => {
           <h1 className="display mt-6 text-4xl text-foreground sm:text-5xl">
             Get your <span className="script font-normal text-primary text-[1.2em]">tickets</span>
           </h1>
-          {!user && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              No account needed — your ticket goes straight to your email. Want to track all your bookings?{" "}
-              <Link to={`/auth?mode=signup&redirect=/events/${evt.slug}/checkout`} className="font-semibold text-primary hover:underline">Create an account</Link>.
-            </p>
-          )}
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
             <form onSubmit={submit} className="space-y-8">
@@ -210,44 +220,28 @@ const Checkout = () => {
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor="phone">Phone (M-Pesa)</Label>
-                    <Input id="phone" placeholder="+254 712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                    <Label htmlFor="phone">M-Pesa phone</Label>
+                    <Input id="phone" placeholder="0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                    <p className="mt-1 text-xs text-muted-foreground">Safaricom number — you'll receive an STK push to enter your PIN.</p>
                   </div>
                 </div>
               </div>
 
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
-                <h2 className="font-display text-xl font-bold">Payment</h2>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {[
-                    { id: "mpesa" as const, icon: Smartphone, title: "M-Pesa", sub: "STK push to your phone" },
-                    { id: "card" as const, icon: CreditCard, title: "Card", sub: "Visa · Mastercard · Amex" },
-                  ].map((m) => {
-                    const active = method === m.id;
-                    return (
-                      <button
-                        key={m.id} type="button" onClick={() => setMethod(m.id)}
-                        className={`flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${active ? "border-primary bg-primary/[0.06]" : "border-border bg-background hover:border-foreground/30"}`}
-                      >
-                        <span className="grid h-10 w-10 place-items-center rounded-full bg-foreground text-background">
-                          <m.icon className="h-4 w-4" />
-                        </span>
-                        <div>
-                          <p className="font-semibold text-foreground">{m.title}</p>
-                          <p className="text-xs text-muted-foreground">{m.sub}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-foreground text-background">
+                    <Smartphone className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-foreground">Pay with M-Pesa</p>
+                    <p className="text-xs text-muted-foreground">STK push to your phone — instant confirmation</p>
+                  </div>
                 </div>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Payments aren't live yet — this checkout simulates the full flow so you can preview it.
-                </p>
               </div>
 
-              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc}>
-                {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Pay {calc ? formatPrice(calc.total) : '...'}
+              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || waiting || !calc}>
+                {(processing || waiting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {waiting ? 'Waiting for M-Pesa…' : `Pay ${calc ? formatPrice(calc.total) : '...'}`}
               </Button>
             </form>
 
