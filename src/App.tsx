@@ -19,7 +19,6 @@ import Streams from "./pages/Streams.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import SuperAdminDashboard from "./pages/SuperAdminDashboard.tsx";
 
 const queryClient = new QueryClient();
 
