@@ -9,7 +9,7 @@ const tiers = [
     name: "Starter",
     headline: "First event on us",
     price: { amount: "0%", suffix: "on your first event" },
-    cta: { label: "Start free", to: "/start-selling" },
+    cta: { label: "Start free", to: "/auth?mode=signup&plan=Starter&redirect=/dashboard" },
     accent: false,
     features: [
       "First event — zero platform fee",
@@ -24,7 +24,7 @@ const tiers = [
     name: "Pro",
     headline: "After your first event",
     price: { amount: "5%", suffix: "deducted from your payout" },
-    cta: { label: "Create an event", to: "/dashboard" },
+    cta: { label: "Create an event", to: "/auth?mode=signup&plan=Pro&redirect=/dashboard" },
     accent: true,
     badge: "Most popular",
     features: [
@@ -41,7 +41,7 @@ const tiers = [
     name: "Enterprise",
     headline: "Stadiums & festivals",
     price: { amount: "Custom", suffix: "volume pricing" },
-    cta: { label: "Contact us", to: "/start-selling" },
+    cta: { label: "Contact us", to: "/auth?mode=signup&plan=Enterprise&redirect=/dashboard" },
     accent: false,
     features: [
       "Everything in Pro",

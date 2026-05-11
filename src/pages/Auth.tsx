@@ -16,6 +16,8 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
+  const plan = params.get("plan");
+  const redirect = params.get("redirect") || "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,9 +25,11 @@ const Auth = () => {
   const [country, setCountry] = useState("Kenya");
   const [loading, setLoading] = useState(false);
 
+  const destination = plan ? `${redirect}${redirect.includes("?") ? "&" : "?"}plan=${encodeURIComponent(plan)}` : redirect;
+
   useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(destination, { replace: true });
+  }, [user, navigate, destination]);
 
   const switchMode = (m: "signin" | "signup") => {
     setMode(m);
@@ -42,18 +46,18 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: fullName, country },
+            emailRedirectTo: `${window.location.origin}${destination}`,
+            data: { full_name: fullName, country, plan: plan ?? undefined },
           },
         });
         if (error) throw error;
-        toast.success("Account created", { description: "Check your inbox to verify your email." });
-        navigate("/dashboard");
+        toast.success("Account created", { description: plan ? `${plan} plan selected. Check your inbox to verify.` : "Check your inbox to verify your email." });
+        navigate(destination);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        navigate(destination);
       }
     } catch (err) {
       const e = err as { message?: string };
