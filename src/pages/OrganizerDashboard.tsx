@@ -216,7 +216,7 @@ const OrganizerDashboard = () => {
               <Overview profile={profile} events={events} isFirstEvent={isFirstEvent} onGoTo={setSection} />
             )}
             {section === "events" && (
-              <EventsList events={events} />
+              <EventsList events={events} onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))} />
             )}
             {section === "withdraw" && (
               <WithdrawPanel organizerId={profile.id} />
@@ -307,59 +307,82 @@ const QuickAction = ({ title, desc, icon: Icon, onClick }: { title: string; desc
   </button>
 );
 
-const EventsList = ({ events }: { events: DbEvent[] }) => (
+const EventsList = ({ events, onDeleted }: { events: DbEvent[]; onDeleted: (id: string) => void }) => (
   <div>
     <h1 className="font-display text-2xl font-bold text-foreground">Your events</h1>
-    <p className="mt-1 text-sm text-muted-foreground">Edit, view, or publish.</p>
+    <p className="mt-1 text-sm text-muted-foreground">Edit, view, publish or delete.</p>
     <div className="mt-6">
-      {events.length === 0 ? <EmptyEvents /> : <EventsGrid events={events} />}
+      {events.length === 0 ? <EmptyEvents /> : <EventsGrid events={events} onDeleted={onDeleted} />}
     </div>
   </div>
 );
 
-const EventsGrid = ({ events }: { events: DbEvent[] }) => (
-  <div className="grid gap-4 lg:grid-cols-2">
-    {events.map((e) => (
-      <div key={e.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft transition-all hover:-translate-y-0.5 hover:shadow-soft">
-        <div className="flex gap-4 p-4">
-          <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-secondary">
-            {e.cover_image_url ? (
-              <img src={e.cover_image_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="grid h-full w-full place-items-center text-muted-foreground"><Calendar className="h-6 w-6" /></div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-display text-lg font-bold leading-tight text-foreground">{e.title}</h3>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                e.status === "published" ? "bg-primary/15 text-primary" :
-                e.status === "draft" ? "bg-secondary text-muted-foreground" :
-                "bg-destructive/15 text-destructive"
-              }`}>{e.status}</span>
+const EventsGrid = ({ events, onDeleted }: { events: DbEvent[]; onDeleted?: (id: string) => void }) => {
+  const handleDelete = async (e: DbEvent) => {
+    if (!onDeleted) return;
+    const ok = window.confirm(`Delete "${e.title}"? This permanently removes the event, its tiers and any unsold tickets. This cannot be undone.`);
+    if (!ok) return;
+    const { error } = await supabase.from("events").delete().eq("id", e.id);
+    if (error) {
+      toast.error("Couldn't delete event", { description: error.message });
+      return;
+    }
+    onDeleted(e.id);
+    toast.success("Event deleted");
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {events.map((e) => (
+        <div key={e.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft transition-all hover:-translate-y-0.5 hover:shadow-soft">
+          <div className="flex gap-4 p-4">
+            <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-secondary">
+              {e.cover_image_url ? (
+                <img src={e.cover_image_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-muted-foreground"><Calendar className="h-6 w-6" /></div>
+              )}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{formatEventDate(e.starts_at)}</p>
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="h-3 w-3" /> {e.venue_name ?? "TBA"}
-            </p>
-            {e.fee_waived && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent-foreground">🎉 0% fee</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-display text-lg font-bold leading-tight text-foreground">{e.title}</h3>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  e.status === "published" ? "bg-primary/15 text-primary" :
+                  e.status === "draft" ? "bg-secondary text-muted-foreground" :
+                  "bg-destructive/15 text-destructive"
+                }`}>{e.status}</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{formatEventDate(e.starts_at)}</p>
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" /> {e.venue_name ?? "TBA"}
+              </p>
+              {e.fee_waived && (
+                <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent-foreground">🎉 0% fee</span>
+              )}
+            </div>
+          </div>
+          <div className="flex border-t border-border">
+            <Button variant="ghost" className="flex-1 rounded-none" asChild>
+              <Link to={`/dashboard/events/${e.id}`}><Pencil className="h-4 w-4" /> Edit</Link>
+            </Button>
+            <div className="w-px bg-border" />
+            <Button variant="ghost" className="flex-1 rounded-none" asChild>
+              <Link to={`/events/${e.slug}`}><ExternalLink className="h-4 w-4" /> View</Link>
+            </Button>
+            {onDeleted && (
+              <>
+                <div className="w-px bg-border" />
+                <Button variant="ghost" className="flex-1 rounded-none text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(e)}>
+                  <Trash2 className="h-4 w-4" /> Delete
+                </Button>
+              </>
             )}
           </div>
         </div>
-        <div className="flex border-t border-border">
-          <Button variant="ghost" className="flex-1 rounded-none" asChild>
-            <Link to={`/dashboard/events/${e.id}`}><Pencil className="h-4 w-4" /> Edit</Link>
-          </Button>
-          <div className="w-px bg-border" />
-          <Button variant="ghost" className="flex-1 rounded-none" asChild>
-            <Link to={`/events/${e.slug}`}><ExternalLink className="h-4 w-4" /> View</Link>
-          </Button>
-        </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 const EmptyEvents = () => (
   <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
@@ -401,11 +424,14 @@ const PosterPanel = ({ events }: { events: DbEvent[] }) => (
 const ScanPanel = () => (
   <div>
     <h1 className="font-display text-2xl font-bold text-foreground">Scan tickets</h1>
-    <p className="mt-1 text-sm text-muted-foreground">Quickly check guests in at the door.</p>
-    <div className="mt-8 grid place-items-center rounded-3xl border border-dashed border-border bg-card p-16 text-center">
-      <QrCode className="h-12 w-12 text-muted-foreground" />
-      <p className="mt-4 font-display text-lg">Scanner coming soon</p>
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground">We're polishing the camera-based scanner. In the meantime, use the QR code on each ticket and verify the holder name.</p>
+    <p className="mt-1 text-sm text-muted-foreground">Camera-based door scanner with offline mode and signed-token validation.</p>
+    <div className="mt-8 grid place-items-center rounded-3xl border border-dashed border-border bg-card p-12 text-center">
+      <QrCode className="h-12 w-12 text-primary" />
+      <p className="mt-4 font-display text-lg">Open the door scanner</p>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">Sub-500ms HMAC-signed validation. Works offline — check-ins sync when you're back online.</p>
+      <Button variant="acacia" className="mt-6" asChild>
+        <Link to="/scan">Launch scanner <ChevronRight className="h-4 w-4" /></Link>
+      </Button>
     </div>
   </div>
 );

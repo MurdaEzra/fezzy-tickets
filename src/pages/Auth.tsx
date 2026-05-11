@@ -16,6 +16,8 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
+  const plan = params.get("plan");
+  const redirect = params.get("redirect") || "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,9 +25,11 @@ const Auth = () => {
   const [country, setCountry] = useState("Kenya");
   const [loading, setLoading] = useState(false);
 
+  const destination = plan ? `${redirect}${redirect.includes("?") ? "&" : "?"}plan=${encodeURIComponent(plan)}` : redirect;
+
   useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(destination, { replace: true });
+  }, [user, navigate, destination]);
 
   const switchMode = (m: "signin" | "signup") => {
     setMode(m);
@@ -42,18 +46,18 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: fullName, country },
+            emailRedirectTo: `${window.location.origin}${destination}`,
+            data: { full_name: fullName, country, plan: plan ?? undefined },
           },
         });
         if (error) throw error;
-        toast.success("Account created", { description: "Check your inbox to verify your email." });
-        navigate("/dashboard");
+        toast.success("Account created", { description: plan ? `${plan} plan selected. Check your inbox to verify.` : "Check your inbox to verify your email." });
+        navigate(destination);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        navigate(destination);
       }
     } catch (err) {
       const e = err as { message?: string };
@@ -121,6 +125,12 @@ const Auth = () => {
               <p className="mt-1 text-sm text-muted-foreground">
                 {mode === "signin" ? "Sign in to access your tickets." : "Free forever for attendees."}
               </p>
+              {plan && (
+                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  <Ticket className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-foreground">Selected plan: <span className="font-bold">{plan}</span> — we'll set it up after sign-up.</span>
+                </div>
+              )}
 
               <Button type="button" variant="outline" className="mt-6 w-full" onClick={handleGoogle} disabled={loading}>
                 <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>

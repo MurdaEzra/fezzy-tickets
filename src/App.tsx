@@ -15,6 +15,7 @@ import OrganizerDashboard from "./pages/OrganizerDashboard.tsx";
 import EventEditor from "./pages/EventEditor.tsx";
 import OrganizerPublicPage from "./pages/OrganizerPublicPage.tsx";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard.tsx";
+import Scan from "./pages/Scan.tsx";
 import Streams from "./pages/Streams.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 import Pricing from "./pages/Pricing.tsx";
@@ -41,10 +42,10 @@ const App = () => (
             <Route path="/dashboard" element={<OrganizerDashboard />} />
             <Route path="/dashboard/events/:id" element={<EventEditor />} />
             <Route path="/admin" element={<SuperAdminDashboard />} />
+            <Route path="/scan" element={<Scan />} />
             <Route path="/streams" element={<Streams />} />
             <Route path="/start-selling" element={<StartSelling />} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/admin" element={<SuperAdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
