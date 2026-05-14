@@ -40,6 +40,10 @@ const Auth = () => {
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup" && !acceptedTerms) {
+      toast.error("Please accept the Terms and Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
