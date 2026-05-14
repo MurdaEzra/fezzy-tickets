@@ -172,7 +172,24 @@ const Auth = () => {
                   <Label htmlFor="password">Password</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
                 </div>
-                <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={loading}>
+                {mode === "signup" && (
+                  <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      required
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <Link to="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms and Conditions</Link>
+                      {" "}and{" "}
+                      <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.
+                    </span>
+                  </label>
+                )}
+                <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={loading || (mode === "signup" && !acceptedTerms)}>
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   {mode === "signin" ? "Sign in" : "Create account"}
                 </Button>
