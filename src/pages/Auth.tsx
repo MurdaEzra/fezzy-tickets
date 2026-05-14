@@ -23,6 +23,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("Kenya");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const destination = plan ? `${redirect}${redirect.includes("?") ? "&" : "?"}plan=${encodeURIComponent(plan)}` : redirect;
