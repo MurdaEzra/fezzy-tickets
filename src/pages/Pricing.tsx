@@ -1,15 +1,19 @@
-import { Link } from "react-router-dom";
-import { Check, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Check, ArrowRight, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const tiers = [
   {
     name: "Starter",
     headline: "First event on us",
     price: { amount: "0%", suffix: "on your first event" },
-    cta: { label: "Start free", to: "/auth?mode=signup&plan=Starter&redirect=/dashboard" },
+    ctaLabel: "Start free",
     accent: false,
     features: [
       "First event — zero platform fee",
@@ -24,7 +28,7 @@ const tiers = [
     name: "Pro",
     headline: "After your first event",
     price: { amount: "5%", suffix: "deducted from your payout" },
-    cta: { label: "Create an event", to: "/auth?mode=signup&plan=Pro&redirect=/dashboard" },
+    ctaLabel: "Create an event",
     accent: true,
     badge: "Most popular",
     features: [
@@ -41,7 +45,7 @@ const tiers = [
     name: "Enterprise",
     headline: "Stadiums & festivals",
     price: { amount: "Custom", suffix: "volume pricing" },
-    cta: { label: "Contact us", to: "/auth?mode=signup&plan=Enterprise&redirect=/dashboard" },
+    ctaLabel: "Contact us",
     accent: false,
     features: [
       "Everything in Pro",
