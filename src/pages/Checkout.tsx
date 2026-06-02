@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { formatPrice, formatDateLong } from "@/data/events";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEventBySlug, fetchTiers } from "@/lib/eventsApi";
+import { fetchEventBySlug, fetchTiers, formatEventDateLong, formatPrice } from "@/lib/eventsApi";
 
 interface EventLike {
   id: string;
@@ -175,7 +174,7 @@ const Checkout = () => {
             </p>
             <div className="mt-8 rounded-2xl border border-dashed border-border bg-background p-6 text-left">
               <Row k="M-Pesa receipt" v={<span className="font-mono font-bold">{done.ref}</span>} />
-              <Row k="Date" v={formatDateLong(evt.date)} />
+              <Row k="Date" v={formatEventDateLong(evt.date)} />
               <Row k="Total paid" v={<span className="font-bold">{formatPrice(total)}</span>} />
             </div>
             <div className="mt-6 flex items-start gap-2 rounded-2xl bg-secondary p-4 text-left text-xs text-muted-foreground">
@@ -252,7 +251,7 @@ const Checkout = () => {
                   {evt.image && <img src={evt.image} alt="" className="h-20 w-20 rounded-2xl object-cover" />}
                   <div className="min-w-0">
                     <p className="font-display font-bold leading-tight text-foreground">{evt.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{formatDateLong(evt.date)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatEventDateLong(evt.date)}</p>
                     <p className="text-xs text-muted-foreground">{evt.venue}, {evt.city}</p>
                   </div>
                 </div>

@@ -1,24 +1,52 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Ticket, Calendar, MapPin, Trash2 } from "lucide-react";
+import { Calendar, Loader2, MapPin, Ticket, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { events, formatDate, formatPrice } from "@/data/events";
+import {
+  fetchAccountTickets,
+  formatEventDate,
+  formatPrice,
+  type AccountTicket,
+} from "@/lib/eventsApi";
 import { toast } from "sonner";
 
 const Account = () => {
   const { user, loading, deleteAccount } = useAuth();
   const navigate = useNavigate();
+  const [tickets, setTickets] = useState<AccountTicket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth?mode=signin", { replace: true });
   }, [user, loading, navigate]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setTicketsLoading(true);
+    fetchAccountTickets()
+      .then((rows) => {
+        if (!cancelled) setTickets(rows);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setTickets([]);
+          toast.error("Could not load tickets", { description: error instanceof Error ? error.message : "Please try again." });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setTicketsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   if (!user) return null;
 
-  const upcoming = events.slice(0, 2);
   const name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "there";
 
   const handleDeleteAccount = async () => {
@@ -53,7 +81,11 @@ const Account = () => {
             <Button variant="outline" size="sm" asChild><Link to="/events">Browse more</Link></Button>
           </div>
 
-          {upcoming.length === 0 ? (
+          {ticketsLoading ? (
+            <div className="grid min-h-48 place-items-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : tickets.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
               <Ticket className="mx-auto h-10 w-10 text-muted-foreground" />
               <p className="mt-4 font-display text-2xl font-bold text-foreground">No tickets yet</p>
@@ -62,27 +94,41 @@ const Account = () => {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {upcoming.map((e) => (
-                <article key={e.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
-                  <div className="flex">
-                    <div className="relative w-32 flex-shrink-0 sm:w-44">
-                      <img src={e.image} alt={e.title} className="h-full w-full object-cover" loading="lazy" />
-                    </div>
-                    <div className="flex-1 p-5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{e.category}</p>
-                      <h3 className="mt-1 font-display text-lg font-bold leading-tight text-foreground">{e.title}</h3>
-                      <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {formatDate(e.date)}</p>
-                        <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {e.venue}, {e.city}</p>
+              {tickets.map((ticket) => {
+                const event = ticket.events;
+                const tier = ticket.ticket_tiers;
+                return (
+                  <article key={ticket.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
+                    <div className="flex">
+                      <div className="relative w-32 flex-shrink-0 bg-cream-deep sm:w-44">
+                        {event?.cover_image_url ? (
+                          <img src={event.cover_image_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="grid h-full min-h-40 place-items-center px-3 text-center">
+                            <Ticket className="h-8 w-8 text-primary" />
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                        <span className="font-display text-sm font-bold text-foreground">{formatPrice(e.priceFrom, e.currency)}</span>
-                        <Button size="sm" variant="outline">View QR</Button>
+                      <div className="flex-1 p-5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{ticket.status}</p>
+                        <h3 className="mt-1 font-display text-lg font-bold leading-tight text-foreground">
+                          {event?.title ?? "Event unavailable"}
+                        </h3>
+                        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                          {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {formatEventDate(event.starts_at)}</p>}
+                          {event && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {event.venue_name ?? "Venue TBA"}, {event.city ?? "Location TBA"}</p>}
+                        </div>
+                        <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                          <span className="font-display text-sm font-bold text-foreground">
+                            {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
+                          </span>
+                          <Button size="sm" variant="outline" disabled>QR emailed</Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>

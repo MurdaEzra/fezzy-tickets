@@ -1,37 +1,63 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";
-import { events, categories, type EventCategory } from "@/data/events";
+import {
+  fetchPublishedEventsWithTiers,
+  type DbEventWithTiers,
+} from "@/lib/eventsApi";
 
 const ALL = "All" as const;
 
 const Events = () => {
   const [params, setParams] = useSearchParams();
-  const initialCat = (params.get("cat") as EventCategory | null) ?? ALL;
-  const [activeCat, setActiveCat] = useState<EventCategory | typeof ALL>(initialCat);
+  const [events, setEvents] = useState<DbEventWithTiers[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCat, setActiveCat] = useState<string>(params.get("cat") ?? ALL);
   const [query, setQuery] = useState("");
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublishedEventsWithTiers()
+      .then((rows) => {
+        if (!cancelled) setEvents(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const categories = useMemo(() => {
+    return Array.from(new Set(events.map((event) => event.category).filter(Boolean) as string[])).sort();
+  }, [events]);
+
   const filtered = useMemo(() => {
-    return events.filter((e) => {
-      const catOk = activeCat === ALL ? true : e.category === activeCat;
+    return events.filter((event) => {
+      const catOk = activeCat === ALL ? true : event.category === activeCat;
       const q = query.trim().toLowerCase();
       const qOk = !q
         ? true
-        : [e.title, e.tagline, e.venue, e.city, e.category].some((t) =>
-            t.toLowerCase().includes(q)
-          );
+        : [event.title, event.tagline, event.venue_name, event.city, event.category]
+            .filter(Boolean)
+            .some((value) => value!.toLowerCase().includes(q));
       return catOk && qOk;
     });
-  }, [activeCat, query]);
+  }, [activeCat, events, query]);
 
-  const setCat = (c: EventCategory | typeof ALL) => {
-    setActiveCat(c);
-    if (c === ALL) params.delete("cat");
-    else params.set("cat", c);
-    setParams(params, { replace: true });
+  const setCat = (category: string) => {
+    setActiveCat(category);
+    const next = new URLSearchParams(params);
+    if (category === ALL) next.delete("cat");
+    else next.set("cat", category);
+    setParams(next, { replace: true });
   };
 
   return (
@@ -54,25 +80,25 @@ const Events = () => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by title, venue, city…"
+                placeholder="Search by title, venue, city..."
                 className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              {[ALL, ...categories.map((c) => c.name)].map((c) => {
-                const active = c === activeCat;
+              {[ALL, ...categories].map((category) => {
+                const active = category === activeCat;
                 return (
                   <button
-                    key={c}
-                    onClick={() => setCat(c)}
+                    key={category}
+                    onClick={() => setCat(category)}
                     className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                       active
                         ? "border-foreground bg-foreground text-background"
                         : "border-border bg-card text-foreground hover:border-foreground/40"
                     }`}
                   >
-                    {c}
+                    {category}
                   </button>
                 );
               })}
@@ -88,15 +114,19 @@ const Events = () => {
             </p>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="grid min-h-64 place-items-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
               <p className="font-display text-2xl text-foreground">Nothing here, yet.</p>
               <p className="mt-2 text-sm text-muted-foreground">Try a different search or category.</p>
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((e, i) => (
-                <EventCard key={e.id} event={e} index={i} />
+              {filtered.map((event, index) => (
+                <EventCard key={event.id} event={event} index={index} />
               ))}
             </div>
           )}
