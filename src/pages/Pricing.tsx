@@ -67,6 +67,59 @@ const faqs = [
 ];
 
 const Pricing = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [pendingTier, setPendingTier] = useState<string | null>(null);
+
+  const handleSelectPlan = async (planName: string) => {
+    const orgName = sessionStorage.getItem("pendingOrgName") || "";
+    sessionStorage.setItem("pendingPlan", planName);
+
+    // Not signed in → send to signup; org name and plan will be picked up on Auth.
+    if (!user) {
+      navigate(`/auth?mode=signup&plan=${encodeURIComponent(planName)}&redirect=/dashboard`);
+      return;
+    }
+
+    setPendingTier(planName);
+    try {
+      // Persist plan on user metadata
+      await supabase.auth.updateUser({
+        data: { plan: planName, ...(orgName ? { org_name: orgName } : {}) },
+      });
+
+      // Ensure organizer profile exists
+      const { data: existing } = await supabase
+        .from("organizer_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!existing) {
+        const finalName =
+          orgName ||
+          (user.user_metadata?.org_name as string) ||
+          (user.user_metadata?.full_name as string) ||
+          user.email?.split("@")[0] ||
+          "My organization";
+        const { error } = await supabase
+          .from("organizer_profiles")
+          .insert({ user_id: user.id, org_name: finalName, contact_email: user.email });
+        if (error) throw error;
+      }
+
+      sessionStorage.removeItem("pendingOrgName");
+      sessionStorage.removeItem("pendingPlan");
+      toast.success(`${planName} plan selected`, { description: "Welcome to your organizer dashboard." });
+      navigate("/dashboard");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Please try again.";
+      toast.error("Could not set up organizer profile", { description: msg });
+    } finally {
+      setPendingTier(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -118,14 +171,16 @@ const Pricing = () => {
                   variant={t.accent ? "sun" : "acacia"}
                   size="lg"
                   className="mt-8 w-full"
-                  asChild
+                  onClick={() => handleSelectPlan(t.name)}
+                  disabled={pendingTier !== null}
                 >
-                  <Link to={t.cta.to}>{t.cta.label} <ArrowRight className="h-4 w-4" /></Link>
+                  {pendingTier === t.name ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{t.ctaLabel} <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </div>
             ))}
           </div>
         </section>
+
 
         {/* FAQ */}
         <section className="border-t border-border bg-cream-deep">
