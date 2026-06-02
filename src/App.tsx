@@ -11,6 +11,7 @@ import Auth from "./pages/Auth.tsx";
 import Account from "./pages/Account.tsx";
 import Checkout from "./pages/Checkout.tsx";
 import Organizer from "./pages/Organizer.tsx";
+import BecomeOrganizer from "./pages/BecomeOrganizer.tsx";
 import OrganizerDashboard from "./pages/OrganizerDashboard.tsx";
 import EventEditor from "./pages/EventEditor.tsx";
 import OrganizerPublicPage from "./pages/OrganizerPublicPage.tsx";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             <Route path="/organizer" element={<Organizer />} />
+            <Route path="/become-organizer" element={<BecomeOrganizer />} />
             <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
             <Route path="/dashboard" element={<OrganizerDashboard />} />
             <Route path="/dashboard/events/:id" element={<EventEditor />} />

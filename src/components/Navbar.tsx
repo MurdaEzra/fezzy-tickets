@@ -13,7 +13,7 @@ import {
 const navItems = [
   { to: "/events", label: "Browse" },
   { to: "/streams", label: "Streams" },
-  { to: "/organizer", label: "For Organizers" },
+  { to: "/become-organizer", label: "Become Organizer" },
   { to: "/pricing", label: "Pricing" },
 ];
 
