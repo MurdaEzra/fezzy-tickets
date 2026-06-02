@@ -58,11 +58,31 @@ const OrganizerDashboard = () => {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: prof } = await supabase
+      let { data: prof } = await supabase
         .from("organizer_profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
+
+      // Auto-create profile if signup carried an org name (organizer flow)
+      if (!prof) {
+        const metaOrg = (user.user_metadata?.org_name as string | undefined)?.trim();
+        const pending = sessionStorage.getItem("pendingOrgName")?.trim();
+        const autoName = metaOrg || pending;
+        if (autoName) {
+          const { data: created, error } = await supabase
+            .from("organizer_profiles")
+            .insert({ user_id: user.id, org_name: autoName, contact_email: user.email })
+            .select()
+            .single();
+          if (!error && created) {
+            prof = created;
+            sessionStorage.removeItem("pendingOrgName");
+            sessionStorage.removeItem("pendingPlan");
+          }
+        }
+      }
+
       if (prof) {
         setProfile(prof as OrgProfile);
         const { data: evts } = await supabase

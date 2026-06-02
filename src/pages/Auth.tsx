@@ -17,7 +17,10 @@ const Auth = () => {
   const { user } = useAuth();
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
   const plan = params.get("plan");
-  const redirect = params.get("redirect") || "/dashboard";
+  // Default: attendees land on their personal account; organizers (plan in URL)
+  // are taken to the organizer dashboard.
+  const fallbackRedirect = plan ? "/dashboard" : "/account";
+  const redirect = params.get("redirect") || fallbackRedirect;
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,12 +50,18 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
+        const pendingOrgName = sessionStorage.getItem("pendingOrgName") || undefined;
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}${destination}`,
-            data: { full_name: fullName, country, plan: plan ?? undefined },
+            data: {
+              full_name: fullName,
+              country,
+              plan: plan ?? undefined,
+              org_name: pendingOrgName,
+            },
           },
         });
         if (error) throw error;

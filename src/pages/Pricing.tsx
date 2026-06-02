@@ -1,15 +1,19 @@
-import { Link } from "react-router-dom";
-import { Check, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Check, ArrowRight, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const tiers = [
   {
     name: "Starter",
     headline: "First event on us",
     price: { amount: "0%", suffix: "on your first event" },
-    cta: { label: "Start free", to: "/auth?mode=signup&plan=Starter&redirect=/dashboard" },
+    ctaLabel: "Start free",
     accent: false,
     features: [
       "First event — zero platform fee",
@@ -24,7 +28,7 @@ const tiers = [
     name: "Pro",
     headline: "After your first event",
     price: { amount: "5%", suffix: "deducted from your payout" },
-    cta: { label: "Create an event", to: "/auth?mode=signup&plan=Pro&redirect=/dashboard" },
+    ctaLabel: "Create an event",
     accent: true,
     badge: "Most popular",
     features: [
@@ -41,7 +45,7 @@ const tiers = [
     name: "Enterprise",
     headline: "Stadiums & festivals",
     price: { amount: "Custom", suffix: "volume pricing" },
-    cta: { label: "Contact us", to: "/auth?mode=signup&plan=Enterprise&redirect=/dashboard" },
+    ctaLabel: "Contact us",
     accent: false,
     features: [
       "Everything in Pro",
@@ -63,6 +67,59 @@ const faqs = [
 ];
 
 const Pricing = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [pendingTier, setPendingTier] = useState<string | null>(null);
+
+  const handleSelectPlan = async (planName: string) => {
+    const orgName = sessionStorage.getItem("pendingOrgName") || "";
+    sessionStorage.setItem("pendingPlan", planName);
+
+    // Not signed in → send to signup; org name and plan will be picked up on Auth.
+    if (!user) {
+      navigate(`/auth?mode=signup&plan=${encodeURIComponent(planName)}&redirect=/dashboard`);
+      return;
+    }
+
+    setPendingTier(planName);
+    try {
+      // Persist plan on user metadata
+      await supabase.auth.updateUser({
+        data: { plan: planName, ...(orgName ? { org_name: orgName } : {}) },
+      });
+
+      // Ensure organizer profile exists
+      const { data: existing } = await supabase
+        .from("organizer_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!existing) {
+        const finalName =
+          orgName ||
+          (user.user_metadata?.org_name as string) ||
+          (user.user_metadata?.full_name as string) ||
+          user.email?.split("@")[0] ||
+          "My organization";
+        const { error } = await supabase
+          .from("organizer_profiles")
+          .insert({ user_id: user.id, org_name: finalName, contact_email: user.email });
+        if (error) throw error;
+      }
+
+      sessionStorage.removeItem("pendingOrgName");
+      sessionStorage.removeItem("pendingPlan");
+      toast.success(`${planName} plan selected`, { description: "Welcome to your organizer dashboard." });
+      navigate("/dashboard");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Please try again.";
+      toast.error("Could not set up organizer profile", { description: msg });
+    } finally {
+      setPendingTier(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -114,14 +171,16 @@ const Pricing = () => {
                   variant={t.accent ? "sun" : "acacia"}
                   size="lg"
                   className="mt-8 w-full"
-                  asChild
+                  onClick={() => handleSelectPlan(t.name)}
+                  disabled={pendingTier !== null}
                 >
-                  <Link to={t.cta.to}>{t.cta.label} <ArrowRight className="h-4 w-4" /></Link>
+                  {pendingTier === t.name ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{t.ctaLabel} <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </div>
             ))}
           </div>
         </section>
+
 
         {/* FAQ */}
         <section className="border-t border-border bg-cream-deep">

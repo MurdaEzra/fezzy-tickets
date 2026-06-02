@@ -13,9 +13,12 @@ const Organizer = () => {
   useEffect(() => {
     if (loading) return;
     if (user) {
-      navigate("/dashboard", { replace: true });
+      // Logged-in users: if they already have an organizer profile we'll let
+      // the dashboard handle the routing; otherwise send them through the
+      // become-organizer flow (org name → pricing → dashboard).
+      navigate("/become-organizer", { replace: true });
     } else {
-      navigate("/auth?mode=signup&redirect=/dashboard", { replace: true });
+      navigate("/become-organizer", { replace: true });
     }
   }, [user, loading, navigate]);
 
