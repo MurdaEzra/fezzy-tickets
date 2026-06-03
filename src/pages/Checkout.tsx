@@ -38,6 +38,7 @@ const Checkout = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "apple_pay">("mpesa");
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -89,11 +90,24 @@ const Checkout = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!evt || !tier?.id || !calc) return;
+    if (paymentMethod === "mpesa" && !phone.trim()) {
+      toast.error("Please enter a phone number for M-Pesa payments.");
+      return;
+    }
     setProcessing(true);
     try {
       const callbackUrl = `${window.location.origin}/payment/callback`;
       const { data, error } = await supabase.functions.invoke('paystack-init-transaction', {
-        body: { eventId: evt.id, tierId: tier.id, quantity: qty, name, email, phone, callbackUrl },
+        body: {
+          eventId: evt.id,
+          tierId: tier.id,
+          quantity: qty,
+          name,
+          email,
+          phone,
+          callbackUrl,
+          method: paymentMethod,
+        },
       });
       const err = (data as { error?: string } | null)?.error ?? error?.message;
       if (err) throw new Error(err);
@@ -154,7 +168,7 @@ const Checkout = () => {
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor="phone">Phone (optional)</Label>
+                    <Label htmlFor="phone">Phone {paymentMethod === "mpesa" ? "(required for M-Pesa)" : "(optional)"}</Label>
                     <Input id="phone" placeholder="0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
                 </div>
@@ -162,11 +176,11 @@ const Checkout = () => {
 
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
                 <h2 className="font-display text-xl font-bold">Choose how to pay</h2>
-                <p className="mt-1 text-sm text-muted-foreground">All methods are processed securely by Paystack on the next screen.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Select your preferred checkout method and continue to Paystack to complete payment.</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <PayBadge icon={Smartphone} label="M-Pesa" />
-                  <PayBadge icon={CreditCard} label="Card" />
-                  <PayBadge icon={Wallet} label="Apple Pay" />
+                  <PayBadge icon={Smartphone} label="M-Pesa" value="mpesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
+                  <PayBadge icon={CreditCard} label="Card" value="card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
+                  <PayBadge icon={Wallet} label="Apple Pay" value="apple_pay" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
                 </div>
                 <div className="mt-5 flex items-start gap-2 rounded-2xl bg-secondary p-4 text-xs text-muted-foreground">
                   <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
@@ -176,7 +190,7 @@ const Checkout = () => {
 
               <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc}>
                 {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {processing ? 'Redirecting to Paystack…' : `Pay ${calc ? formatPrice(calc.total) : '...'}`}
+                {processing ? 'Redirecting to Paystack…' : `Pay ${calc ? formatPrice(calc.total) : '...'} with ${paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Card'}`}
               </Button>
             </form>
 
@@ -206,9 +220,6 @@ const Checkout = () => {
                     <dt className="font-semibold text-foreground">You pay</dt>
                     <dd className="font-display text-xl font-bold text-foreground">{calc ? formatPrice(calc.total) : '...'}</dd>
                   </div>
-                  <p className="rounded-xl bg-primary/10 p-3 text-xs text-primary">
-                    🎉 No service fees on your end — the organizer covers it.
-                  </p>
                 </dl>
               </div>
             </aside>
@@ -220,13 +231,13 @@ const Checkout = () => {
   );
 };
 
-const PayBadge = ({ icon: Icon, label }: { icon: typeof CreditCard; label: string }) => (
-  <div className="flex items-center gap-2 rounded-2xl border border-border bg-background p-3 text-sm">
-    <span className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background">
+const PayBadge = ({ icon: Icon, label, selected, onSelect, value }: { icon: typeof CreditCard; label: string; selected?: boolean; onSelect?: () => void; value: string }) => (
+  <button type="button" onClick={onSelect} className={`flex items-center gap-2 rounded-2xl border p-3 text-sm transition ${selected ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/80'}`}>
+    <span className={`grid h-8 w-8 place-items-center rounded-full ${selected ? 'bg-primary text-background' : 'bg-foreground text-background'}`}>
       <Icon className="h-4 w-4" />
     </span>
     <span className="font-semibold text-foreground">{label}</span>
-  </div>
+  </button>
 );
 
 export default Checkout;

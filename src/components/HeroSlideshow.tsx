@@ -54,10 +54,6 @@ const HeroSlideshow = () => {
       <div className="container-px mx-auto max-w-7xl pt-12 md:pt-20">
         {/* Heading + search */}
         <div className="mb-8 max-w-3xl animate-fade-up md:mb-12">
-          <span className="chip">
-            
-            Live in 14 cities · Born in Nairobi
-          </span>
           <h1 className="display mt-5 text-5xl text-foreground sm:text-6xl md:text-7xl">
             The night is{" "}
             <span className="script font-normal text-primary text-[1.15em] leading-[0.7]">yours</span>,

@@ -3,7 +3,7 @@ import { Ticket, Instagram, Twitter, Facebook } from "lucide-react";
 
 const cols = [
   { title: "Discover", links: [["Browse events", "/events"], ["This weekend", "/events"], ["Categories", "/events"]] },
-  { title: "Organize", links: [["Start selling", "/start-selling"], ["Pricing", "/pricing"], ["For Organizers", "/organizer"]] },
+  { title: "Organize", links: [["Pricing", "/pricing"], ["For Organizers", "/organizer"]] },
   { title: "Company", links: [["About", "#"], ["Help center", "#"], ["Contact", "#"]] },
 ];
 
@@ -50,7 +50,7 @@ const Footer = () => {
         </div>
         <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
           <p>© {new Date().getFullYear()} Fezzy Tickets · Nairobi, Kenya 🇰🇪</p>
-          <p>M-Pesa · Visa · Mastercard · Apple Pay · Google Pay</p>
+          <p>M-Pesa · Visa · Apple Pay ·</p>
         </div>
       </div>
     </footer>

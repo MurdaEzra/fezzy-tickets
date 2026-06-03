@@ -31,7 +31,6 @@ const Streams = () => {
       <main>
         <section className="border-b border-border bg-mesh">
           <div className="container-px mx-auto max-w-7xl py-16 text-center md:py-24">
-            <span className="chip"><Sparkles className="h-3 w-3 text-primary" />Watch from anywhere</span>
             <h1 className="display mx-auto mt-5 max-w-3xl text-5xl text-foreground sm:text-6xl md:text-7xl">
               Live <span className="script font-normal text-primary text-[1.2em]">streams</span>, world stages.
             </h1>

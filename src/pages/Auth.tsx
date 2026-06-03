@@ -51,11 +51,10 @@ const Auth = () => {
     try {
       if (mode === "signup") {
         const pendingOrgName = sessionStorage.getItem("pendingOrgName") || undefined;
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}${destination}`,
             data: {
               full_name: fullName,
               country,
@@ -65,7 +64,15 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created", { description: plan ? `${plan} plan selected. Check your inbox to verify.` : "Check your inbox to verify your email." });
+
+        if (!data?.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) {
+            console.warn("Sign-up succeeded but immediate login failed:", signInError.message);
+          }
+        }
+
+        toast.success("Account created successfully.");
         navigate(destination);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -84,10 +91,15 @@ const Auth = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/account` });
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}${destination}` });
+      if (result?.error) throw result.error;
+      if (!result?.redirected) {
+        toast.success("Signed in with Google");
+        navigate(destination);
+      }
     } catch (err) {
       const e = err as { message?: string };
-      toast.error("Google sign-in failed", { description: e.message });
+      toast.error("Google sign-in failed", { description: e.message ?? "Try again." });
       setLoading(false);
     }
   };

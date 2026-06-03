@@ -291,7 +291,7 @@ const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: Or
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400 text-2xl">💸</div>
         <div className="flex-1">
           <p className="font-display text-base font-bold text-foreground">Connect your payout destination</p>
-          <p className="text-sm text-muted-foreground">Money is split instantly to your bank on every sale — no waiting, no withdrawals.</p>
+          <p className="text-sm text-muted-foreground">Money is split instantly to your bank on every sale;  no waiting, no withdrawals.</p>
         </div>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </button>
@@ -427,7 +427,7 @@ const EmptyEvents = () => (
   <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
     <Calendar className="mx-auto h-10 w-10 text-muted-foreground" />
     <p className="mt-4 font-display text-lg">No events yet</p>
-    <p className="mt-1 text-sm text-muted-foreground">Create your first event — it's on us.</p>
+    <p className="mt-1 text-sm text-muted-foreground">Create your first event  it's on us.</p>
     <Button variant="acacia" className="mt-6" asChild>
       <Link to="/dashboard/events/new">Create event <Plus className="h-4 w-4" /></Link>
     </Button>

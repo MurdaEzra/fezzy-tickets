@@ -47,10 +47,8 @@ const App = () => (
             <Route path="/admin" element={<SuperAdminDashboard />} />
             <Route path="/scan" element={<Scan />} />
             <Route path="/streams" element={<Streams />} />
-            <Route path="/start-selling" element={<StartSelling />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/payment/callback" element={<PaymentCallback />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -203,7 +203,7 @@ const EventEditor = () => {
 
         {feeWaived && (
           <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-xs font-bold text-accent-foreground">
-            🎉 First-event bonus active — 0% platform fee on this event
+             First-event bonus active 0% platform fee on this event
           </div>
         )}
 

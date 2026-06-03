@@ -18,11 +18,14 @@ Deno.serve(async (req) => {
   try {
     if (!PAYSTACK_SECRET_KEY) return json({ error: "Paystack not configured" }, 500);
 
-    const { eventId, tierId, quantity, name, email, phone, callbackUrl } =
+    const { eventId, tierId, quantity, name, email, phone, callbackUrl, method } =
       await req.json();
     if (!eventId || !tierId || !quantity || !name || !email) {
       return json({ error: "Missing parameters" }, 400);
     }
+    const paymentMethod = typeof method === "string" && ["mpesa", "card", "apple_pay", "google_pay"].includes(method)
+      ? method
+      : "card";
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -77,7 +80,7 @@ Deno.serve(async (req) => {
         total_kes: subtotal,
         organizer_fee_kes: organizerFee,
         fee_waived: event.fee_waived,
-        payment_method: "paystack",
+        payment_method: paymentMethod,
         status: "pending",
       })
       .select()
@@ -97,9 +100,11 @@ Deno.serve(async (req) => {
         event_id: eventId,
         tier_id: tierId,
         quantity,
+        payment_method: paymentMethod,
         custom_fields: [
           { display_name: "Event", variable_name: "event", value: event.title },
           { display_name: "Tickets", variable_name: "tickets", value: `${quantity} × ${tier.name}` },
+          { display_name: "Payment method", variable_name: "payment_method", value: paymentMethod },
         ],
       },
     };

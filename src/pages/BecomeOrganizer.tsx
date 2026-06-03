@@ -32,7 +32,6 @@ const BecomeOrganizer = () => {
       <main className="bg-mesh">
         <section className="container-px mx-auto grid min-h-[calc(100vh-4rem)] max-w-3xl place-items-center py-16">
           <div className="w-full rounded-3xl border border-border bg-card p-8 shadow-soft md:p-12">
-            <span className="chip"><Sparkles className="h-3 w-3 text-primary" /> First event is free</span>
             <h1 className="display mt-4 text-4xl text-foreground sm:text-5xl">
               Become an <span className="script font-normal text-primary text-[1.2em]">organizer</span>
             </h1>
