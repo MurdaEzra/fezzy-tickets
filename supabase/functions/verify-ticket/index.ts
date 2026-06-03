@@ -79,8 +79,8 @@ async function sendBrevoEmail(
       },
       body: JSON.stringify({
         sender: {
-          name: 'EventHub',
-          email: 'noreply@yourdomain.com',
+          name: 'Fezzy Tickets',
+          email: 'noreply@fezzy.app',
         },
         to: [
           {

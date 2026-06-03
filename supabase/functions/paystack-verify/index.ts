@@ -2,6 +2,7 @@
 // order paid + creates tickets. Idempotent — safe to call repeatedly while
 // the webhook also runs.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { qrcode } from "https://deno.land/x/qrcode@v2.0.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,6 +106,12 @@ async function finalizeOrder(
     if (tier) {
       await admin.from("ticket_tiers").update({ sold: tier.sold + quantity }).eq("id", tierId);
     }
+
+    try {
+      await sendTicketDelivery(admin, orderId);
+    } catch (deliveryError) {
+      console.error("[ticket-delivery]", deliveryError);
+    }
   }
 }
 
@@ -112,5 +119,135 @@ function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function sendBrevoEmail({
+  recipientEmail,
+  subject,
+  htmlContent,
+}: {
+  recipientEmail: string;
+  subject: string;
+  htmlContent: string;
+}) {
+  const apiKey = Deno.env.get("BREVO_API_KEY");
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY not configured");
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": apiKey,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: "Fezzy Tickets",
+        email: "tickets@fezzy.app",
+      },
+      to: [
+        {
+          email: recipientEmail,
+        },
+      ],
+      subject,
+      htmlContent,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  return await response.json();
+}
+
+async function sendTicketDelivery(admin, orderId) {
+  const { data: order, error } = await admin
+    .from("orders")
+    .select(`
+      *,
+      events(*, ticket_design),
+      tickets(
+        *,
+        ticket_tiers(*)
+      )
+    `)
+    .eq("id", orderId)
+    .single();
+
+  if (error || !order) {
+    throw new Error("Order not found for ticket delivery");
+  }
+
+  const event = order.events;
+  if (!event) {
+    throw new Error("Order event missing for ticket delivery");
+  }
+
+  const accent = event?.ticket_design?.accent ?? "#1FAD66";
+  const ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+  const dateStr = new Date(event.starts_at).toLocaleString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const ticketHtmls: string[] = [];
+  for (const ticket of order.tickets ?? []) {
+    const qrDataUrl = String(
+      await qrcode(ticket.qr_token, {
+        size: 300,
+      }),
+    );
+
+    ticketHtmls.push(`
+      <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(13,27,42,.18);border:1px solid #ebe2cf;margin-bottom:24px">
+        <div style="background:linear-gradient(135deg,#1FAD66,#2bd083);padding:28px;color:white">
+          <p style="margin:0;font-size:11px;text-transform:uppercase">Admit One</p>
+          <h1 style="margin:8px 0">${event.title}</h1>
+          <p style="margin:0">${dateStr} · ${event.venue_name ?? "TBA"}, ${event.city ?? ""}</p>
+        </div>
+        <div style="padding:24px;display:flex;justify-content:space-between;gap:24px">
+          <div>
+            <p><strong>Holder:</strong> ${ticket.holder_name}</p>
+            <p><strong>Tier:</strong> <span style="color:${accent}">${ticket.ticket_tiers?.name ?? "General"}</span></p>
+            <p><strong>Reference:</strong> ${ref}</p>
+          </div>
+          <div>
+            <img src="${qrDataUrl}" width="150" height="150" alt="QR Code" />
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Your Fezzy Tickets</title>
+</head>
+<body style="background:#FFF8EE;padding:24px;font-family:Arial,sans-serif;">
+  <div style="max-width:700px;margin:auto;">
+    <h1>Your Tickets</h1>
+    <p>Thanks for your purchase.</p>
+    <p>Booking Reference: <strong>${ref}</strong></p>
+    ${ticketHtmls.join("")}
+    <p style="color:#777;text-align:center;margin-top:40px;">Show the QR code at the gate. Screenshots are accepted.</p>
+  </div>
+</body>
+</html>`;
+
+  await sendBrevoEmail({
+    recipientEmail: order.guest_email,
+    subject: `Your Tickets - ${event.title}`,
+    htmlContent: emailHtml,
   });
 }

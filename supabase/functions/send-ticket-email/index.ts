@@ -6,6 +6,8 @@ const ALLOWED_ORIGINS = [
   "http://localhost:8080",
 ];
 
+const INTERNAL_TICKET_DELIVERY_SECRET = Deno.env.get("INTERNAL_TICKET_DELIVERY_SECRET");
+
 function getCorsHeaders(origin: string | null) {
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     return {
@@ -151,6 +153,22 @@ Deno.serve(async (req) => {
           },
         }
       );
+    }
+
+    if (INTERNAL_TICKET_DELIVERY_SECRET) {
+      const secretHeader = req.headers.get("x-internal-ticket-secret");
+      if (secretHeader !== INTERNAL_TICKET_DELIVERY_SECRET) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          {
+            status: 403,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
     }
 
     const supabase = createClient(
