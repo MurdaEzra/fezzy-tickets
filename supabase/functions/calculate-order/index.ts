@@ -11,26 +11,35 @@ Deno.serve(async (req: Request) => {
   try {
     const { eventId, tierId, quantity } = await req.json();
     if (!eventId || !tierId || !quantity) {
-      return new Response(JSON.stringify({ error: 'Missing parameters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ error: 'Missing parameters' }, 400);
     }
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: tier, error: tierError } = await supabase
-      .from('ticket_tiers').select('price_kes').eq('id', tierId).single();
-    if (tierError || !tier) {
-      return new Response(JSON.stringify({ error: 'Tier not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      .from('ticket_tiers').select('price_kes, event_id').eq('id', tierId).single();
+    if (tierError || !tier) return json({ error: 'Tier not found' }, 404);
+
+    const { data: event } = await supabase
+      .from('events').select('organizer_id, fee_waived').eq('id', tier.event_id).maybeSingle();
+    let feePct = 5;
+    if (event) {
+      const { data: org } = await supabase
+        .from('organizer_profiles').select('fee_locked_pct').eq('id', event.organizer_id).maybeSingle();
+      feePct = event.fee_waived ? 0 : (org?.fee_locked_pct ?? 5);
     }
 
     const price = tier.price_kes;
     const subtotal = price * quantity;
-    const fee = Math.round(subtotal * 0.05);
-    const total = subtotal;
+    const fee = Math.round((subtotal * feePct) / 100);
+    const total = subtotal; // buyer pays subtotal; fee is split out of organizer's cut
 
-    return new Response(JSON.stringify({ price, subtotal, fee, total }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ price, subtotal, fee, total, feePct });
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Internal error', details: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ error: 'Internal error', details: err instanceof Error ? err.message : String(err) }, 500);
   }
 });
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
