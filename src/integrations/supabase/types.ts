@@ -167,61 +167,55 @@ export type Database = {
       }
       organizer_profiles: {
         Row: {
-          bank_account_name: string | null
-          bank_account_number: string | null
-          bank_name: string | null
           bio: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
           events_published_count: number
+          fee_locked_pct: number | null
           id: string
           logo_url: string | null
-          mpesa_phone: string | null
-          mpesa_till: string | null
           org_name: string
-          payout_method: string | null
-          preferred_payout_channel: string | null
+          paystack_account_name: string | null
+          paystack_account_number: string | null
+          paystack_bank_code: string | null
+          paystack_subaccount_code: string | null
           updated_at: string
           user_id: string
           website: string | null
         }
         Insert: {
-          bank_account_name?: string | null
-          bank_account_number?: string | null
-          bank_name?: string | null
           bio?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           events_published_count?: number
+          fee_locked_pct?: number | null
           id?: string
           logo_url?: string | null
-          mpesa_phone?: string | null
-          mpesa_till?: string | null
           org_name: string
-          payout_method?: string | null
-          preferred_payout_channel?: string | null
+          paystack_account_name?: string | null
+          paystack_account_number?: string | null
+          paystack_bank_code?: string | null
+          paystack_subaccount_code?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
         }
         Update: {
-          bank_account_name?: string | null
-          bank_account_number?: string | null
-          bank_name?: string | null
           bio?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           events_published_count?: number
+          fee_locked_pct?: number | null
           id?: string
           logo_url?: string | null
-          mpesa_phone?: string | null
-          mpesa_till?: string | null
           org_name?: string
-          payout_method?: string | null
-          preferred_payout_channel?: string | null
+          paystack_account_name?: string | null
+          paystack_account_number?: string | null
+          paystack_bank_code?: string | null
+          paystack_subaccount_code?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
@@ -237,6 +231,7 @@ export type Database = {
           merchant_request_id: string | null
           mpesa_receipt: string | null
           order_id: string
+          paystack_reference: string | null
           phone: string
           provider: string
           raw_callback: Json | null
@@ -253,6 +248,7 @@ export type Database = {
           merchant_request_id?: string | null
           mpesa_receipt?: string | null
           order_id: string
+          paystack_reference?: string | null
           phone: string
           provider?: string
           raw_callback?: Json | null
@@ -269,6 +265,7 @@ export type Database = {
           merchant_request_id?: string | null
           mpesa_receipt?: string | null
           order_id?: string
+          paystack_reference?: string | null
           phone?: string
           provider?: string
           raw_callback?: Json | null
@@ -432,45 +429,6 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-        }
-        Relationships: []
-      }
-      withdrawals: {
-        Row: {
-          amount_kes: number
-          channel: string
-          created_at: string
-          destination: string
-          failure_reason: string | null
-          id: string
-          organizer_id: string
-          payhero_reference: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          amount_kes: number
-          channel: string
-          created_at?: string
-          destination: string
-          failure_reason?: string | null
-          id?: string
-          organizer_id: string
-          payhero_reference?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          amount_kes?: number
-          channel?: string
-          created_at?: string
-          destination?: string
-          failure_reason?: string | null
-          id?: string
-          organizer_id?: string
-          payhero_reference?: string | null
-          status?: string
-          updated_at?: string
         }
         Relationships: []
       }

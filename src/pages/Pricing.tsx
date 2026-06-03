@@ -59,11 +59,12 @@ const tiers = [
 ];
 
 const faqs = [
-  { q: "Is the first event really free?", a: "Yes — your very first published event has a 0% platform fee. From your second event onward, we deduct 5% from each ticket sold (paid by you, not the buyer)." },
-  { q: "Do buyers pay any fees?", a: "Never. Buyers pay exactly the ticket price you set — no service fees, no hidden charges. The platform fee is taken from your payout instead." },
-  { q: "How fast do I get paid?", a: "Payouts land 2 business days after your event ends, via M-Pesa, bank transfer or international wire." },
-  { q: "Which countries do you support?", a: "We're built in Kenya and serve organizers worldwide. Multi-currency is supported, with M-Pesa for Kenya and card payments globally." },
-  { q: "Can I refund attendees?", a: "Absolutely. Set your own refund window per event. We handle full or partial refunds in one click." },
+  { q: "Is the first event really free?", a: "Yes — your very first published event has a 0% platform fee. From your second event onward, your platform fee is locked at 5% per ticket sold (paid by you, not the buyer)." },
+  { q: "Do buyers pay any fees?", a: "Never. Buyers pay exactly the ticket price you set — no service fees, no hidden charges. The platform fee is taken from your share at the moment of payment." },
+  { q: "How fast do I get paid?", a: "Instantly. Every successful payment is split right then and there — your share lands in your bank, the platform fee comes to us. No withdrawals, no holding period." },
+  { q: "Which payment methods do attendees have?", a: "M-Pesa, all major cards, and Apple Pay — all processed securely through Paystack on the checkout page." },
+  { q: "Which countries do you support?", a: "We're built in Kenya and serve organizers worldwide. M-Pesa and KES are first-class; card payments work globally." },
+  { q: "Can I refund attendees?", a: "Yes — set your own refund window per event. We process refunds via Paystack." },
 ];
 
 const Pricing = () => {
