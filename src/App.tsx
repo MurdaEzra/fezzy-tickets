@@ -21,6 +21,7 @@ import Streams from "./pages/Streams.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import PaymentCallback from "./pages/PaymentCallback.tsx";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/streams" element={<Streams />} />
             <Route path="/start-selling" element={<StartSelling />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
