@@ -27,6 +27,10 @@ Deno.serve(async (req) => {
       ? method
       : "card";
 
+    if (paymentMethod === "mpesa" && !phone) {
+      return json({ error: "Phone number is required for M-Pesa checkout" }, 400);
+    }
+
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -107,6 +111,16 @@ Deno.serve(async (req) => {
           { display_name: "Payment method", variable_name: "payment_method", value: paymentMethod },
         ],
       },
+      customer: {
+        email,
+        phone: phone ?? "",
+        name,
+      },
+      channels: paymentMethod === "mpesa" ? ["mobile_money"] : ["card"],
+      mobile_money: paymentMethod === "mpesa" ? {
+        phone: phone ?? "",
+        provider: "mpesa",
+      } : undefined,
     };
 
     if (organizer.paystack_subaccount_code) {

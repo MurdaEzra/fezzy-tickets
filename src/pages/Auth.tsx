@@ -17,8 +17,6 @@ const Auth = () => {
   const { user } = useAuth();
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
   const plan = params.get("plan");
-  // Default: attendees land on their personal account; organizers (plan in URL)
-  // are taken to the organizer dashboard.
   const fallbackRedirect = plan ? "/dashboard" : "/account";
   const redirect = params.get("redirect") || fallbackRedirect;
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
@@ -137,13 +135,15 @@ const Auth = () => {
           <div className="mx-auto w-full max-w-md">
             <div className="rounded-3xl border border-border bg-card p-7 shadow-soft md:p-9">
               <div
-            className="flex items gap-2 cursor-pointer"
-            onClick={() => navigate('landing')}>
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => navigate('/')}
+          >
               <img
-              src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png"
-              alt="Lashawn Driving & Computer College"
-              className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
-          </div>  
+                src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png"
+                alt="Lashawn Driving & Computer College"
+                className="h-16 md:h-36 lg:h-56 w-auto object-contain"
+              />
+          </div>
 
               <h2 className="font-display text-3xl font-bold text-foreground">
                 {mode === "signin" ? "Welcome back" : "Create your account"}

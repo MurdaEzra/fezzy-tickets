@@ -141,8 +141,8 @@ export default function PayoutSetup({ organizerId, feeLockedPct }: Props) {
               className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="">Select…</option>
-              {banks.map((b) => (
-                <option key={b.code} value={b.code}>{b.name}</option>
+              {banks.map((b, index) => (
+                <option key={`${b.code}-${index}`} value={b.code}>{b.name}</option>
               ))}
             </select>
           </div>

@@ -29,10 +29,12 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims } = await userClient.auth.getClaims(token);
-    if (!claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
-    const userId = claims.claims.sub;
+
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData.user?.id) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const userId = userData.user.id;
 
     const { businessName, settlementBank, accountNumber } = await req.json();
     if (!businessName || !settlementBank || !accountNumber) {
