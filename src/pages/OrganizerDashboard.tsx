@@ -80,18 +80,17 @@ const OrganizerDashboard = () => {
       if (!prof) {
         const metaOrg = (user.user_metadata?.org_name as string | undefined)?.trim();
         const pending = sessionStorage.getItem("pendingOrgName")?.trim();
-        const autoName = metaOrg || pending;
-        if (autoName) {
-          const { data: created, error } = await supabase
-            .from("organizer_profiles")
-            .insert({ user_id: user.id, org_name: autoName, contact_email: user.email })
-            .select()
-            .single();
-          if (!error && created) {
-            prof = created;
-            sessionStorage.removeItem("pendingOrgName");
-            sessionStorage.removeItem("pendingPlan");
-          }
+        const autoName = metaOrg || pending || (user.user_metadata?.full_name as string | undefined) || user.email?.split("@")[0] || "My organization";
+        const handle = `${slugifyHandle(autoName)}-${Math.random().toString(36).slice(2, 6)}`;
+        const { data: created, error } = await supabase
+          .from("organizer_profiles")
+          .insert({ user_id: user.id, org_name: autoName, handle, contact_email: user.email } as never)
+          .select()
+          .single();
+        if (!error && created) {
+          prof = created;
+          sessionStorage.removeItem("pendingOrgName");
+          sessionStorage.removeItem("pendingPlan");
         }
       }
 
@@ -112,9 +111,10 @@ const OrganizerDashboard = () => {
     e.preventDefault();
     if (!user || !orgName.trim()) return;
     setCreatingProfile(true);
+    const handle = `${slugifyHandle(orgName)}-${Math.random().toString(36).slice(2, 6)}`;
     const { data, error } = await supabase
       .from("organizer_profiles")
-      .insert({ user_id: user.id, org_name: orgName.trim(), contact_email: user.email })
+      .insert({ user_id: user.id, org_name: orgName.trim(), handle, contact_email: user.email } as never)
       .select()
       .single();
     setCreatingProfile(false);
