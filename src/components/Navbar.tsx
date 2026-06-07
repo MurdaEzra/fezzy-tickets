@@ -13,8 +13,7 @@ import {
 const navItems = [
   { to: "/events", label: "Browse" },
   { to: "/streams", label: "Streams" },
-  { to: "/become-organizer", label: "Become Organizer" },
-  { to: "/pricing", label: "Pricing" },
+  { to: "/dashboard", label: "Become Organizer" },
 ];
 
 const Navbar = () => {
