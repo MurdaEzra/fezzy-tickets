@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, Banknote, QrCode, Image as ImageIcon, Settings, Plus,
   ExternalLink, Pencil, Loader2, MapPin, Sparkles, Users, DollarSign, Ticket as TicketIcon,
-  Trash2, LogOut, ChevronRight,
+  Trash2, LogOut, ChevronRight, Copy, Check, Download, Share2, Link as LinkIcon,
 } from "lucide-react";
+import QRCode from "qrcode";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 interface OrgProfile {
   id: string;
   org_name: string;
+  handle: string;
   events_published_count: number;
   contact_email: string | null;
   contact_phone: string | null;
@@ -29,16 +31,23 @@ interface OrgProfile {
   paystack_subaccount_code: string | null;
 }
 
-type Section = "overview" | "events" | "payout" | "poster" | "scan" | "settings";
+type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "settings";
 
 const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "events", label: "Events", icon: Calendar },
+  { id: "share", label: "Share & banners", icon: Share2 },
   { id: "payout", label: "Payout", icon: Banknote },
   { id: "poster", label: "Poster designer", icon: ImageIcon },
   { id: "scan", label: "Scan tickets", icon: QrCode },
   { id: "settings", label: "Settings", icon: Settings },
 ];
+
+const slugifyHandle = (raw: string) =>
+  raw.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "organizer";
+
+const shareOrigin = () => (typeof window !== "undefined" ? window.location.origin : "");
+const buildShareUrl = (handle: string, slug: string) => `${shareOrigin()}/o/${handle}/${slug}`;
 
 const OrganizerDashboard = () => {
   const { user, loading: authLoading, deleteAccount, signOut } = useAuth();
