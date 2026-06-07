@@ -290,7 +290,7 @@ const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: Or
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-acacia text-2xl text-primary-foreground shadow-acacia">🎉</div>
         <div className="flex-1">
           <p className="font-display text-base font-bold text-foreground">First event = 0% platform fee</p>
-          <p className="text-sm text-muted-foreground">Once you publish, your fee is locked at 5% on every future sale.</p>
+          <p className="text-sm text-muted-foreground">Once you publish, your fee is locked at 10% on every future sale.</p>
         </div>
       </div>
     )}
