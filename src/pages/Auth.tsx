@@ -48,7 +48,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/account`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
             data: {
               full_name: fullName,
               country,
@@ -61,7 +61,7 @@ const Auth = () => {
         if (!data?.session) {
           const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
           if (signInError) {
-            toast.success("Account created — check your email to confirm.");
+            toast.success("Account created check your email to confirm.");
             return;
           }
         }
@@ -82,7 +82,7 @@ const Auth = () => {
     }
   };
 
-  // ✅ Fixed: uses Supabase native OAuth — no more /~oauth/initiate 404
+  
   const handleGoogle = async () => {
     setLoading(true);
     try {
@@ -93,7 +93,7 @@ const Auth = () => {
         },
       });
       if (error) throw error;
-      // Supabase will redirect the browser automatically — no navigate() needed here
+
     } catch (err) {
       const e = err as { message?: string };
       toast.error("Google sign-in failed", { description: e.message ?? "Try again." });
