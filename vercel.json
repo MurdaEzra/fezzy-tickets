@@ -1,5 +1,6 @@
 {
-     "rewrites": [
-       { "source": "/~oauth/initiate", "destination": "/api/oauth/initiate" }
-     ]
-   }
+  "rewrites": [
+    { "source": "/~oauth/initiate", "destination": "/api/oauth/initiate" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
