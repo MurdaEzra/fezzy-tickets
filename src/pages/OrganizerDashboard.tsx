@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatKES, formatEventDate, type DbEvent } from "@/lib/eventsApi";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
 import PayoutSetup from "./dashboard/PayoutSetup";
+import SharePanel from "@/components/dashboard/SharePanel";
 import { toast } from "sonner";
 
 interface OrgProfile {
