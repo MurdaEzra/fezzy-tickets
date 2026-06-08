@@ -258,6 +258,9 @@ const OrganizerDashboard = () => {
             {section === "events" && (
               <EventsList events={events} onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))} />
             )}
+            {section === "share" && (
+              <SharePanel handle={profile.handle} orgName={profile.org_name} events={events} />
+            )}
             {section === "payout" && (
               <PayoutSetup organizerId={profile.id} feeLockedPct={profile.fee_locked_pct} />
             )}
