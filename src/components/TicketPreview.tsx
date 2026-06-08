@@ -112,14 +112,9 @@ const TicketPreview = ({
           </div>
         </div>
 
-        {/* QR */}
-        <div className="relative">
-          <div className="rounded-2xl border border-border bg-white p-2.5 shadow-card-soft">
-            <canvas ref={canvasRef} className="block h-[168px] w-[168px]" />
-          </div>
-          <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-2 py-0.5 text-[9px] font-bold tracking-wider text-background`}>
-            SCAN TO ENTER
-          </span>
+        {/* QR — kept clean, no overlays or text on/around the code itself */}
+        <div className="rounded-2xl border border-border bg-white p-2.5 shadow-card-soft">
+          <canvas ref={canvasRef} className="block h-[168px] w-[168px]" />
         </div>
       </div>
 

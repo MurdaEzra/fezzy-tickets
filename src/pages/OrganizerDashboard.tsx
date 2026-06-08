@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatKES, formatEventDate, type DbEvent } from "@/lib/eventsApi";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
 import PayoutSetup from "./dashboard/PayoutSetup";
+import SharePanel from "@/components/dashboard/SharePanel";
 import { toast } from "sonner";
 
 interface OrgProfile {
@@ -256,6 +257,9 @@ const OrganizerDashboard = () => {
             )}
             {section === "events" && (
               <EventsList events={events} onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))} />
+            )}
+            {section === "share" && (
+              <SharePanel handle={profile.handle} orgName={profile.org_name} events={events} />
             )}
             {section === "payout" && (
               <PayoutSetup organizerId={profile.id} feeLockedPct={profile.fee_locked_pct} />
