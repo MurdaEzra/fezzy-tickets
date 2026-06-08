@@ -112,6 +112,7 @@ export type Database = {
           guest_name: string
           guest_phone: string
           id: string
+          marketing_opt_in: boolean
           organizer_fee_kes: number
           payment_method: string
           payment_ref: string | null
@@ -129,6 +130,7 @@ export type Database = {
           guest_name: string
           guest_phone: string
           id?: string
+          marketing_opt_in?: boolean
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           guest_name?: string
           guest_phone?: string
           id?: string
+          marketing_opt_in?: boolean
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
@@ -173,8 +176,10 @@ export type Database = {
           created_at: string
           events_published_count: number
           fee_locked_pct: number | null
+          handle: string
           id: string
           logo_url: string | null
+          marketing_opt_in: boolean
           org_name: string
           paystack_account_name: string | null
           paystack_account_number: string | null
@@ -191,8 +196,10 @@ export type Database = {
           created_at?: string
           events_published_count?: number
           fee_locked_pct?: number | null
+          handle: string
           id?: string
           logo_url?: string | null
+          marketing_opt_in?: boolean
           org_name: string
           paystack_account_name?: string | null
           paystack_account_number?: string | null
@@ -209,8 +216,10 @@ export type Database = {
           created_at?: string
           events_published_count?: number
           fee_locked_pct?: number | null
+          handle?: string
           id?: string
           logo_url?: string | null
+          marketing_opt_in?: boolean
           org_name?: string
           paystack_account_name?: string | null
           paystack_account_number?: string | null

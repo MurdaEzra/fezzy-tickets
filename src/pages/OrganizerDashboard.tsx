@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, Banknote, QrCode, Image as ImageIcon, Settings, Plus,
   ExternalLink, Pencil, Loader2, MapPin, Sparkles, Users, DollarSign, Ticket as TicketIcon,
-  Trash2, LogOut, ChevronRight,
+  Trash2, LogOut, ChevronRight, Copy, Check, Download, Share2, Link as LinkIcon,
 } from "lucide-react";
+import QRCode from "qrcode";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +16,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatKES, formatEventDate, type DbEvent } from "@/lib/eventsApi";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
 import PayoutSetup from "./dashboard/PayoutSetup";
+import SharePanel from "@/components/dashboard/SharePanel";
 import { toast } from "sonner";
 
 interface OrgProfile {
   id: string;
   org_name: string;
+  handle: string;
   events_published_count: number;
   contact_email: string | null;
   contact_phone: string | null;
@@ -29,16 +32,23 @@ interface OrgProfile {
   paystack_subaccount_code: string | null;
 }
 
-type Section = "overview" | "events" | "payout" | "poster" | "scan" | "settings";
+type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "settings";
 
 const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "events", label: "Events", icon: Calendar },
+  { id: "share", label: "Share & banners", icon: Share2 },
   { id: "payout", label: "Payout", icon: Banknote },
   { id: "poster", label: "Poster designer", icon: ImageIcon },
   { id: "scan", label: "Scan tickets", icon: QrCode },
   { id: "settings", label: "Settings", icon: Settings },
 ];
+
+const slugifyHandle = (raw: string) =>
+  raw.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "organizer";
+
+const shareOrigin = () => (typeof window !== "undefined" ? window.location.origin : "");
+const buildShareUrl = (handle: string, slug: string) => `${shareOrigin()}/o/${handle}/${slug}`;
 
 const OrganizerDashboard = () => {
   const { user, loading: authLoading, deleteAccount, signOut } = useAuth();
@@ -71,18 +81,17 @@ const OrganizerDashboard = () => {
       if (!prof) {
         const metaOrg = (user.user_metadata?.org_name as string | undefined)?.trim();
         const pending = sessionStorage.getItem("pendingOrgName")?.trim();
-        const autoName = metaOrg || pending;
-        if (autoName) {
-          const { data: created, error } = await supabase
-            .from("organizer_profiles")
-            .insert({ user_id: user.id, org_name: autoName, contact_email: user.email })
-            .select()
-            .single();
-          if (!error && created) {
-            prof = created;
-            sessionStorage.removeItem("pendingOrgName");
-            sessionStorage.removeItem("pendingPlan");
-          }
+        const autoName = metaOrg || pending || (user.user_metadata?.full_name as string | undefined) || user.email?.split("@")[0] || "My organization";
+        const handle = `${slugifyHandle(autoName)}-${Math.random().toString(36).slice(2, 6)}`;
+        const { data: created, error } = await supabase
+          .from("organizer_profiles")
+          .insert({ user_id: user.id, org_name: autoName, handle, contact_email: user.email } as never)
+          .select()
+          .single();
+        if (!error && created) {
+          prof = created;
+          sessionStorage.removeItem("pendingOrgName");
+          sessionStorage.removeItem("pendingPlan");
         }
       }
 
@@ -103,9 +112,10 @@ const OrganizerDashboard = () => {
     e.preventDefault();
     if (!user || !orgName.trim()) return;
     setCreatingProfile(true);
+    const handle = `${slugifyHandle(orgName)}-${Math.random().toString(36).slice(2, 6)}`;
     const { data, error } = await supabase
       .from("organizer_profiles")
-      .insert({ user_id: user.id, org_name: orgName.trim(), contact_email: user.email })
+      .insert({ user_id: user.id, org_name: orgName.trim(), handle, contact_email: user.email } as never)
       .select()
       .single();
     setCreatingProfile(false);
@@ -248,6 +258,9 @@ const OrganizerDashboard = () => {
             {section === "events" && (
               <EventsList events={events} onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))} />
             )}
+            {section === "share" && (
+              <SharePanel handle={profile.handle} orgName={profile.org_name} events={events} />
+            )}
             {section === "payout" && (
               <PayoutSetup organizerId={profile.id} feeLockedPct={profile.fee_locked_pct} />
             )}
@@ -281,7 +294,7 @@ const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: Or
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-acacia text-2xl text-primary-foreground shadow-acacia">🎉</div>
         <div className="flex-1">
           <p className="font-display text-base font-bold text-foreground">First event = 0% platform fee</p>
-          <p className="text-sm text-muted-foreground">Once you publish, your fee is locked at 5% on every future sale.</p>
+          <p className="text-sm text-muted-foreground">Once you publish, your fee is locked at 10% on every future sale.</p>
         </div>
       </div>
     )}

@@ -395,7 +395,7 @@ const EventEditor = () => {
               </ul>
               <div className="mt-6 rounded-2xl bg-primary/[0.07] p-4 text-sm">
                 <p className="font-semibold text-foreground">
-                  Platform fee on this event: <span className="text-primary">{feeWaived ? "0% (waived)" : "5% of each ticket"}</span>
+                  Platform fee on this event: <span className="text-primary">{feeWaived ? "0% (waived)" : "10% of each ticket"}</span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {feeWaived

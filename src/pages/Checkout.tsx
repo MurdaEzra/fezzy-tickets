@@ -40,6 +40,8 @@ const Checkout = () => {
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "apple_pay">("mpesa");
   const [processing, setProcessing] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +92,10 @@ const Checkout = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!evt || !tier?.id || !calc) return;
+    if (!agreedTerms) {
+      toast.error("Please accept the Terms and Privacy Policy to continue.");
+      return;
+    }
     if (paymentMethod === "mpesa" && !phone.trim()) {
       toast.error("Please enter a phone number for M-Pesa payments.");
       return;
@@ -107,6 +113,7 @@ const Checkout = () => {
           phone,
           callbackUrl,
           method: paymentMethod,
+          marketingOptIn,
         },
       });
       const err = (data as { error?: string } | null)?.error ?? error?.message;
@@ -188,7 +195,34 @@ const Checkout = () => {
                 </div>
               </div>
 
-              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc}>
+              <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-3">
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                    checked={agreedTerms}
+                    onChange={(e) => setAgreedTerms(e.target.checked)}
+                    required
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <Link to="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms and Conditions</Link>
+                    {" "}and{" "}
+                    <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                    checked={marketingOptIn}
+                    onChange={(e) => setMarketingOptIn(e.target.checked)}
+                  />
+                  <span>Keep me posted about this event and similar ones from this organizer (optional).</span>
+                </label>
+              </div>
+
+              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc || !agreedTerms}>
                 {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {processing ? 'Redirecting to Paystack…' : `Pay ${calc ? formatPrice(calc.total) : '...'} with ${paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Card'}`}
               </Button>

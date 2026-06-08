@@ -22,11 +22,11 @@ Deno.serve(async (req: Request) => {
 
     const { data: event } = await supabase
       .from('events').select('organizer_id, fee_waived').eq('id', tier.event_id).maybeSingle();
-    let feePct = 5;
+    let feePct = 10;
     if (event) {
       const { data: org } = await supabase
         .from('organizer_profiles').select('fee_locked_pct').eq('id', event.organizer_id).maybeSingle();
-      feePct = event.fee_waived ? 0 : (org?.fee_locked_pct ?? 5);
+      feePct = event.fee_waived ? 0 : (org?.fee_locked_pct ?? 10);
     }
 
     const price = tier.price_kes;

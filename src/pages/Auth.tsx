@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Ticket } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -16,22 +16,19 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
-  const plan = params.get("plan");
-  const fallbackRedirect = plan ? "/dashboard" : "/account";
-  const redirect = params.get("redirect") || fallbackRedirect;
+  const redirect = params.get("redirect") || "/account";
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("Kenya");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const destination = plan ? `${redirect}${redirect.includes("?") ? "&" : "?"}plan=${encodeURIComponent(plan)}` : redirect;
-
   useEffect(() => {
-    if (user) navigate(destination, { replace: true });
-  }, [user, navigate, destination]);
+    if (user) navigate(redirect, { replace: true });
+  }, [user, navigate, redirect]);
 
   const switchMode = (m: "signin" | "signup") => {
     setMode(m);
@@ -48,16 +45,15 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const pendingOrgName = sessionStorage.getItem("pendingOrgName") || undefined;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/account`,
             data: {
               full_name: fullName,
               country,
-              plan: plan ?? undefined,
-              org_name: pendingOrgName,
+              marketing_opt_in: marketingOptIn,
             },
           },
         });
@@ -66,17 +62,19 @@ const Auth = () => {
         if (!data?.session) {
           const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
           if (signInError) {
-            console.warn("Sign-up succeeded but immediate login failed:", signInError.message);
+            // Most likely email confirmation is required.
+            toast.success("Account created — check your email to confirm.");
+            return;
           }
         }
 
-        toast.success("Account created successfully.");
-        navigate(destination);
+        toast.success("Welcome to Fezzy!");
+        navigate(redirect);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate(destination);
+        navigate(redirect);
       }
     } catch (err) {
       const e = err as { message?: string };
@@ -89,11 +87,11 @@ const Auth = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}${destination}` });
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}${redirect}` });
       if (result?.error) throw result.error;
       if (!result?.redirected) {
         toast.success("Signed in with Google");
-        navigate(destination);
+        navigate(redirect);
       }
     } catch (err) {
       const e = err as { message?: string };
@@ -118,8 +116,7 @@ const Auth = () => {
               <br />Be there.
             </h1>
             <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-              Join fans across Kenya and the world. One account for every event,
-              every ticket, every memory.
+              Join fans across Kenya and the world. One account for every event, every ticket, every memory.
             </p>
             <ul className="mt-10 space-y-3 text-sm text-foreground">
               {["Pay with M-Pesa, card or Apple Pay", "QR tickets, even offline", "Refunds & transfers, no fuss"].map((b) => (
@@ -134,29 +131,12 @@ const Auth = () => {
           {/* Right: form */}
           <div className="mx-auto w-full max-w-md">
             <div className="rounded-3xl border border-border bg-card p-7 shadow-soft md:p-9">
-              <div
-            className="flex items-center gap-2 cursor-pointer"
-            onClick={() => navigate('/')}
-          >
-              <img
-                src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png"
-                alt="Lashawn Driving & Computer College"
-                className="h-16 md:h-36 lg:h-56 w-auto object-contain"
-              />
-          </div>
-
               <h2 className="font-display text-3xl font-bold text-foreground">
                 {mode === "signin" ? "Welcome back" : "Create your account"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {mode === "signin" ? "Sign in to access your tickets." : "Free forever for attendees."}
               </p>
-              {plan && (
-                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
-                  <Ticket className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-foreground">Selected plan: <span className="font-bold">{plan}</span> — we'll set it up after sign-up.</span>
-                </div>
-              )}
 
               <Button type="button" variant="outline" className="mt-6 w-full" onClick={handleGoogle} disabled={loading}>
                 <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
@@ -194,21 +174,32 @@ const Auth = () => {
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
                 </div>
                 {mode === "signup" && (
-                  <label className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
-                      checked={acceptedTerms}
-                      onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      required
-                    />
-                    <span>
-                      I agree to the{" "}
-                      <Link to="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms and Conditions</Link>
-                      {" "}and{" "}
-                      <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.
-                    </span>
-                  </label>
+                  <>
+                    <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        required
+                      />
+                      <span>
+                        I agree to the{" "}
+                        <Link to="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms and Conditions</Link>
+                        {" "}and{" "}
+                        <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                        checked={marketingOptIn}
+                        onChange={(e) => setMarketingOptIn(e.target.checked)}
+                      />
+                      <span>Send me occasional updates about new events and features (optional).</span>
+                    </label>
+                  </>
                 )}
                 <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={loading || (mode === "signup" && !acceptedTerms)}>
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
