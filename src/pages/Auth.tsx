@@ -72,8 +72,14 @@ const Auth = () => {
         navigate(redirect);
       }
     } catch (err) {
-      const e = err as { message?: string };
-      toast.error("Something went wrong", { description: e.message ?? "Try again." });
+      const e = err as { message?: string; code?: string };
+      const message = e.message ?? "Try again.";
+      const isWeakPassword = e.code === "weak_password" || /weak|pwned|easy to guess/i.test(message);
+      toast.error(isWeakPassword ? "Choose a stronger password" : "Something went wrong", {
+        description: isWeakPassword
+          ? "Use a unique password that hasn't appeared in data breaches before."
+          : message,
+      });
     } finally {
       setLoading(false);
     }
@@ -170,6 +176,9 @@ const Auth = () => {
                 <div>
                   <Label htmlFor="password">Password</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="••••••••" />
+                  {mode === "signup" && (
+                    <p className="mt-1 text-xs text-muted-foreground">Use 8+ characters and avoid common or previously used passwords.</p>
+                  )}
                 </div>
                 {mode === "signup" && (
                   <>
