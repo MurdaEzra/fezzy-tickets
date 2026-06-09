@@ -168,6 +168,56 @@ export type Database = {
           },
         ]
       }
+      organizer_admin_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          created_at: string
+          created_by_user_id: string
+          expires_at: string
+          id: string
+          invited_email: string | null
+          organizer_id: string
+          revoked_at: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          created_by_user_id: string
+          expires_at: string
+          id?: string
+          invited_email?: string | null
+          organizer_id: string
+          revoked_at?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string
+          id?: string
+          invited_email?: string | null
+          organizer_id?: string
+          revoked_at?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizer_admin_invites_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "organizer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizer_profiles: {
         Row: {
           bio: string | null
@@ -180,7 +230,9 @@ export type Database = {
           id: string
           logo_url: string | null
           marketing_opt_in: boolean
+          mpesa_payout_phone: string | null
           org_name: string
+          payout_method: string
           paystack_account_name: string | null
           paystack_account_number: string | null
           paystack_bank_code: string | null
@@ -200,7 +252,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           marketing_opt_in?: boolean
+          mpesa_payout_phone?: string | null
           org_name: string
+          payout_method?: string
           paystack_account_name?: string | null
           paystack_account_number?: string | null
           paystack_bank_code?: string | null
@@ -220,7 +274,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           marketing_opt_in?: boolean
+          mpesa_payout_phone?: string | null
           org_name?: string
+          payout_method?: string
           paystack_account_name?: string | null
           paystack_account_number?: string | null
           paystack_bank_code?: string | null
@@ -230,6 +286,44 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      organizer_team_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by_user_id: string | null
+          organizer_id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by_user_id?: string | null
+          organizer_id: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by_user_id?: string | null
+          organizer_id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizer_team_members_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "organizer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -446,11 +540,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_organizer_admin_invite: {
+        Args: { _token: string }
+        Returns: string
+      }
+      create_organizer_admin_invite: {
+        Args: {
+          _expires_in_hours?: number
+          _invited_email?: string
+          _organizer_id: string
+        }
+        Returns: {
+          expires_at: string
+          token: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_organizer_team_member: {
+        Args: { _organizer_id: string; _user_id: string }
         Returns: boolean
       }
     }
