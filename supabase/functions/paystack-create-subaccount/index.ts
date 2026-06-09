@@ -77,24 +77,31 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (!res.ok || !data?.status) {
-      return json({ error: data?.message ?? "Paystack subaccount failed" }, 502);
+    const paystackData = await res.json();
+    if (!res.ok || paystackData?.status === false) {
+      return json(
+        { error: paystackData?.message ?? JSON.stringify(paystackData) },
+        res.status >= 400 ? res.status : 502,
+      );
     }
 
-    await admin
+    const { error: updateError } = await admin
       .from("organizer_profiles")
       .update({
-        paystack_subaccount_code: data.data.subaccount_code,
+        paystack_subaccount_code: paystackData.data.subaccount_code,
         paystack_bank_code: settlementBank,
         paystack_account_number: accountNumber,
-        paystack_account_name: data.data.account_name ?? businessName,
+        paystack_account_name: paystackData.data.account_name ?? businessName,
       })
       .eq("id", organizer.id);
 
+    if (updateError) {
+      return json({ error: updateError.message }, 500);
+    }
+
     return json({
-      subaccount_code: data.data.subaccount_code,
-      account_name: data.data.account_name,
+      subaccount_code: paystackData.data.subaccount_code,
+      account_name: paystackData.data.account_name,
       percentage_charge,
     });
   } catch (err) {

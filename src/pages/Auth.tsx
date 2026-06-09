@@ -59,11 +59,8 @@ const Auth = () => {
         if (error) throw error;
 
         if (!data?.session) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          if (signInError) {
-            toast.success("Account created check your email to confirm.");
-            return;
-          }
+          toast.success("Account created — check your email to confirm.");
+          return;
         }
 
         toast.success("Welcome to Fezzy!");
