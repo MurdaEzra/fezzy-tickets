@@ -22,12 +22,12 @@ const Footer = () => {
               </span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Born in <span className="text-foreground font-medium">Nairobi</span>. Built for the world.
-              Every concert, festival, match and gathering — one ticket away.
+              Born in <span className="text-foreground font-medium">Nairobi</span>. 
+              Every concert, festival, match and gathering  one ticket away. Come let's experience the fun together!
             </p>
             <div className="mt-6 flex gap-2">
               {[Instagram, Twitter, Facebook].map((Icon, i) => (
-                <a key={i} href="#" aria-label="Social" className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-foreground hover:text-background">
+                <a key={i} href="https://instagram.com/fezzytickets" aria-label="Social" className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-foreground hover:text-background">
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
