@@ -44,27 +44,22 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/account`,
-            data: {
-              full_name: fullName,
-              country,
-              marketing_opt_in: marketingOptIn,
-            },
+        const verificationRedirect = `${window.location.origin}${redirect}`;
+        const { data, error } = await supabase.functions.invoke("send-account-verification-email", {
+          body: {
+            email,
+            password,
+            fullName,
+            country,
+            marketingOptIn,
+            redirectTo: verificationRedirect,
           },
         });
+
         if (error) throw error;
 
-        if (!data?.session) {
-          toast.success("Account created — check your email to confirm.");
-          return;
-        }
-
-        toast.success("Welcome to Fezzy!");
-        navigate(redirect);
+        toast.success("Account created check your email to verify your account.");
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
