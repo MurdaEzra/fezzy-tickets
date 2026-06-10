@@ -12,6 +12,7 @@ const corsHeaders = {
 };
 
 const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+type AdminClient = any;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
 });
 
 async function finalizeOrder(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   orderId: string,
   reference: string,
   status: string,
@@ -99,12 +100,18 @@ async function finalizeOrder(
       holder_email: order.guest_email,
     }));
     await admin.from("tickets").insert(rows);
-    // bump sold
-    await admin.rpc as unknown; // not available; do an update instead
+
     const { data: tier } = await admin
-      .from("ticket_tiers").select("sold").eq("id", tierId).maybeSingle();
+      .from("ticket_tiers")
+      .select("sold")
+      .eq("id", tierId)
+      .maybeSingle();
+
     if (tier) {
-      await admin.from("ticket_tiers").update({ sold: tier.sold + quantity }).eq("id", tierId);
+      await admin
+        .from("ticket_tiers")
+        .update({ sold: (tier.sold ?? 0) + quantity })
+        .eq("id", tierId);
     }
 
     try {
@@ -165,7 +172,7 @@ async function sendBrevoEmail({
   return await response.json();
 }
 
-async function sendTicketDelivery(admin, orderId) {
+async function sendTicketDelivery(admin: AdminClient, orderId: string) {
   const { data: order, error } = await admin
     .from("orders")
     .select(`

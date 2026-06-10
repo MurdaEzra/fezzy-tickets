@@ -8,17 +8,17 @@ const ALLOWED_ORIGINS = [
 
 const INTERNAL_TICKET_DELIVERY_SECRET = Deno.env.get("INTERNAL_TICKET_DELIVERY_SECRET");
 
-function getCorsHeaders(origin: string | null) {
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const headers: Record<string, string> = {};
+
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    return {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-    };
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Headers"] =
+      "authorization, x-client-info, apikey, content-type";
+    headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
   }
 
-  return {};
+  return headers;
 }
 
 interface Body {

@@ -7,10 +7,15 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-function b64urlToBytes(s: string): Uint8Array {
+function b64urlToBytes(s: string): Uint8Array<ArrayBuffer> {
   s = s.replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4) s += '=';
-  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+  const bytes = new Uint8Array(
+    Array.from(atob(s), (c) => c.charCodeAt(0))
+  );
+
+  return bytes as Uint8Array<ArrayBuffer>;
 }
 
 async function verifyToken(
@@ -71,7 +76,7 @@ async function sendBrevoEmail(
   if (!apiKey || !email) return;
 
   try {
-    await fetch('https://api.brevo.com/v3/smtp/email', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -106,6 +111,11 @@ async function sendBrevoEmail(
         `,
       }),
     });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(`Brevo email failed (${response.status}): ${message}`);
+    }
   } catch (err) {
     console.error('Brevo email error', err);
   }
@@ -120,7 +130,7 @@ async function sendBrevoSMS(
   if (!apiKey || !phone) return;
 
   try {
-    await fetch(
+    const response = await fetch(
       'https://api.brevo.com/v3/transactionalSMS/sms',
       {
         method: 'POST',
@@ -135,6 +145,11 @@ async function sendBrevoSMS(
         }),
       }
     );
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(`Brevo SMS failed (${response.status}): ${message}`);
+    }
   } catch (err) {
     console.error('Brevo SMS error', err);
   }
