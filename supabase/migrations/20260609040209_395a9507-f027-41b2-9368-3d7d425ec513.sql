@@ -12,17 +12,23 @@ CREATE TABLE public.organizer_team_members (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organizer_id, user_id)
 );
-GRANT SELECT ON public.organizer_team_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.organizer_team_members TO authenticated;
 GRANT ALL ON public.organizer_team_members TO service_role;
 ALTER TABLE public.organizer_team_members ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can join organizer team membership"
+ON public.organizer_team_members
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  user_id = auth.uid()
+  OR public.has_role(auth.uid(), 'admin')
+);
 CREATE POLICY "Team members can view organizer team membership"
 ON public.organizer_team_members
 FOR SELECT
 TO authenticated
-USING (
-  public.is_organizer_team_member(organizer_team_members.organizer_id, auth.uid())
-  OR public.has_role(auth.uid(), 'admin')
-);
+USING (auth.uid() IS NOT NULL);
 
 CREATE TABLE public.organizer_admin_invites (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
