@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatKES, formatEventDate, type DbEvent } from "@/lib/eventsApi";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
+import { createOrganizerAdminInvite } from "@/lib/organizerInvites";
 import PayoutSetup from "./dashboard/PayoutSetup";
 import SharePanel from "@/components/dashboard/SharePanel";
 import { toast } from "sonner";
@@ -523,19 +524,31 @@ const TeamPanel = ({ organizerId, organizerName, userId }: { organizerId: string
       return;
     }
     setCreating(true);
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await supabase
-      .from("organizer_admin_invites")
-      .insert({ organizer_id: organizerId, token, invited_email: email.trim(), created_by_user_id: userId, expires_at: expiresAt } as never)
-      .select("id, token, invited_email, expires_at, created_at, accepted_by_user_id")
-      .single();
+    const { data, error } = await createOrganizerAdminInvite(supabase, organizerId, email);
     setCreating(false);
+
     if (error) {
       toast.error("Invite could not be created", { description: error.message });
       return;
     }
-    setInvites((prev) => [data, ...prev]);
+
+    const inviteRecord = data?.[0];
+    if (!inviteRecord?.token) {
+      toast.error("Invite could not be created", { description: "No invite token was returned." });
+      return;
+    }
+
+    setInvites((prev) => [
+      {
+        id: `invite-${inviteRecord.token}`,
+        token: inviteRecord.token,
+        invited_email: email.trim(),
+        expires_at: inviteRecord.expires_at,
+        created_at: new Date().toISOString(),
+        accepted_by_user_id: null,
+      },
+      ...prev,
+    ]);
     setEmail("");
     toast.success("Admin invite created", { description: "Share the link below with your teammate." });
   };
