@@ -20,12 +20,7 @@ ON public.organizer_team_members
 FOR SELECT
 TO authenticated
 USING (
-  EXISTS (
-    SELECT 1
-    FROM public.organizer_team_members tm
-    WHERE tm.organizer_id = organizer_team_members.organizer_id
-      AND tm.user_id = auth.uid()
-  )
+  public.is_organizer_team_member(organizer_team_members.organizer_id, auth.uid())
   OR public.has_role(auth.uid(), 'admin')
 );
 
@@ -138,7 +133,11 @@ BEGIN
     RAISE EXCEPTION 'You do not have access to this organizer';
   END IF;
 
-  generated_token := encode(gen_random_bytes(24), 'hex');
+  generated_token := substr(
+    md5(random()::text || clock_timestamp()::text || _organizer_id::text || auth.uid()::text),
+    1,
+    64
+  );
   generated_expiry := now() + make_interval(hours => GREATEST(COALESCE(_expires_in_hours, 72), 1));
 
   INSERT INTO public.organizer_admin_invites (organizer_id, token, invited_email, created_by_user_id, expires_at)

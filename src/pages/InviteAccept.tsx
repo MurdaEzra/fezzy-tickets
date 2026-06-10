@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
+import { acceptOrganizerAdminInvite } from "@/lib/organizerInvites";
 
 const InviteAccept = () => {
   const { token } = useParams();
@@ -43,9 +44,12 @@ const InviteAccept = () => {
         return;
       }
 
-      const { error: addErr } = await supabase
-        .from("organizer_team_members")
-        .insert({ organizer_id: invite.organizer_id, user_id: user.id, role: "admin", invited_by_user_id: invite.created_by_user_id } as never);
+      const { error: addErr } = await acceptOrganizerAdminInvite(
+        supabase,
+        invite.organizer_id,
+        user.id,
+        invite.created_by_user_id,
+      );
 
       if (addErr) {
         setStatus("error");
