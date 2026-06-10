@@ -18,9 +18,11 @@ import Scan from "./pages/Scan.tsx";
 import Streams from "./pages/Streams.tsx";
 import Terms from "./pages/Terms.tsx";
 import Privacy from "./pages/Privacy.tsx";
+import Help from "./pages/Help.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import PaymentCallback from "./pages/PaymentCallback.tsx";
 import ShareRedirect from "./pages/ShareRedirect.tsx";
+import InviteAccept from "./pages/InviteAccept.tsx";
 
 const queryClient = new QueryClient();
 
@@ -46,7 +48,9 @@ const App = () => (
             <Route path="/streams" element={<Streams />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/help" element={<Help />} />
             <Route path="/payment/callback" element={<PaymentCallback />} />
+            <Route path="/invite/:token" element={<InviteAccept />} />
             {/* Branded organizer share link: fezzy.app/o/{handle}/{event-slug} */}
             <Route path="/o/:handle/:slug" element={<ShareRedirect />} />
             <Route path="*" element={<NotFound />} />

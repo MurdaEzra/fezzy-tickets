@@ -29,7 +29,7 @@ const Checkout = () => {
 
   const [evt, setEvt] = useState<EventLike | null>(null);
   const [loading, setLoading] = useState(true);
-  const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number } | null>(null);
+  const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number }>({ subtotal: 0, fee: 0, total: 0 });
 
   const params = new URLSearchParams(window.location.search);
   const tierIdx = Number(params.get("tier") ?? 0);
@@ -40,7 +40,7 @@ const Checkout = () => {
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "apple_pay">("mpesa");
   const [processing, setProcessing] = useState(false);
-  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(true);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
@@ -91,7 +91,7 @@ const Checkout = () => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evt || !tier?.id || !calc) return;
+    if (!evt || !tier?.id) return;
     if (!agreedTerms) {
       toast.error("Please accept the Terms and Privacy Policy to continue.");
       return;
@@ -117,11 +117,15 @@ const Checkout = () => {
         },
       });
       const err = (data as { error?: string } | null)?.error ?? error?.message;
-      if (err) throw new Error(err);
+      if (err) {
+        toast.error("Payment failed", { description: err });
+        setProcessing(false);
+        return;
+      }
       const url = (data as { authorization_url: string }).authorization_url;
       window.location.href = url;
     } catch (err) {
-      toast.error("Couldn't start payment", { description: (err as Error).message });
+      toast.error("Payment failed", { description: (err as Error).message });
       setProcessing(false);
     }
   };
@@ -176,7 +180,7 @@ const Checkout = () => {
                   </div>
                   <div className="sm:col-span-2">
                     <Label htmlFor="phone">Phone {paymentMethod === "mpesa" ? "(required for M-Pesa)" : "(optional)"}</Label>
-                    <Input id="phone" placeholder="0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <Input id="phone" aria-label={paymentMethod === "mpesa" ? "M-Pesa phone" : "Phone"} placeholder="0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -187,7 +191,7 @@ const Checkout = () => {
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <PayBadge icon={Smartphone} label="M-Pesa" value="mpesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
                   <PayBadge icon={CreditCard} label="Card" value="card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
-                  <PayBadge icon={Wallet} label="Apple Pay" value="apple_pay" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
+                  <PayBadge icon={Wallet} label="Apple" value="apple_pay" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
                 </div>
                 <div className="mt-5 flex items-start gap-2 rounded-2xl bg-secondary p-4 text-xs text-muted-foreground">
                   <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />

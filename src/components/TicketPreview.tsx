@@ -19,6 +19,11 @@ interface Props {
   ticketId?: string;
   /** Short event id displayed in the stub */
   eventId?: string;
+  seatLabel?: string;
+  seatArrangement?: "grid" | "rows" | "circle";
+  showLogo?: boolean;
+  showQR?: boolean;
+  showDate?: boolean;
 }
 
 const templateStyles: Record<string, { name: string; wrapper: string; header: string; body: string; footer: string; mark: string; isDark?: boolean }> = {
@@ -41,6 +46,8 @@ const TicketPreview = ({
   holderName = "Your name", accent = "#1FAD66",
   theme = "savannah", pattern = "none",
   qrPayload, ticketId, eventId,
+  seatLabel = "GA", seatArrangement = "grid",
+  showLogo = true, showQR = true, showDate = true,
 }: Props) => {
   const style = templateStyles[theme] ?? templateStyles.savannah;
   const isDark = !!style.isDark;
@@ -77,12 +84,14 @@ const TicketPreview = ({
               <Sparkles className="h-3 w-3" /> {style.name}
             </span>
           </div>
-          <img src={FEZZY_LOGO_URL} alt="Fezzy Tickets" className="h-12 w-auto shrink-0 object-contain drop-shadow" />
+          {showLogo && <img src={FEZZY_LOGO_URL} alt="Fezzy Tickets" className="h-12 w-auto shrink-0 object-contain drop-shadow" />}
         </div>
-        <div className="relative mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-95">
-          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {date || "Date"}</span>
-          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {venue || "Venue"}, {city || "City"}</span>
-        </div>
+        {showDate && (
+          <div className="relative mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-95">
+            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {date || "Date"}</span>
+            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {venue || "Venue"}, {city || "City"}</span>
+          </div>
+        )}
       </div>
 
       {/* Body */}
@@ -99,7 +108,7 @@ const TicketPreview = ({
             </div>
             <div>
               <p className={`text-[9px] uppercase tracking-[0.25em] ${mutedClass}`}>Seat</p>
-              <p className={`font-semibold ${textClass}`}>GA</p>
+              <p className={`font-semibold ${textClass}`}>{seatLabel || "GA"}</p>
             </div>
             <div>
               <p className={`text-[9px] uppercase tracking-[0.25em] ${mutedClass}`}>Ticket ID</p>
@@ -110,12 +119,19 @@ const TicketPreview = ({
               <p className={`font-mono text-[11px] ${textClass}`}>{short(eventId, 12)}</p>
             </div>
           </div>
+          <div className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/40 p-3 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+            Seat layout: {seatArrangement}
+          </div>
         </div>
 
         {/* QR — kept clean, no overlays or text on/around the code itself */}
-        <div className="rounded-2xl border border-border bg-white p-2.5 shadow-card-soft">
-          <canvas ref={canvasRef} className="block h-[168px] w-[168px]" />
-        </div>
+        {showQR ? (
+          <div className="rounded-2xl border border-border bg-white p-2.5 shadow-card-soft">
+            <canvas ref={canvasRef} className="block h-[168px] w-[168px]" />
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/60 p-4 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">No QR</div>
+        )}
       </div>
 
       {/* Perforation */}

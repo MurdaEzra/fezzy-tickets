@@ -4,7 +4,7 @@ import { Ticket, Instagram, Twitter, Facebook } from "lucide-react";
 const cols = [
   { title: "Discover", links: [["Browse events", "/events"], ["This weekend", "/events"], ["Categories", "/events"]] },
   { title: "Organize", links: [["Pricing", "/pricing"], ["For Organizers", "/organizer"]] },
-  { title: "Company", links: [["About", "#"], ["Help center", "#"], ["Contact", "#"]] },
+  { title: "Company", links: [["About", "/"], ["Help center", "/help"], ["Contact", "/help"]] },
 ];
 
 const Footer = () => {

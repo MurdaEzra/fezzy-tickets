@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Calendar, Banknote, QrCode, Image as ImageIcon, Settings, Plus,
   ExternalLink, Pencil, Loader2, MapPin, Sparkles, Users, DollarSign, Ticket as TicketIcon,
   Trash2, LogOut, ChevronRight, Copy, Check, Download, Share2, Link as LinkIcon,
+  ShieldCheck,
 } from "lucide-react";
 import QRCode from "qrcode";
 import Footer from "@/components/Footer";
@@ -30,9 +31,11 @@ interface OrgProfile {
   logo_url: string | null;
   fee_locked_pct: number | null;
   paystack_subaccount_code: string | null;
+  mpesa_payout_phone?: string | null;
+  till_number?: string | null;
 }
 
-type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "settings";
+type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "team" | "settings";
 
 const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -41,6 +44,7 @@ const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "payout", label: "Payout", icon: Banknote },
   { id: "poster", label: "Poster designer", icon: ImageIcon },
   { id: "scan", label: "Scan tickets", icon: QrCode },
+  { id: "team", label: "Team & admins", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -270,6 +274,9 @@ const OrganizerDashboard = () => {
             {section === "scan" && (
               <ScanPanel />
             )}
+            {section === "team" && (
+              <TeamPanel organizerId={profile.id} organizerName={profile.org_name} userId={user?.id ?? ""} />
+            )}
             {section === "settings" && (
               <SettingsPanel profile={profile} onDelete={handleDeleteAccount} />
             )}
@@ -284,9 +291,15 @@ const OrganizerDashboard = () => {
 
 const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: OrgProfile; plan: string; events: DbEvent[]; isFirstEvent: boolean; onGoTo: (s: Section) => void }) => (
   <div className="space-y-8">
-    <div>
+    <div className="rounded-[32px] border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-accent/10 p-6 shadow-soft md:p-8">
       <p className="eyebrow">Welcome back · {plan} plan</p>
-      <h1 className="display mt-1 text-3xl text-foreground sm:text-4xl">{profile.org_name}</h1>
+      <h1 className="display mt-2 text-3xl text-foreground sm:text-4xl">{profile.org_name}</h1>
+      <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Brighten your events with custom ticket design, unlock faster payouts, and invite trusted admins to help you manage everything.</p>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <span className="chip"><Sparkles className="h-3 w-3 text-primary" /> Ticket designer</span>
+        <span className="chip"><Users className="h-3 w-3 text-primary" /> Admin invites</span>
+        <span className="chip"><Banknote className="h-3 w-3 text-primary" /> M-Pesa / till payouts</span>
+      </div>
     </div>
 
     {isFirstEvent && (
@@ -487,6 +500,86 @@ const ScanPanel = () => (
     </div>
   </div>
 );
+
+const TeamPanel = ({ organizerId, organizerName, userId }: { organizerId: string; organizerName: string; userId: string }) => {
+  const [email, setEmail] = useState("");
+  const [invites, setInvites] = useState<any[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("organizer_admin_invites")
+        .select("id, token, invited_email, expires_at, created_at, accepted_by_user_id")
+        .eq("organizer_id", organizerId)
+        .order("created_at", { ascending: false });
+      setInvites(data ?? []);
+    })();
+  }, [organizerId]);
+
+  const createInvite = async () => {
+    if (!email.trim()) {
+      toast.error("Add an email address for the invite");
+      return;
+    }
+    setCreating(true);
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from("organizer_admin_invites")
+      .insert({ organizer_id: organizerId, token, invited_email: email.trim(), created_by_user_id: userId, expires_at: expiresAt } as never)
+      .select("id, token, invited_email, expires_at, created_at, accepted_by_user_id")
+      .single();
+    setCreating(false);
+    if (error) {
+      toast.error("Invite could not be created", { description: error.message });
+      return;
+    }
+    setInvites((prev) => [data, ...prev]);
+    setEmail("");
+    toast.success("Admin invite created", { description: "Share the link below with your teammate." });
+  };
+
+  const copyLink = async (token: string) => {
+    const link = `${window.location.origin}/invite/${token}`;
+    await navigator.clipboard.writeText(link);
+    toast.success("Invite link copied");
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-foreground">Team & admins</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Invite trusted co-admins to help manage {organizerName}.</p>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-4">
+        <div>
+          <Label htmlFor="invite-email">Invite email</Label>
+          <Input id="invite-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@yourbrand.com" />
+        </div>
+        <Button variant="acacia" onClick={createInvite} disabled={creating}>{creating && <Loader2 className="h-4 w-4 animate-spin" />} Create expiring invite link</Button>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-4">
+        <h2 className="font-display text-lg font-bold text-foreground">Active invites</h2>
+        {invites.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No invite links yet. Create one to add another admin.</p>
+        ) : invites.map((invite) => (
+          <article key={invite.id} className="rounded-2xl border border-border bg-secondary/40 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">{invite.invited_email ?? "Shared invite"}</p>
+                <p className="text-xs text-muted-foreground">Expires {new Date(invite.expires_at).toLocaleString()} · {invite.accepted_by_user_id ? "Accepted" : "Pending"}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => copyLink(invite.token)}>Copy link</Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const SettingsPanel = ({ profile, onDelete }: { profile: OrgProfile; onDelete: () => void }) => {
   const [bio, setBio] = useState(profile.bio ?? "");

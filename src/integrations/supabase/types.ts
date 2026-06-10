@@ -237,6 +237,7 @@ export type Database = {
           paystack_account_number: string | null
           paystack_bank_code: string | null
           paystack_subaccount_code: string | null
+          till_number: string | null
           updated_at: string
           user_id: string
           website: string | null
@@ -259,6 +260,7 @@ export type Database = {
           paystack_account_number?: string | null
           paystack_bank_code?: string | null
           paystack_subaccount_code?: string | null
+          till_number?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
@@ -281,6 +283,7 @@ export type Database = {
           paystack_account_number?: string | null
           paystack_bank_code?: string | null
           paystack_subaccount_code?: string | null
+          till_number?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
