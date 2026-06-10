@@ -193,10 +193,6 @@ const Checkout = () => {
                   <PayBadge icon={CreditCard} label="Card" value="card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
                   <PayBadge icon={Wallet} label="Apple" value="apple_pay" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
                 </div>
-                <div className="mt-5 flex items-start gap-2 rounded-2xl bg-secondary p-4 text-xs text-muted-foreground">
-                  <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                  <span>Payment is split instantly — the organizer receives their share and the platform fee comes to us. No funds are held.</span>
-                </div>
               </div>
 
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-3">
