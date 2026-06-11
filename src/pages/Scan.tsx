@@ -53,15 +53,15 @@ const Scan = () => {
     toast.dismiss("scan-result");
 
     if (r.status === "VALID") {
-      const lines = [
-        r.ticket?.holder      && `👤 ${r.ticket.holder}`,
+      const holder = r.ticket?.holder ?? "Guest";
+      const description = [
         r.ticket?.tier        && `🎟️ ${r.ticket.tier}`,
         r.ticket?.event_title && `📅 ${r.ticket.event_title}`,
-      ].filter(Boolean).join("\n");
+      ].filter(Boolean).join("  ·  ") || undefined;
 
-      toast.success("✅ Valid — Checked in!", {
+      toast.success(`✅ Welcome, ${holder}!`, {
         id: "scan-result",
-        description: lines || undefined,
+        description,
         duration: 4000,
       });
 
