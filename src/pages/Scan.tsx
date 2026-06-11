@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, ScanLine } from "lucide-react";
+import { ArrowLeft, Loader2, ScanLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,8 @@ const Scan = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
+  const [refInput, setRefInput] = useState("");
+  const [refBusy, setRefBusy] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const busyRef    = useRef(false);                          // sync guard — no useState
@@ -139,6 +142,37 @@ const Scan = () => {
     }
   };
 
+  // ─── Booking reference manual lookup ────────────────────────────────────────
+  const handleRefLookup = async () => {
+    const ref = refInput.trim().toUpperCase();
+    if (!ref) return;
+
+    setRefBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-ticket", {
+        body: { ref },
+      });
+
+      if (error) throw new Error(error.message ?? "Edge function error");
+
+      const r = data as ScanResult;
+      // Use the returned qr_token as the session key if available, else the ref
+      const sessionKey = r.ticket?.id ?? ref;
+      showToast(r, sessionKey);
+
+      if (r.status === "VALID") setRefInput(""); // clear on success
+    } catch (err) {
+      console.error("[scan] ref lookup error:", err);
+      toast.error("❌ Lookup failed", {
+        id: "scan-result",
+        description: "Could not reach the server. Check your connection.",
+        duration: 4000,
+      });
+    } finally {
+      setRefBusy(false);
+    }
+  };
+
   // ─── Camera ─────────────────────────────────────────────────────────────────
   const startScanner = async () => {
     busyRef.current   = false;
@@ -230,6 +264,37 @@ const Scan = () => {
                 Stop camera
               </Button>
             )}
+          </div>
+
+          {/* ── Divider ── */}
+          <div className="mt-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium text-muted-foreground">or enter booking reference</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* ── Booking reference lookup ── */}
+          <div className="mt-4 flex gap-2">
+            <Input
+              placeholder="e.g. FZ-A1B2C3D4"
+              value={refInput}
+              onChange={(e) => setRefInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && !refBusy && handleRefLookup()}
+              className="flex-1 font-mono tracking-widest uppercase"
+              maxLength={20}
+            />
+            <Button
+              variant="acacia"
+              onClick={handleRefLookup}
+              disabled={refBusy || !refInput.trim()}
+              className="shrink-0"
+            >
+              {refBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </Button>
           </div>
 
         </div>
