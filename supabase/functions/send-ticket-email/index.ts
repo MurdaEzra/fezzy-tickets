@@ -1,28 +1,75 @@
-// Generates QR codes for each ticket and (when an email domain is configured)
-// sends a styled HTML ticket email. Without a domain, it logs the rendered
-// payload so the rest of the flow works end-to-end.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { qrcode } from "https://deno.land/x/qrcode@v2.0.0/mod.ts";
 
-// Strict CORS allowlist for browser origins
 const ALLOWED_ORIGINS = [
-  "https://fezzy.app", // production
-  "http://localhost:8080", // local dev
+  "https://fezzy-tickets.vercel.app",
+  "http://localhost:8080",
 ];
 
-function getCorsHeaders(origin: string | null) {
+const INTERNAL_TICKET_DELIVERY_SECRET = Deno.env.get("INTERNAL_TICKET_DELIVERY_SECRET");
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const headers: Record<string, string> = {};
+
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    return {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    };
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Headers"] =
+      "authorization, x-client-info, apikey, content-type";
+    headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
   }
-  // No CORS for disallowed origins
-  return {};
+
+  return headers;
 }
 
 interface Body {
   orderId: string;
+}
+
+async function sendBrevoEmail({
+  recipientEmail,
+  subject,
+  htmlContent,
+}: {
+  recipientEmail: string;
+  subject: string;
+  htmlContent: string;
+}) {
+  const apiKey = Deno.env.get("BREVO_API_KEY");
+
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY not configured");
+  }
+
+  const response = await fetch(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: "Fezzy Tickets",
+          email: "tickets@fezzy.app",
+        },
+        to: [
+          {
+            email: recipientEmail,
+          },
+        ],
+        subject,
+        htmlContent,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  return await response.json();
 }
 
 const renderTicketHtml = (params: {
@@ -36,130 +83,275 @@ const renderTicketHtml = (params: {
   ref: string;
   accent: string;
 }) => `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Your Fezzy ticket</title></head>
-<body style="margin:0;padding:24px;background:#FFF8EE;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#0d1b2a">
-  <div style="max-width:560px;margin:0 auto">
-    <div style="text-align:center;padding:8px 0 24px">
-      <span style="display:inline-block;font-weight:800;font-size:22px;letter-spacing:-0.5px">Fezzy <em style="font-style:italic;color:#1FAD66">tickets</em></span>
-    </div>
-    <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(13,27,42,0.18);border:1px solid #ebe2cf">
-      <div style="background:linear-gradient(135deg,#1FAD66,#2bd083);padding:28px 28px 22px;color:#fff">
-        <p style="margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.85">Admit one</p>
-        <h1 style="margin:6px 0 0;font-size:26px;line-height:1.15">${params.eventTitle}</h1>
-        <p style="margin:6px 0 0;opacity:.9;font-size:13px">${params.date} · ${params.venue}, ${params.city}</p>
-      </div>
-      <div style="padding:24px 28px;display:flex;gap:24px;align-items:center;justify-content:space-between">
-        <div style="flex:1;min-width:0">
-          <p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280">Holder</p>
-          <p style="margin:2px 0 14px;font-weight:700;font-size:16px">${params.holderName}</p>
-          <p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280">Tier</p>
-          <p style="margin:2px 0 14px;font-weight:700;font-size:16px;color:${params.accent}">${params.tierName}</p>
-          <p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280">Booking ref</p>
-          <p style="margin:2px 0 0;font-family:ui-monospace,Menlo,monospace;font-weight:700">${params.ref}</p>
-        </div>
-        <div style="background:#fff;padding:8px;border-radius:12px;border:1px solid #ebe2cf">
-          <img src="${params.qrDataUrl}" width="148" height="148" alt="QR" style="display:block;border-radius:6px"/>
-        </div>
-      </div>
-      <div style="border-top:2px dashed #ebe2cf"></div>
-      <div style="padding:18px 28px;background:#FFF8EE;font-size:12px;color:#6b7280;text-align:center">
-        Show this QR at the gate. Screenshots work too.
-      </div>
-    </div>
-    <p style="text-align:center;font-size:12px;color:#9ca3af;margin:24px 0 0">Fezzy Tickets · Nairobi, Kenya</p>
-  </div>
-</body></html>`;
+<div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(13,27,42,.18);border:1px solid #ebe2cf;margin-bottom:24px">
+  <div style="background:linear-gradient(135deg,#1FAD66,#2bd083);padding:28px;color:white">
+    <p style="margin:0;font-size:11px;text-transform:uppercase">
+      Admit One
+    </p>
 
+    <h1 style="margin:8px 0">
+      ${params.eventTitle}
+    </h1>
+
+    <p style="margin:0">
+      ${params.date} · ${params.venue}, ${params.city}
+    </p>
+  </div>
+
+  <div style="padding:24px;display:flex;justify-content:space-between;gap:24px">
+    <div>
+      <p><strong>Holder:</strong> ${params.holderName}</p>
+
+      <p>
+        <strong>Tier:</strong>
+        <span style="color:${params.accent}">
+          ${params.tierName}
+        </span>
+      </p>
+
+      <p>
+        <strong>Reference:</strong>
+        ${params.ref}
+      </p>
+    </div>
+
+    <div>
+      <img
+        src="${params.qrDataUrl}"
+        width="150"
+        height="150"
+        alt="QR Code"
+      />
+    </div>
+  </div>
+</div>
+`;
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: corsHeaders,
+    });
+  }
 
   try {
     const { orderId } = (await req.json()) as Body;
+
     if (!orderId) {
-      return new Response(JSON.stringify({ error: "orderId required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "orderId required",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    if (INTERNAL_TICKET_DELIVERY_SECRET) {
+      const secretHeader = req.headers.get("x-internal-ticket-secret");
+      if (secretHeader !== INTERNAL_TICKET_DELIVERY_SECRET) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          {
+            status: 403,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
     }
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: order, error: orderErr } = await supabase
+    const { data: order, error } = await supabase
       .from("orders")
-      .select("*, events(*), tickets(*, ticket_tiers(*))")
+      .select(`
+        *,
+        events(*),
+        tickets(
+          *,
+          ticket_tiers(*)
+        )
+      `)
       .eq("id", orderId)
       .single();
 
-    if (orderErr || !order) {
-      return new Response(JSON.stringify({ error: "Order not found", detail: orderErr?.message }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (error || !order) {
+      return new Response(
+        JSON.stringify({
+          error: "Order not found",
+          detail: error?.message,
+        }),
+        {
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
     const event = order.events;
-    const accent = event?.ticket_design?.accent ?? "#1FAD66";
-    const ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
-    const dateStr = new Date(event.starts_at).toLocaleString("en-GB", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
+
+    const accent =
+      event?.ticket_design?.accent ?? "#1FAD66";
+
+    const ref =
+      `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+
+    const dateStr = new Date(
+      event.starts_at
+    ).toLocaleString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
-    const renderedTickets: Array<{ ticketId: string; html: string; qrDataUrl: string }> = [];
+    const ticketHtmls: string[] = [];
 
     for (const ticket of order.tickets) {
-      const qrDataUrl = String(await qrcode(ticket.qr_token, { size: 300 }));
-      const html = renderTicketHtml({
-        eventTitle: event.title,
-        date: dateStr,
-        venue: event.venue_name ?? "TBA",
-        city: event.city ?? "",
-        holderName: ticket.holder_name,
-        tierName: ticket.ticket_tiers?.name ?? "General",
-        qrDataUrl,
-        ref,
-        accent,
-      });
-      renderedTickets.push({ ticketId: ticket.id, html, qrDataUrl });
+      const qrDataUrl = String(
+        await qrcode(ticket.qr_token, {
+          size: 300,
+        })
+      );
+
+      ticketHtmls.push(
+        renderTicketHtml({
+          eventTitle: event.title,
+          date: dateStr,
+          venue: event.venue_name ?? "TBA",
+          city: event.city ?? "",
+          holderName: ticket.holder_name,
+          tierName:
+            ticket.ticket_tiers?.name ??
+            "General",
+          qrDataUrl,
+          ref,
+          accent,
+        })
+      );
     }
 
-    // Try to send via Lovable Emails if configured; otherwise log payload.
-    let delivery: "sent" | "logged" = "logged";
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Your Fezzy Tickets</title>
+</head>
+
+<body
+  style="
+    background:#FFF8EE;
+    padding:24px;
+    font-family:Arial,sans-serif;
+  "
+>
+  <div
+    style="
+      max-width:700px;
+      margin:auto;
+    "
+  >
+    <h1>
+      Your Tickets
+    </h1>
+
+    <p>
+      Thanks for your purchase.
+    </p>
+
+    <p>
+      Booking Reference:
+      <strong>${ref}</strong>
+    </p>
+
+    ${ticketHtmls.join("")}
+
+    <p
+      style="
+        color:#777;
+        text-align:center;
+        margin-top:40px;
+      "
+    >
+      Show the QR code at the gate.
+      Screenshots are accepted.
+    </p>
+  </div>
+</body>
+</html>
+`;
+
+    let delivery: "sent" | "failed" = "failed";
+
     try {
-      const { error: sendErr } = await supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "ticket-delivery",
-          recipientEmail: order.guest_email,
-          idempotencyKey: `ticket-${orderId}`,
-          templateData: { tickets: renderedTickets, eventTitle: event.title, ref },
-        },
+      await sendBrevoEmail({
+        recipientEmail: order.guest_email,
+        subject: `Your Tickets - ${event.title}`,
+        htmlContent: emailHtml,
       });
-      if (!sendErr) delivery = "sent";
-    } catch {
-      // domain not yet configured — log and continue
-    }
 
-    if (delivery === "logged") {
-      console.log("[send-ticket-email] No email domain configured. Tickets rendered:", {
-        to: order.guest_email,
-        ref,
-        ticketCount: renderedTickets.length,
-      });
+      delivery = "sent";
+    } catch (emailError) {
+      console.error(
+        "[BREVO EMAIL ERROR]",
+        emailError
+      );
     }
 
     return new Response(
-      JSON.stringify({ ok: true, delivery, ref, ticketCount: renderedTickets.length }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({
+        ok: true,
+        delivery,
+        ref,
+        ticketCount: order.tickets.length,
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type":
+            "application/json",
+        },
+      }
     );
-  } catch (e) {
-    console.error("[send-ticket-email] error", e);
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (error) {
+    console.error(
+      "[SEND-TICKET-EMAIL ERROR]",
+      error
+    );
+
+    return new Response(
+      JSON.stringify({
+        error: String(error),
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type":
+            "application/json",
+        },
+      }
+    );
   }
 });
+

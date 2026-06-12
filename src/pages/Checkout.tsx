@@ -1,48 +1,47 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Check, CreditCard, Loader2, Smartphone, Info } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, CreditCard, Loader2, Smartphone, Wallet, Shield } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { formatPrice, formatDateLong } from "@/data/events";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEventBySlug, fetchTiers, type DbEvent, type DbTier } from "@/lib/eventsApi";
+import { fetchEventBySlug, fetchTiers, formatEventDateLong, formatPrice } from "@/lib/eventsApi";
 
 interface EventLike {
-  id?: string;
+  id: string;
   title: string;
   slug: string;
   image: string;
   date: string;
   venue: string;
   city: string;
-  currency?: string;
-  tiers: { id?: string; name: string; price: number }[];
-  isReal: boolean;
+  tiers: { id: string; name: string; price: number }[];
 }
 
 const Checkout = () => {
   const { slug } = useParams();
-  const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [evt, setEvt] = useState<EventLike | null>(null);
   const [loading, setLoading] = useState(true);
+  const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number }>({ subtotal: 0, fee: 0, total: 0 });
 
+  const params = new URLSearchParams(window.location.search);
   const tierIdx = Number(params.get("tier") ?? 0);
   const qty = Number(params.get("qty") ?? 1);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [method, setMethod] = useState<"mpesa" | "card">("mpesa");
+  const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "apple_pay">("mpesa");
   const [processing, setProcessing] = useState(false);
-  const [done, setDone] = useState<{ ref: string } | null>(null);
+  const [agreedTerms, setAgreedTerms] = useState(true);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,10 +60,7 @@ const Checkout = () => {
           venue: dbEvent.venue_name ?? "TBA",
           city: dbEvent.city ?? "",
           tiers: tiers.map((t) => ({ id: t.id, name: t.name, price: t.price_kes })),
-          isReal: true,
         });
-      } else {
-        setEvt(null);
       }
       setLoading(false);
     })();
@@ -79,6 +75,61 @@ const Checkout = () => {
     }
   }, [user]);
 
+  const tier = evt?.tiers[tierIdx] ?? evt?.tiers[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!evt || !tier?.id) return;
+      const { data, error } = await supabase.functions.invoke('calculate-order', {
+        body: { eventId: evt.id, tierId: tier.id, quantity: qty },
+      });
+      if (!cancelled && !error && data) setCalc(data as typeof calc);
+    })();
+    return () => { cancelled = true; };
+  }, [evt, tier?.id, qty]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!evt || !tier?.id) return;
+    if (!agreedTerms) {
+      toast.error("Please accept the Terms and Privacy Policy to continue.");
+      return;
+    }
+    if (paymentMethod === "mpesa" && !phone.trim()) {
+      toast.error("Please enter a phone number for M-Pesa payments.");
+      return;
+    }
+    setProcessing(true);
+    try {
+      const callbackUrl = `${window.location.origin}/payment/callback`;
+      const { data, error } = await supabase.functions.invoke('paystack-init-transaction', {
+        body: {
+          eventId: evt.id,
+          tierId: tier.id,
+          quantity: qty,
+          name,
+          email,
+          phone,
+          callbackUrl,
+          method: paymentMethod,
+          marketingOptIn,
+        },
+      });
+      const err = (data as { error?: string } | null)?.error ?? error?.message;
+      if (err) {
+        toast.error("Payment failed", { description: err });
+        setProcessing(false);
+        return;
+      }
+      const url = (data as { authorization_url: string }).authorization_url;
+      window.location.href = url;
+    } catch (err) {
+      toast.error("Payment failed", { description: (err as Error).message });
+      setProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -89,7 +140,7 @@ const Checkout = () => {
       </div>
     );
   }
-  if (!evt) {
+  if (!evt || !tier) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -97,82 +148,6 @@ const Checkout = () => {
           <h1 className="display text-4xl">Event not found</h1>
           <Button variant="acacia" className="mt-6" asChild><Link to="/events">Browse events</Link></Button>
         </div>
-      </div>
-    );
-  }
-
-  const tier = evt.tiers[tierIdx] ?? evt.tiers[0];
-  const [calc, setCalc] = useState<{ price: number; subtotal: number; fee: number; total: number } | null>(null);
-  const total = calc?.total ?? tier.price * qty;
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchCalc() {
-      if (!evt || !tier?.id) return;
-      const res = await fetch('/functions/v1/calculate-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: evt.id, tierId: tier.id, quantity: qty })
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!cancelled) setCalc(data);
-    }
-    fetchCalc();
-    return () => { cancelled = true; };
-  }, [evt, tier?.id, qty]);
-
-  // Secure backend payment flow placeholder
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProcessing(true);
-    try {
-      if (!evt?.id || !tier?.id || !calc) throw new Error("Event or tier not loaded");
-      // TODO: Replace with call to secure backend API (Render) for payment session creation and initiation
-      // Example:
-      // const res = await fetch('/api/checkout/sessions', { ... })
-      // Handle payment initiation, polling, and confirmation via backend
-      toast.info("Payment flow not yet implemented. Secure backend required.");
-    } catch (err) {
-      console.error(err);
-      toast.error("Payment failed", { description: (err as Error).message });
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  if (done) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="container-px mx-auto max-w-2xl py-20">
-          <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-soft md:p-12">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary/15 text-primary">
-              <Check className="h-8 w-8" />
-            </div>
-            <p className="eyebrow mt-6">Confirmed</p>
-            <h1 className="display mt-3 text-4xl font-bold text-foreground sm:text-5xl">
-              You're <span className="script font-normal text-primary text-[1.2em]">in</span>!
-            </h1>
-            <p className="mt-3 text-muted-foreground">
-              {qty} × {tier.name} for <span className="text-foreground font-semibold">{evt.title}</span>.
-            </p>
-            <div className="mt-8 rounded-2xl border border-dashed border-border bg-background p-6 text-left">
-              <Row k="Booking ref" v={<span className="font-mono font-bold">{done.ref}</span>} />
-              <Row k="Date" v={formatDateLong(evt.date)} />
-              <Row k="Total paid" v={<span className="font-bold">{formatPrice(total)}</span>} />
-            </div>
-            <div className="mt-6 flex items-start gap-2 rounded-2xl bg-secondary p-4 text-left text-xs text-muted-foreground">
-              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-              <span>We've emailed your ticket{qty > 1 ? "s" : ""} (with QR code) to <strong>{email}</strong>. Show the QR at the gate — screenshots work too.</span>
-            </div>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              {user && <Button variant="acacia" size="lg" asChild><Link to="/account">View my tickets</Link></Button>}
-              <Button variant="outline" size="lg" asChild><Link to="/events">Browse more events</Link></Button>
-            </div>
-          </div>
-        </main>
-        <Footer />
       </div>
     );
   }
@@ -188,18 +163,12 @@ const Checkout = () => {
           <h1 className="display mt-6 text-4xl text-foreground sm:text-5xl">
             Get your <span className="script font-normal text-primary text-[1.2em]">tickets</span>
           </h1>
-          {!user && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              No account needed — your ticket goes straight to your email. Want to track all your bookings?{" "}
-              <Link to={`/auth?mode=signup&redirect=/events/${evt.slug}/checkout`} className="font-semibold text-primary hover:underline">Create an account</Link>.
-            </p>
-          )}
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
             <form onSubmit={submit} className="space-y-8">
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
                 <h2 className="font-display text-xl font-bold">Where should we send your tickets?</h2>
-                <p className="text-sm text-muted-foreground">Tickets with QR codes will be emailed to you instantly.</p>
+                <p className="text-sm text-muted-foreground">Tickets with QR codes will be emailed to you instantly after payment.</p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="name">Full name</Label>
@@ -210,44 +179,52 @@ const Checkout = () => {
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor="phone">Phone (M-Pesa)</Label>
-                    <Input id="phone" placeholder="+254 712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                    <Label htmlFor="phone">Phone {paymentMethod === "mpesa" ? "(required for M-Pesa)" : "(optional)"}</Label>
+                    <Input id="phone" aria-label={paymentMethod === "mpesa" ? "M-Pesa phone" : "Phone"} placeholder="0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
                 </div>
               </div>
 
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
-                <h2 className="font-display text-xl font-bold">Payment</h2>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {[
-                    { id: "mpesa" as const, icon: Smartphone, title: "M-Pesa", sub: "STK push to your phone" },
-                    { id: "card" as const, icon: CreditCard, title: "Card", sub: "Visa · Mastercard · Amex" },
-                  ].map((m) => {
-                    const active = method === m.id;
-                    return (
-                      <button
-                        key={m.id} type="button" onClick={() => setMethod(m.id)}
-                        className={`flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${active ? "border-primary bg-primary/[0.06]" : "border-border bg-background hover:border-foreground/30"}`}
-                      >
-                        <span className="grid h-10 w-10 place-items-center rounded-full bg-foreground text-background">
-                          <m.icon className="h-4 w-4" />
-                        </span>
-                        <div>
-                          <p className="font-semibold text-foreground">{m.title}</p>
-                          <p className="text-xs text-muted-foreground">{m.sub}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <h2 className="font-display text-xl font-bold">Choose how to pay</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Select your preferred checkout method and continue to Paystack to complete payment.</p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <PayBadge icon={Smartphone} label="M-Pesa" value="mpesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
+                  <PayBadge icon={CreditCard} label="Card" value="card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
+                  <PayBadge icon={Wallet} label="Apple" value="apple_pay" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
                 </div>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Payments aren't live yet — this checkout simulates the full flow so you can preview it.
-                </p>
               </div>
 
-              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc}>
-                {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Pay {calc ? formatPrice(calc.total) : '...'}
+              <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-3">
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                    checked={agreedTerms}
+                    onChange={(e) => setAgreedTerms(e.target.checked)}
+                    required
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <Link to="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms and Conditions</Link>
+                    {" "}and{" "}
+                    <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                    checked={marketingOptIn}
+                    onChange={(e) => setMarketingOptIn(e.target.checked)}
+                  />
+                  <span>Keep me posted about this event and similar ones from this organizer (optional).</span>
+                </label>
+              </div>
+
+              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc || !agreedTerms}>
+                {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {processing ? 'Redirecting to Paystack…' : `Pay ${calc ? formatPrice(calc.total) : '...'} with ${paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Card'}`}
               </Button>
             </form>
 
@@ -258,7 +235,7 @@ const Checkout = () => {
                   {evt.image && <img src={evt.image} alt="" className="h-20 w-20 rounded-2xl object-cover" />}
                   <div className="min-w-0">
                     <p className="font-display font-bold leading-tight text-foreground">{evt.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{formatDateLong(evt.date)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatEventDateLong(evt.date)}</p>
                     <p className="text-xs text-muted-foreground">{evt.venue}, {evt.city}</p>
                   </div>
                 </div>
@@ -277,9 +254,6 @@ const Checkout = () => {
                     <dt className="font-semibold text-foreground">You pay</dt>
                     <dd className="font-display text-xl font-bold text-foreground">{calc ? formatPrice(calc.total) : '...'}</dd>
                   </div>
-                  <p className="rounded-xl bg-primary/10 p-3 text-xs text-primary">
-                    🎉 No service fees on your end — the organizer covers it.
-                  </p>
                 </dl>
               </div>
             </aside>
@@ -291,11 +265,13 @@ const Checkout = () => {
   );
 };
 
-const Row = ({ k, v }: { k: string; v: React.ReactNode }) => (
-  <div className="mt-2 flex items-center justify-between text-sm first:mt-0">
-    <span className="text-muted-foreground">{k}</span>
-    <span className="text-foreground">{v}</span>
-  </div>
+const PayBadge = ({ icon: Icon, label, selected, onSelect, value }: { icon: typeof CreditCard; label: string; selected?: boolean; onSelect?: () => void; value: string }) => (
+  <button type="button" onClick={onSelect} className={`flex items-center gap-2 rounded-2xl border p-3 text-sm transition ${selected ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/80'}`}>
+    <span className={`grid h-8 w-8 place-items-center rounded-full ${selected ? 'bg-primary text-background' : 'bg-foreground text-background'}`}>
+      <Icon className="h-4 w-4" />
+    </span>
+    <span className="font-semibold text-foreground">{label}</span>
+  </button>
 );
 
 export default Checkout;

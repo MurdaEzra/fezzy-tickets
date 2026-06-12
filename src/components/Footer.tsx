@@ -3,8 +3,8 @@ import { Ticket, Instagram, Twitter, Facebook } from "lucide-react";
 
 const cols = [
   { title: "Discover", links: [["Browse events", "/events"], ["This weekend", "/events"], ["Categories", "/events"]] },
-  { title: "Organize", links: [["Start selling", "/start-selling"], ["Pricing", "/pricing"], ["For Organizers", "/organizer"]] },
-  { title: "Company", links: [["About", "#"], ["Help center", "#"], ["Contact", "#"]] },
+  { title: "Organize", links: [["Pricing", "/pricing"], ["For Organizers", "/organizer"]] },
+  { title: "Company", links: [["About", "/"], ["Help center", "/help"], ["Contact", "/help"]] },
 ];
 
 const Footer = () => {
@@ -22,12 +22,12 @@ const Footer = () => {
               </span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Born in <span className="text-foreground font-medium">Nairobi</span>. Built for the world.
-              Every concert, festival, match and gathering — one ticket away.
+              Born in <span className="text-foreground font-medium">Nairobi</span>. 
+              Every concert, festival, match and gathering  one ticket away. Come let's experience the fun together!
             </p>
             <div className="mt-6 flex gap-2">
               {[Instagram, Twitter, Facebook].map((Icon, i) => (
-                <a key={i} href="#" aria-label="Social" className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-foreground hover:text-background">
+                <a key={i} href="https://instagram.com/fezzytickets" aria-label="Social" className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-foreground hover:text-background">
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
@@ -50,7 +50,7 @@ const Footer = () => {
         </div>
         <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
           <p>© {new Date().getFullYear()} Fezzy Tickets · Nairobi, Kenya 🇰🇪</p>
-          <p>M-Pesa · Visa · Mastercard · Apple Pay · Google Pay</p>
+          <p>M-Pesa · Visa · Apple Pay ·</p>
         </div>
       </div>
     </footer>

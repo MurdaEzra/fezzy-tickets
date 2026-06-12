@@ -5,8 +5,6 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { Button } from "@/components/ui/button";
 import { fetchPublishedEvents, formatEventDate, type DbEvent } from "@/lib/eventsApi";
-import { events as fallbackEvents } from "@/data/events";
-import hero from "@/assets/hero-festival.jpg";
 
 interface Slide {
   id: string;
@@ -30,33 +28,18 @@ const HeroSlideshow = () => {
   useEffect(() => {
     fetchPublishedEvents({ limit: 6 })
       .then((rows) => {
-        if (rows.length) {
-          setSlides(rows.map((e: DbEvent) => ({
+        setSlides(rows.map((e: DbEvent) => ({
             id: e.id,
             title: e.title,
             tagline: e.tagline ?? "",
-            image: e.cover_image_url ?? hero,
+            image: e.cover_image_url ?? "",
             date: formatEventDate(e.starts_at),
             venue: e.venue_name ?? "TBA",
             city: e.city ?? "",
             href: `/events/${e.slug}`,
-          })));
-        } else {
-          // Fallback to mock so the slideshow always feels alive
-          setSlides(fallbackEvents.slice(0, 5).map((e) => ({
-            id: e.id, title: e.title, tagline: e.tagline,
-            image: e.image, date: formatEventDate(e.date),
-            venue: e.venue, city: e.city, href: `/events/${e.slug}`,
-          })));
-        }
-      })
-      .catch(() => {
-        setSlides(fallbackEvents.slice(0, 5).map((e) => ({
-          id: e.id, title: e.title, tagline: e.tagline,
-          image: e.image, date: formatEventDate(e.date),
-          venue: e.venue, city: e.city, href: `/events/${e.slug}`,
         })));
-      });
+      })
+      .catch(() => setSlides([]));
   }, []);
 
   useEffect(() => {
@@ -71,10 +54,6 @@ const HeroSlideshow = () => {
       <div className="container-px mx-auto max-w-7xl pt-12 md:pt-20">
         {/* Heading + search */}
         <div className="mb-8 max-w-3xl animate-fade-up md:mb-12">
-          <span className="chip">
-            
-            Live in 14 cities · Born in Nairobi
-          </span>
           <h1 className="display mt-5 text-5xl text-foreground sm:text-6xl md:text-7xl">
             The night is{" "}
             <span className="script font-normal text-primary text-[1.15em] leading-[0.7]">yours</span>,
@@ -110,16 +89,32 @@ const HeroSlideshow = () => {
         <div className="relative animate-fade-up" style={{ animationDelay: "120ms" }}>
           <div className="overflow-hidden rounded-[2rem] border border-border shadow-soft" ref={emblaRef}>
             <div className="flex">
-              {slides.map((s) => (
+              {slides.length === 0 ? (
+                <div className="relative min-w-0 flex-[0_0_100%]">
+                  <div className="grid aspect-[16/9] place-items-center bg-cream-deep px-6 text-center sm:aspect-[21/9] md:aspect-[24/9]">
+                    <div>
+                      <p className="eyebrow mb-3">Events loading</p>
+                      <h2 className="display text-3xl text-foreground sm:text-4xl md:text-5xl">No published events yet</h2>
+                      <Button variant="acacia" size="lg" className="mt-5" asChild>
+                        <Link to="/start-selling">Create the first event</Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : slides.map((s) => (
                 <div key={s.id} className="relative min-w-0 flex-[0_0_100%]">
                   <Link to={s.href} className="block">
                     <div className="relative aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9]">
-                      <img
-                        src={s.image}
-                        alt={s.title}
-                        className="h-full w-full object-cover"
-                        loading="eager"
-                      />
+                      {s.image ? (
+                        <img
+                          src={s.image}
+                          alt={s.title}
+                          className="h-full w-full object-cover"
+                          loading="eager"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-cream-deep" />
+                      )}
                       <div
                         className="absolute inset-0"
                         style={{ background: "linear-gradient(90deg, rgba(13,27,42,0.85) 0%, rgba(13,27,42,0.45) 50%, rgba(13,27,42,0.15) 100%)" }}

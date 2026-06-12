@@ -10,16 +10,19 @@ import EventDetail from "./pages/EventDetail.tsx";
 import Auth from "./pages/Auth.tsx";
 import Account from "./pages/Account.tsx";
 import Checkout from "./pages/Checkout.tsx";
-import Organizer from "./pages/Organizer.tsx";
 import OrganizerDashboard from "./pages/OrganizerDashboard.tsx";
 import EventEditor from "./pages/EventEditor.tsx";
 import OrganizerPublicPage from "./pages/OrganizerPublicPage.tsx";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard.tsx";
+import Scan from "./pages/Scan.tsx";
 import Streams from "./pages/Streams.tsx";
-import StartSelling from "./pages/StartSelling.tsx";
-import Pricing from "./pages/Pricing.tsx";
+import Terms from "./pages/Terms.tsx";
+import Privacy from "./pages/Privacy.tsx";
+import Help from "./pages/Help.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import SuperAdminDashboard from "./pages/SuperAdminDashboard.tsx";
+import PaymentCallback from "./pages/PaymentCallback.tsx";
+import ShareRedirect from "./pages/ShareRedirect.tsx";
+import InviteAccept from "./pages/InviteAccept.tsx";
 
 const queryClient = new QueryClient();
 
@@ -37,16 +40,19 @@ const App = () => (
             <Route path="/events/:slug/checkout" element={<Checkout />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
-            <Route path="/organizer" element={<Organizer />} />
             <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
             <Route path="/dashboard" element={<OrganizerDashboard />} />
             <Route path="/dashboard/events/:id" element={<EventEditor />} />
             <Route path="/admin" element={<SuperAdminDashboard />} />
+            <Route path="/scan" element={<Scan />} />
             <Route path="/streams" element={<Streams />} />
-            <Route path="/start-selling" element={<StartSelling />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/admin" element={<SuperAdminDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
+            <Route path="/invite/:token" element={<InviteAccept />} />
+            {/* Branded organizer share link: fezzy.app/o/{handle}/{event-slug} */}
+            <Route path="/o/:handle/:slug" element={<ShareRedirect />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -112,6 +112,7 @@ export type Database = {
           guest_name: string
           guest_phone: string
           id: string
+          marketing_opt_in: boolean
           organizer_fee_kes: number
           payment_method: string
           payment_ref: string | null
@@ -129,6 +130,7 @@ export type Database = {
           guest_name: string
           guest_phone: string
           id?: string
+          marketing_opt_in?: boolean
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           guest_name?: string
           guest_phone?: string
           id?: string
+          marketing_opt_in?: boolean
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
@@ -165,66 +168,217 @@ export type Database = {
           },
         ]
       }
+      organizer_admin_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          created_at: string
+          created_by_user_id: string
+          expires_at: string
+          id: string
+          invited_email: string | null
+          organizer_id: string
+          revoked_at: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          created_by_user_id: string
+          expires_at: string
+          id?: string
+          invited_email?: string | null
+          organizer_id: string
+          revoked_at?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string
+          id?: string
+          invited_email?: string | null
+          organizer_id?: string
+          revoked_at?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizer_admin_invites_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "organizer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizer_profiles: {
         Row: {
-          bank_account_name: string | null
-          bank_account_number: string | null
-          bank_name: string | null
           bio: string | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
           events_published_count: number
+          fee_locked_pct: number | null
+          handle: string
           id: string
           logo_url: string | null
-          mpesa_phone: string | null
-          mpesa_till: string | null
+          marketing_opt_in: boolean
+          mpesa_payout_phone: string | null
           org_name: string
-          payout_method: string | null
-          preferred_payout_channel: string | null
+          payout_method: string
+          paystack_account_name: string | null
+          paystack_account_number: string | null
+          paystack_bank_code: string | null
+          paystack_subaccount_code: string | null
+          till_number: string | null
           updated_at: string
           user_id: string
           website: string | null
         }
         Insert: {
-          bank_account_name?: string | null
-          bank_account_number?: string | null
-          bank_name?: string | null
           bio?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           events_published_count?: number
+          fee_locked_pct?: number | null
+          handle: string
           id?: string
           logo_url?: string | null
-          mpesa_phone?: string | null
-          mpesa_till?: string | null
+          marketing_opt_in?: boolean
+          mpesa_payout_phone?: string | null
           org_name: string
-          payout_method?: string | null
-          preferred_payout_channel?: string | null
+          payout_method?: string
+          paystack_account_name?: string | null
+          paystack_account_number?: string | null
+          paystack_bank_code?: string | null
+          paystack_subaccount_code?: string | null
+          till_number?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
         }
         Update: {
-          bank_account_name?: string | null
-          bank_account_number?: string | null
-          bank_name?: string | null
           bio?: string | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           events_published_count?: number
+          fee_locked_pct?: number | null
+          handle?: string
           id?: string
           logo_url?: string | null
-          mpesa_phone?: string | null
-          mpesa_till?: string | null
+          marketing_opt_in?: boolean
+          mpesa_payout_phone?: string | null
           org_name?: string
-          payout_method?: string | null
-          preferred_payout_channel?: string | null
+          payout_method?: string
+          paystack_account_name?: string | null
+          paystack_account_number?: string | null
+          paystack_bank_code?: string | null
+          paystack_subaccount_code?: string | null
+          till_number?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
+        }
+        Relationships: []
+      }
+      organizer_team_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by_user_id: string | null
+          organizer_id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by_user_id?: string | null
+          organizer_id: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by_user_id?: string | null
+          organizer_id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizer_team_members_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "organizer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_kes: number
+          checkout_request_id: string | null
+          created_at: string
+          id: string
+          merchant_request_id: string | null
+          mpesa_receipt: string | null
+          order_id: string
+          paystack_reference: string | null
+          phone: string
+          provider: string
+          raw_callback: Json | null
+          result_code: number | null
+          result_desc: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_kes: number
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          order_id: string
+          paystack_reference?: string | null
+          phone: string
+          provider?: string
+          raw_callback?: Json | null
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_kes?: number
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          order_id?: string
+          paystack_reference?: string | null
+          phone?: string
+          provider?: string
+          raw_callback?: Json | null
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -384,55 +538,35 @@ export type Database = {
         }
         Relationships: []
       }
-      withdrawals: {
-        Row: {
-          amount_kes: number
-          channel: string
-          created_at: string
-          destination: string
-          failure_reason: string | null
-          id: string
-          organizer_id: string
-          payhero_reference: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          amount_kes: number
-          channel: string
-          created_at?: string
-          destination: string
-          failure_reason?: string | null
-          id?: string
-          organizer_id: string
-          payhero_reference?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          amount_kes?: number
-          channel?: string
-          created_at?: string
-          destination?: string
-          failure_reason?: string | null
-          id?: string
-          organizer_id?: string
-          payhero_reference?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      accept_organizer_admin_invite: {
+        Args: { _token: string }
+        Returns: string
+      }
+      create_organizer_admin_invite: {
+        Args: {
+          _expires_in_hours?: number
+          _invited_email?: string
+          _organizer_id: string
+        }
+        Returns: {
+          expires_at: string
+          token: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_organizer_team_member: {
+        Args: { _organizer_id: string; _user_id: string }
         Returns: boolean
       }
     }

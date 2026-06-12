@@ -54,6 +54,11 @@ const EventEditor = () => {
   const [accent, setAccent] = useState("#1FAD66");
   const [theme, setTheme] = useState("savannah");
   const [pattern, setPattern] = useState("none");
+  const [seatLabel, setSeatLabel] = useState("GA");
+  const [seatArrangement, setSeatArrangement] = useState<"grid" | "rows" | "circle">("grid");
+  const [showLogo, setShowLogo] = useState(true);
+  const [showQR, setShowQR] = useState(true);
+  const [showDate, setShowDate] = useState(true);
   const [tiers, setTiers] = useState<TierDraft[]>([
     { name: "General", price_kes: 1500, quantity: 100, description: "" },
   ]);
@@ -85,10 +90,15 @@ const EventEditor = () => {
         setLat(ev.latitude); setLng(ev.longitude);
         setStartsAt(ev.starts_at?.slice(0, 16) ?? ""); setEndsAt(ev.ends_at?.slice(0, 16) ?? "");
         setIsStream(ev.is_stream); setStreamUrl(ev.stream_url ?? "");
-        const td = (ev.ticket_design ?? {}) as { accent?: string; theme?: string; pattern?: string };
+        const td = (ev.ticket_design ?? {}) as { accent?: string; theme?: string; pattern?: string; seatLabel?: string; seatArrangement?: "grid" | "rows" | "circle"; showLogo?: boolean; showQR?: boolean; showDate?: boolean };
         setAccent(td.accent ?? "#1FAD66");
         setTheme(td.theme ?? "savannah");
         setPattern(td.pattern ?? "none");
+        setSeatLabel(td.seatLabel ?? "GA");
+        setSeatArrangement(td.seatArrangement ?? "grid");
+        setShowLogo(td.showLogo ?? true);
+        setShowQR(td.showQR ?? true);
+        setShowDate(td.showDate ?? true);
         setFeeWaived(ev.fee_waived);
 
         const { data: ts } = await supabase.from("ticket_tiers").select("*").eq("event_id", id).order("sort_order");
@@ -126,7 +136,7 @@ const EventEditor = () => {
         starts_at: new Date(startsAt).toISOString(),
         ends_at: endsAt ? new Date(endsAt).toISOString() : null,
         is_stream: isStream, stream_url: isStream ? streamUrl : null,
-        ticket_design: { theme, accent, pattern },
+        ticket_design: { theme, accent, pattern, seatLabel, seatArrangement, showLogo, showQR, showDate },
         fee_waived: feeWaived,
         status: publish ? "published" as const : "draft" as const,
       };
@@ -203,7 +213,7 @@ const EventEditor = () => {
 
         {feeWaived && (
           <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-xs font-bold text-accent-foreground">
-            🎉 First-event bonus active — 0% platform fee on this event
+             First-event bonus active 0% platform fee on this event
           </div>
         )}
 
@@ -343,6 +353,31 @@ const EventEditor = () => {
                   <Field label="Accent color">
                     <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-10 w-20 rounded border border-border bg-background" />
                   </Field>
+                  <Field label="Seat label">
+                    <Input value={seatLabel} onChange={(e) => setSeatLabel(e.target.value)} placeholder="GA / VIP / A1" />
+                  </Field>
+                  <Field label="Seat arrangement">
+                    <div className="flex flex-wrap gap-2">
+                      {(["grid", "rows", "circle"] as const).map((option) => (
+                        <button key={option} type="button" onClick={() => setSeatArrangement(option)} className={`rounded-full border px-4 py-1.5 text-xs font-semibold capitalize ${seatArrangement === option ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <Field label="Ticket features">
+                    <div className="flex flex-wrap gap-2">
+                      {([
+                        { enabled: showLogo, toggle: () => setShowLogo(!showLogo), label: "Logo" },
+                        { enabled: showQR, toggle: () => setShowQR(!showQR), label: "QR code" },
+                        { enabled: showDate, toggle: () => setShowDate(!showDate), label: "Date & venue" },
+                      ] as Array<{ enabled: boolean; toggle: () => void; label: string }>).map((item) => (
+                        <button key={item.label} type="button" onClick={item.toggle} className={`rounded-full border px-4 py-1.5 text-xs font-semibold ${item.enabled ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+                          {item.enabled ? "✓" : "•"} {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
                   <Field label="Pattern">
                     <div className="flex gap-2">
                       {["none", "dots", "stripes", "waves", "confetti"].map((p) => (
@@ -367,6 +402,11 @@ const EventEditor = () => {
                   accent={accent}
                   theme={theme}
                   pattern={pattern}
+                  seatLabel={seatLabel}
+                  seatArrangement={seatArrangement}
+                  showLogo={showLogo}
+                  showQR={showQR}
+                  showDate={showDate}
                 />
               </div>
 
@@ -395,7 +435,7 @@ const EventEditor = () => {
               </ul>
               <div className="mt-6 rounded-2xl bg-primary/[0.07] p-4 text-sm">
                 <p className="font-semibold text-foreground">
-                  Platform fee on this event: <span className="text-primary">{feeWaived ? "0% (waived)" : "5% of each ticket"}</span>
+                  Platform fee on this event: <span className="text-primary">{feeWaived ? "0% (waived)" : "10% of each ticket"}</span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {feeWaived

@@ -9,9 +9,6 @@ const Hero = () => {
       <div className="container-px mx-auto grid max-w-7xl gap-12 pb-20 pt-16 md:pb-28 md:pt-24 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16 lg:pt-28">
         {/* Left: copy */}
         <div className="animate-fade-up">
-          <span className="chip">
-            Live in 14 cities · Born in Nairobi
-          </span>
           <h1 className="display mt-6 text-5xl text-foreground sm:text-6xl md:text-7xl lg:text-[5.5rem]">
             The night is{" "}
             <span className="script font-normal text-primary text-[1.15em] leading-[0.7]">yours</span>
