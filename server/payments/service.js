@@ -11,9 +11,22 @@ function addMinutes(iso, minutes) {
   return at.toISOString();
 }
 
+export const BUYER_FEE_RATE = 0.035;
+
+export function calculateBuyerFee(subtotalKes) {
+  return Math.round(subtotalKes * BUYER_FEE_RATE);
+}
+
 function ensurePublishedEvent(event) {
   if (!event || event.status !== "published") {
     throw new Error("Checkout requires a published event");
+  }
+}
+
+function ensureEventNotStarted(event, nowIso) {
+  if (!event?.starts_at) return;
+  if (new Date(event.starts_at).getTime() <= new Date(nowIso).getTime()) {
+    throw new Error("Checkout is closed because this event has already started");
   }
 }
 
@@ -41,11 +54,16 @@ export function createCheckoutSessionRecord({
   tier,
 }) {
   ensurePublishedEvent(event);
+  ensureEventNotStarted(event, nowIso);
   ensureSellableTier(event, tier, quantity);
+
+  const subtotalKes = tier.price_kes * quantity;
+  const buyerFeeKes = calculateBuyerFee(subtotalKes);
 
   return {
     allowed_methods: allowedMethods,
-    amount_kes: tier.price_kes * quantity,
+    amount_kes: subtotalKes + buyerFeeKes,
+    buyer_fee_kes: buyerFeeKes,
     currency: "KES",
     event_id: event.id,
     expires_at: addMinutes(nowIso, 15),
@@ -55,6 +73,7 @@ export function createCheckoutSessionRecord({
     public_token: randomHex(16),
     quantity,
     status: "created",
+    subtotal_kes: subtotalKes,
     tier_id: tier.id,
     user_id: guest.userId ?? null,
   };
@@ -103,7 +122,8 @@ export function applyVerifiedPaymentResult({
     throw new Error("A verified payment is required before order creation");
   }
 
-  const organizerFee = event.fee_waived ? 0 : Math.round(checkoutSession.amount_kes * 0.05);
+  const buyerFee = checkoutSession.buyer_fee_kes ?? calculateBuyerFee(checkoutSession.amount_kes);
+  const subtotal = checkoutSession.subtotal_kes ?? (checkoutSession.amount_kes - buyerFee);
 
   return {
     orderInsert: {
@@ -113,13 +133,13 @@ export function applyVerifiedPaymentResult({
       guest_email: checkoutSession.guest_email,
       guest_name: checkoutSession.guest_name,
       guest_phone: checkoutSession.guest_phone,
-      organizer_fee_kes: organizerFee,
+      organizer_fee_kes: buyerFee,
       payment_attempt_id: paymentAttempt.id,
       payment_method: paymentAttempt.method,
       payment_ref: paymentAttempt.merchant_reference,
       status: "paid",
-      subtotal_kes: checkoutSession.amount_kes,
-      total_kes: checkoutSession.amount_kes,
+      subtotal_kes: subtotal,
+      total_kes: subtotal + buyerFee,
       user_id: checkoutSession.user_id,
     },
     ticketInserts: Array.from({ length: checkoutSession.quantity }).map(() => ({

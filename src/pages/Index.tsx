@@ -86,8 +86,8 @@ const Index = () => {
                 <span className="script font-normal text-primary text-[1.2em]">pro</span>.
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-                Launch in minutes. Tier your pricing, scan tickets at the door, get paid out
-                via M-Pesa, bank transfer or international wire all in one dashboard.
+                Launch in minutes. Tier your pricing, scan tickets at the door, and let buyers
+                cover the 3.5% service fee at checkout.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button variant="acacia" size="lg" asChild>
@@ -102,7 +102,7 @@ const Index = () => {
                 {[
                   { k: "1st", v: "event free" },
                   { k: "T+2", v: "M-Pesa payouts" },
-                  { k: "5%", v: "fee paid by you" },
+                  { k: "3.5%", v: "buyer service fee" },
                 ].map((stat) => (
                   <div key={stat.v}>
                     <p className="font-display text-2xl font-bold text-foreground">{stat.k}</p>

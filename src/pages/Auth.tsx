@@ -16,6 +16,7 @@ const Auth = () => {
   const { user } = useAuth();
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
   const redirect = params.get("redirect") || "/account";
+  const pendingOrgName = params.get("org")?.trim() || sessionStorage.getItem("pendingOrgName")?.trim() || "";
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +29,10 @@ const Auth = () => {
   useEffect(() => {
     if (user) navigate(redirect, { replace: true });
   }, [user, navigate, redirect]);
+
+  useEffect(() => {
+    if (pendingOrgName) sessionStorage.setItem("pendingOrgName", pendingOrgName);
+  }, [pendingOrgName]);
 
   const switchMode = (m: "signin" | "signup") => {
     setMode(m);
@@ -52,6 +57,7 @@ const Auth = () => {
             fullName,
             country,
             marketingOptIn,
+            orgName: pendingOrgName || undefined,
             redirectTo: verificationRedirect,
           },
         });
@@ -134,7 +140,11 @@ const Auth = () => {
                 {mode === "signin" ? "Welcome back" : "Create your account"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {mode === "signin" ? "Sign in to access your tickets." : "Free forever for attendees."}
+                {mode === "signin"
+                  ? "Sign in to access your tickets."
+                  : pendingOrgName
+                    ? `Create your account for ${pendingOrgName}.`
+                    : "Free forever for attendees."}
               </p>
 
               <Button type="button" variant="outline" className="mt-6 w-full" onClick={handleGoogle} disabled={loading}>

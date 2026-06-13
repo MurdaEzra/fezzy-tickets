@@ -35,7 +35,7 @@ const Terms = () => (
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Tickets are issued as QR-encoded digital passes. You are responsible for keeping them secure; screenshots and printed copies are accepted at the gate, but the first valid scan wins.</li>
             <li>All ticket sales are between you and the Organizer. The refund window, transfer rules, and entry policy are set by the Organizer and published on the event page.</li>
-            <li>You agree that buyers pay no service or processing fees on top of the listed ticket price.</li>
+            <li>You agree that a 3.5% buyer service fee is added to the listed ticket subtotal during checkout.</li>
             <li>You must not resell tickets above face value unless the Organizer explicitly authorizes it. Tickets sold or transferred outside Fezzy may be invalidated without refund.</li>
             <li>Entry is subject to the Organizer's house rules, venue rules, and applicable law. Refusal of entry by the Organizer or venue is not refundable by Fezzy.</li>
           </ul>
@@ -47,7 +47,7 @@ const Terms = () => (
             <li>You are solely responsible for the event you list — licensing, safety, insurance, taxes, age restrictions, refund handling, and delivery of the experience promised.</li>
             <li>You must accurately describe the event, venue, dates, tier inclusions, capacity, and refund policy.</li>
             <li>You must hold all rights necessary to use the images, music, names, trademarks, and other assets you upload (including posters and banners). Fezzy may remove content that infringes third-party rights.</li>
-            <li>Your first published event has a 0% platform fee. From your second published event onward, the platform fee is locked at 10% of each ticket sale; this is deducted from your share automatically at payout. Buyers always pay zero service fees.</li>
+            <li>Fezzy applies a 3.5% buyer service fee to ticket orders during checkout.</li>
             <li>Payouts are split instantly at the moment of payment using Paystack subaccounts. Fezzy does not hold organizer funds.</li>
             <li>You authorize Fezzy to send your buyers ticket-delivery and event-update emails on your behalf, and to display your event and brand on the public marketplace and partner channels.</li>
             <li>You must not list illegal, prohibited, dangerous, hateful, or fraudulent events. Fezzy may unlist any event at its sole discretion, including post-publication.</li>
@@ -57,8 +57,8 @@ const Terms = () => (
         <section>
           <h2 className="font-display text-2xl font-bold text-foreground">6. Fees & payments</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>Buyers pay only the listed ticket price. There are no service fees on top.</li>
-            <li>The platform fee on Organizer payouts is 0% on the first event and 10% thereafter, deducted at the moment of payment.</li>
+            <li>Buyers pay the listed ticket subtotal plus a 3.5% buyer service fee.</li>
+            <li>The buyer service fee is calculated from the ticket subtotal and shown before payment.</li>
             <li>Payment-processor fees charged by Paystack are deducted from the Organizer's share unless explicitly noted otherwise.</li>
             <li>All prices are denominated in Kenyan Shillings (KES) unless stated otherwise. Currency conversion, if any, is performed by the payment processor at the rate in effect at the time of payment.</li>
           </ul>
@@ -70,7 +70,7 @@ const Terms = () => (
             <li>If an Organizer cancels an event, the Organizer is responsible for refunding ticket holders. Fezzy will assist in processing the refund through Paystack.</li>
             <li>If an Organizer postpones an event, existing tickets remain valid for the rescheduled date unless the Organizer publishes a different policy.</li>
             <li>Buyer-initiated refunds are subject to the refund window the Organizer sets on the event page.</li>
-            <li>Fezzy is not liable to refund the platform fee on events that were already fulfilled or that were materially delivered as described.</li>
+            <li>Fezzy is not liable to refund service fees on events that were already fulfilled or that were materially delivered as described.</li>
           </ul>
         </section>
 
@@ -86,7 +86,7 @@ const Terms = () => (
 
         <section>
           <h2 className="font-display text-2xl font-bold text-foreground">10. Disclaimer & liability</h2>
-          <p className="mt-3">The service is provided "as is" without warranties of any kind. To the maximum extent permitted by law, Fezzy is not liable for indirect, incidental, consequential, special, or exemplary damages, or for any loss arising from cancelled, postponed, or poorly run events. Our aggregate liability to you for any claim arising from the service shall not exceed the amount of platform fees you paid to Fezzy in the 12 months preceding the claim.</p>
+          <p className="mt-3">The service is provided "as is" without warranties of any kind. To the maximum extent permitted by law, Fezzy is not liable for indirect, incidental, consequential, special, or exemplary damages, or for any loss arising from cancelled, postponed, or poorly run events. Our aggregate liability to you for any claim arising from the service shall not exceed the amount of service fees you paid to Fezzy in the 12 months preceding the claim.</p>
         </section>
 
         <section>

@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
       fullName,
       country,
       marketingOptIn,
+      orgName,
       redirectTo,
     } = await req.json();
 
@@ -88,6 +89,7 @@ Deno.serve(async (req) => {
         full_name: fullName ?? "",
         country: country ?? "",
         marketing_opt_in: Boolean(marketingOptIn),
+        org_name: orgName ?? "",
       },
     });
 
@@ -105,7 +107,7 @@ Deno.serve(async (req) => {
       throw createError;
     }
 
-    const verificationRedirect = redirectTo || `${req.headers.get("origin") || "https://fezzy-tickets.vercel.app"}/account`;
+    const verificationRedirect = redirectTo || `${req.headers.get("origin") || "https://fezzytickets.com"}/account`;
 
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: "magiclink",

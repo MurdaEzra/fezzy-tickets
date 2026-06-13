@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchEventBySlug, fetchTiers, formatEventDateLong, formatPrice } from "@/lib/eventsApi";
+import { BUYER_FEE_LABEL, isEventDue } from "@/lib/pricing";
 
 interface EventLike {
   id: string;
@@ -76,6 +77,7 @@ const Checkout = () => {
   }, [user]);
 
   const tier = evt?.tiers[tierIdx] ?? evt?.tiers[0];
+  const salesClosed = evt ? isEventDue(evt.date) : false;
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +87,11 @@ const Checkout = () => {
         body: { eventId: evt.id, tierId: tier.id, quantity: qty },
       });
       if (!cancelled && !error && data) setCalc(data as typeof calc);
+      if (!cancelled && (error || (data as { error?: string } | null)?.error)) {
+        toast.error("Checkout unavailable", {
+          description: (data as { error?: string } | null)?.error ?? error?.message ?? "Please try again.",
+        });
+      }
     })();
     return () => { cancelled = true; };
   }, [evt, tier?.id, qty]);
@@ -92,6 +99,10 @@ const Checkout = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!evt || !tier?.id) return;
+    if (salesClosed) {
+      toast.error("Ticket sales are closed for this event.");
+      return;
+    }
     if (!agreedTerms) {
       toast.error("Please accept the Terms and Privacy Policy to continue.");
       return;
@@ -222,9 +233,13 @@ const Checkout = () => {
                 </label>
               </div>
 
-              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc || !agreedTerms}>
+              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={processing || !calc || !agreedTerms || salesClosed}>
                 {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {processing ? 'Redirecting to Paystack…' : `Pay ${calc ? formatPrice(calc.total) : '...'} with ${paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Card'}`}
+                {salesClosed
+                  ? "Ticket sales closed"
+                  : processing
+                    ? 'Redirecting to Paystack…'
+                    : `Pay ${calc ? formatPrice(calc.total) : '...'} with ${paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Card'}`}
               </Button>
             </form>
 
@@ -250,11 +265,19 @@ const Checkout = () => {
                   <div className="flex justify-between text-muted-foreground">
                     <dt>Subtotal</dt><dd className="text-foreground">{calc ? formatPrice(calc.subtotal) : '...'}</dd>
                   </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <dt>{BUYER_FEE_LABEL} (3.5%)</dt><dd className="text-foreground">{calc ? formatPrice(calc.fee) : '...'}</dd>
+                  </div>
                   <div className="flex justify-between border-t border-border pt-3">
                     <dt className="font-semibold text-foreground">You pay</dt>
                     <dd className="font-display text-xl font-bold text-foreground">{calc ? formatPrice(calc.total) : '...'}</dd>
                   </div>
                 </dl>
+                {salesClosed && (
+                  <p className="mt-4 rounded-xl bg-destructive/10 p-3 text-xs font-medium text-destructive">
+                    Ticket sales are closed because this event has started.
+                  </p>
+                )}
               </div>
             </aside>
           </div>

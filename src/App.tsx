@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound.tsx";
 import PaymentCallback from "./pages/PaymentCallback.tsx";
 import ShareRedirect from "./pages/ShareRedirect.tsx";
 import InviteAccept from "./pages/InviteAccept.tsx";
+import StartSelling from "./pages/StartSelling.tsx";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/events/:slug" element={<EventDetail />} />
             <Route path="/events/:slug/checkout" element={<Checkout />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/start-selling" element={<StartSelling />} />
             <Route path="/account" element={<Account />} />
             <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
             <Route path="/dashboard" element={<OrganizerDashboard />} />

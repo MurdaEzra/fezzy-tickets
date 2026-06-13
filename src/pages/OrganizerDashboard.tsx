@@ -159,7 +159,7 @@ const OrganizerDashboard = () => {
               Become an <span className="script font-normal text-primary text-[1.2em]">organizer</span>
             </h1>
             <p className="mt-3 text-muted-foreground">
-              Set up your organization to start publishing events. Your first event has 0% platform fee — buyers pay no service fees on any event you run.
+              Set up your organization to start publishing events. Buyers pay a 3.5% service fee during checkout.
             </p>
             <form onSubmit={createProfile} className="mt-6 space-y-4">
               <div>
@@ -179,7 +179,7 @@ const OrganizerDashboard = () => {
   const initials = profile.org_name.slice(0, 2).toUpperCase();
   const isFirstEvent = profile.events_published_count === 0;
   const feeChip = profile.fee_locked_pct === null
-    ? "First event · 0% fee"
+    ? "3.5% buyer fee"
     : `${profile.fee_locked_pct}% platform fee`;
 
   return (
@@ -307,8 +307,8 @@ const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: Or
       <div className="flex items-center gap-3 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/15 to-primary/5 p-5 shadow-card-soft">
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-acacia text-2xl text-primary-foreground shadow-acacia">🎉</div>
         <div className="flex-1">
-          <p className="font-display text-base font-bold text-foreground">First event = 0% platform fee</p>
-          <p className="text-sm text-muted-foreground">Once you publish, your fee is locked at 10% on every future sale.</p>
+          <p className="font-display text-base font-bold text-foreground">Buyer-paid service fee</p>
+          <p className="text-sm text-muted-foreground">Buyers pay a 3.5% service fee during checkout.</p>
         </div>
       </div>
     )}

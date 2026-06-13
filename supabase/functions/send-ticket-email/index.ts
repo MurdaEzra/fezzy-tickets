@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { qrcode } from "https://deno.land/x/qrcode@v2.0.0/mod.ts";
 
 const ALLOWED_ORIGINS = [
-  "https://fezzy-tickets.vercel.app",
+  "https://fezzytickets.com",
   "http://localhost:8080",
 ];
 
@@ -354,4 +354,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
