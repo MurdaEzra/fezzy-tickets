@@ -19,6 +19,7 @@ import {
   type DbOrganizer,
   type DbTier,
 } from "@/lib/eventsApi";
+import { BUYER_FEE_LABEL, calculateBuyerFee, calculateBuyerTotal, isEventDue } from "@/lib/pricing";
 
 const EventDetail = () => {
   const { slug } = useParams();
@@ -70,9 +71,11 @@ const EventDetail = () => {
   const tier = tiers[selectedTier];
   const remaining = tier ? ticketsRemaining(tier) : 0;
   const subtotal = tier ? tier.price_kes * qty : 0;
-  const total = subtotal;
+  const buyerFee = calculateBuyerFee(subtotal);
+  const total = calculateBuyerTotal(subtotal);
+  const salesClosed = event ? isEventDue(event.starts_at) : false;
   const goCheckout = () => {
-    if (!event || !tier || remaining < 1) return;
+    if (!event || !tier || remaining < 1 || salesClosed) return;
     navigate(`/events/${event.slug}/checkout?tier=${selectedTier}&qty=${qty}`);
   };
 
@@ -216,7 +219,11 @@ const EventDetail = () => {
                 </div>
               </div>
 
-              {tiers.length === 0 ? (
+              {salesClosed ? (
+                <div className="mt-5 rounded-2xl border border-dashed border-border bg-background p-5 text-sm text-muted-foreground">
+                  Ticket sales are closed because this event has started.
+                </div>
+              ) : tiers.length === 0 ? (
                 <div className="mt-5 rounded-2xl border border-dashed border-border bg-background p-5 text-sm text-muted-foreground">
                   Tickets are not on sale yet.
                 </div>
@@ -275,16 +282,20 @@ const EventDetail = () => {
                       <dt>Subtotal</dt>
                       <dd className="font-medium text-foreground">{formatPrice(subtotal)}</dd>
                     </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <dt>{BUYER_FEE_LABEL} (3.5%)</dt>
+                      <dd className="font-medium text-foreground">{formatPrice(buyerFee)}</dd>
+                    </div>
                     <div className="flex justify-between border-t border-border pt-3">
                       <dt className="font-semibold text-foreground">You pay</dt>
                       <dd className="font-display text-xl font-bold text-foreground">{formatPrice(total)}</dd>
                     </div>
                     <p className="rounded-xl bg-primary/10 p-2.5 text-[11px] leading-snug text-primary">
-                      No buyer fees. The organizer covers the platform fee.
+                      A 3.5% buyer service fee is added at checkout.
                     </p>
                   </dl>
 
-                  <Button variant="acacia" size="lg" className="mt-6 w-full" onClick={goCheckout} disabled={!tier || remaining < 1}>
+                  <Button variant="acacia" size="lg" className="mt-6 w-full" onClick={goCheckout} disabled={!tier || remaining < 1 || salesClosed}>
                     Get tickets
                   </Button>
                   <p className="mt-3 text-center text-[11px] text-muted-foreground">

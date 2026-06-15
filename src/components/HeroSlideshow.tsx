@@ -86,7 +86,7 @@ const HeroSlideshow = () => {
         </div>
 
         {/* Slideshow banner */}
-        <div className="relative animate-fade-up" style={{ animationDelay: "120ms" }}>
+        <div className="relative hidden animate-fade-up md:block" style={{ animationDelay: "120ms" }}>
           <div className="overflow-hidden rounded-[2rem] border border-border shadow-soft" ref={emblaRef}>
             <div className="flex">
               {slides.length === 0 ? (

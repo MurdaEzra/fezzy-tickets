@@ -43,7 +43,7 @@ describe("Checkout page (frontend)", () => {
     invokeMock.mockReset();
     invokeMock.mockImplementation(async (name: string) => {
       if (name === "calculate-order") {
-        return { data: { subtotal: 1000, fee: 50, total: 1000 }, error: null };
+        return { data: { subtotal: 1000, fee: 35, total: 1035, feePct: 3.5 }, error: null };
       }
       return { data: { error: "Payment unavailable" }, error: null };
     });
@@ -58,6 +58,8 @@ describe("Checkout page (frontend)", () => {
       </MemoryRouter>
     );
     expect(await screen.findByText(/Test Event/)).toBeInTheDocument();
+    expect(await screen.findByText("KES 35")).toBeInTheDocument();
+    expect(screen.getByText("KES 1035")).toBeInTheDocument();
     expect(screen.getByLabelText(/Full name/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
     expect(screen.getByLabelText(/M-Pesa phone/)).toBeInTheDocument();

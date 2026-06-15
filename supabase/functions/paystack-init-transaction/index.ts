@@ -11,6 +11,7 @@ const corsHeaders = {
 };
 
 const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+const BUYER_FEE_RATE = 0.035;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -38,10 +39,13 @@ Deno.serve(async (req) => {
 
     // Fetch event + tier + organizer subaccount + fee
     const [{ data: event }, { data: tier }] = await Promise.all([
-      admin.from("events").select("id, title, organizer_id, fee_waived").eq("id", eventId).maybeSingle(),
+      admin.from("events").select("id, title, organizer_id, starts_at, status").eq("id", eventId).maybeSingle(),
       admin.from("ticket_tiers").select("id, name, price_kes, sold, quantity, event_id").eq("id", tierId).maybeSingle(),
     ]);
-    if (!event || !tier || tier.event_id !== event.id) return json({ error: "Invalid event/tier" }, 400);
+    if (!event || !tier || tier.event_id !== event.id || event.status !== "published") return json({ error: "Invalid event/tier" }, 400);
+    if (new Date(event.starts_at).getTime() <= Date.now()) {
+      return json({ error: "Ticket sales are closed for this event" }, 409);
+    }
     if (quantity < 1 || tier.sold + quantity > tier.quantity) {
       return json({ error: "Not enough tickets remaining" }, 400);
     }
@@ -54,8 +58,8 @@ Deno.serve(async (req) => {
     if (!organizer) return json({ error: "Organizer not found" }, 400);
 
     const subtotal = tier.price_kes * quantity;
-    const feePct = event.fee_waived ? 0 : (organizer.fee_locked_pct ?? 5);
-    const organizerFee = Math.round((subtotal * feePct) / 100);
+    const buyerFee = Math.round(subtotal * BUYER_FEE_RATE);
+    const total = subtotal + buyerFee;
 
     // Try to attach the user from the auth header (if any) — not required.
     let userId: string | null = null;
@@ -81,9 +85,9 @@ Deno.serve(async (req) => {
         guest_email: email,
         guest_phone: phone ?? "",
         subtotal_kes: subtotal,
-        total_kes: subtotal,
-        organizer_fee_kes: organizerFee,
-        fee_waived: event.fee_waived,
+        total_kes: total,
+        organizer_fee_kes: buyerFee,
+        fee_waived: false,
         payment_method: paymentMethod,
         status: "pending",
       })
@@ -95,7 +99,7 @@ Deno.serve(async (req) => {
 
     const initBody: Record<string, unknown> = {
       email,
-      amount: subtotal * 100, // Paystack works in the lowest currency unit
+      amount: total * 100, // Paystack works in the lowest currency unit
       currency: "KES",
       reference,
       callback_url: callbackUrl,
@@ -104,10 +108,12 @@ Deno.serve(async (req) => {
         event_id: eventId,
         tier_id: tierId,
         quantity,
+        buyer_fee_kes: buyerFee,
         payment_method: paymentMethod,
         custom_fields: [
           { display_name: "Event", variable_name: "event", value: event.title },
           { display_name: "Tickets", variable_name: "tickets", value: `${quantity} × ${tier.name}` },
+          { display_name: "Buyer service fee", variable_name: "buyer_service_fee", value: `${buyerFee}` },
           { display_name: "Payment method", variable_name: "payment_method", value: paymentMethod },
         ],
       },
@@ -147,7 +153,7 @@ Deno.serve(async (req) => {
     await admin.from("payments").insert({
       order_id: order.id,
       provider: "paystack",
-      amount_kes: subtotal,
+      amount_kes: total,
       phone: phone ?? "",
       status: "pending",
       paystack_reference: reference,

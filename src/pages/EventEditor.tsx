@@ -62,8 +62,6 @@ const EventEditor = () => {
   const [tiers, setTiers] = useState<TierDraft[]>([
     { name: "General", price_kes: 1500, quantity: 100, description: "" },
   ]);
-  const [feeWaived, setFeeWaived] = useState(false);
-  const [eventsPublishedCount, setEventsPublishedCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth?mode=signin&redirect=/dashboard", { replace: true });
@@ -73,13 +71,9 @@ const EventEditor = () => {
     if (!user) return;
     (async () => {
       const { data: prof } = await supabase.from("organizer_profiles")
-        .select("id, events_published_count").eq("user_id", user.id).maybeSingle();
+        .select("id").eq("user_id", user.id).maybeSingle();
       if (!prof) { navigate("/dashboard"); return; }
       setOrganizerId(prof.id);
-      setEventsPublishedCount(prof.events_published_count);
-      // Default fee_waived for first event
-      if (isNew) setFeeWaived(prof.events_published_count === 0);
-
       if (!isNew && id) {
         const { data: ev, error } = await supabase.from("events").select("*").eq("id", id).maybeSingle();
         if (error || !ev) { toast.error("Event not found"); navigate("/dashboard"); return; }
@@ -99,8 +93,6 @@ const EventEditor = () => {
         setShowLogo(td.showLogo ?? true);
         setShowQR(td.showQR ?? true);
         setShowDate(td.showDate ?? true);
-        setFeeWaived(ev.fee_waived);
-
         const { data: ts } = await supabase.from("ticket_tiers").select("*").eq("event_id", id).order("sort_order");
         if (ts && ts.length) {
           setTiers(ts.map((t) => ({ id: t.id, name: t.name, price_kes: t.price_kes, quantity: t.quantity, description: t.description ?? "" })));
@@ -137,7 +129,7 @@ const EventEditor = () => {
         ends_at: endsAt ? new Date(endsAt).toISOString() : null,
         is_stream: isStream, stream_url: isStream ? streamUrl : null,
         ticket_design: { theme, accent, pattern, seatLabel, seatArrangement, showLogo, showQR, showDate },
-        fee_waived: feeWaived,
+        fee_waived: false,
         status: publish ? "published" as const : "draft" as const,
       };
 
@@ -210,12 +202,6 @@ const EventEditor = () => {
             Save draft
           </Button>
         </div>
-
-        {feeWaived && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-xs font-bold text-accent-foreground">
-             First-event bonus active 0% platform fee on this event
-          </div>
-        )}
 
         {/* Tab nav */}
         <div className="mt-8 flex flex-wrap gap-1 rounded-2xl border border-border bg-card p-1">
@@ -435,12 +421,10 @@ const EventEditor = () => {
               </ul>
               <div className="mt-6 rounded-2xl bg-primary/[0.07] p-4 text-sm">
                 <p className="font-semibold text-foreground">
-                  Platform fee on this event: <span className="text-primary">{feeWaived ? "0% (waived)" : "10% of each ticket"}</span>
+                  Buyer service fee: <span className="text-primary">3.5% of each ticket order</span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {feeWaived
-                    ? "Your first event is on us — no platform fee."
-                    : "Deducted from your payout. Buyers always pay zero service fees."}
+                  Added to the buyer's checkout total and shown before payment.
                 </p>
               </div>
               <Button variant="acacia" size="lg" className="mt-6 w-full" disabled={saving} onClick={async () => {
