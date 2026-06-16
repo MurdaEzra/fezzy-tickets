@@ -19,6 +19,7 @@ import { FEZZY_LOGO_URL } from "@/lib/brand";
 import { createOrganizerAdminInvite } from "@/lib/organizerInvites";
 import PayoutSetup from "./dashboard/PayoutSetup";
 import SharePanel from "@/components/dashboard/SharePanel";
+import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 import { toast } from "sonner";
 
 interface OrgProfile {
@@ -71,7 +72,21 @@ const OrganizerDashboard = () => {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth?mode=signin&redirect=/dashboard", { replace: true });
+      return;
     }
+    if (!user) return;
+    (async () => {
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      const roleList = (roles ?? []).map((r) => r.role);
+      if (roleList.includes("super_admin") || roleList.includes("admin")) return;
+
+      const access = await getOrganizerAccessStatus(user.id);
+      if (access === "pending" || access === "rejected") {
+        navigate("/application-pending", { replace: true });
+      } else if (access === "none") {
+        navigate("/start-selling", { replace: true });
+      }
+    })();
   }, [user, authLoading, navigate]);
 
   useEffect(() => {

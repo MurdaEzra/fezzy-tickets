@@ -218,6 +218,48 @@ export type Database = {
           },
         ]
       }
+      organizer_approval_requests: {
+        Row: {
+          country: string
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          marketing_opt_in: boolean
+          org_name: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["organizer_approval_status"]
+          user_id: string
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          marketing_opt_in?: boolean
+          org_name: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["organizer_approval_status"]
+          user_id: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          marketing_opt_in?: boolean
+          org_name?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["organizer_approval_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       organizer_profiles: {
         Row: {
           bio: string | null
@@ -572,6 +614,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "organizer" | "attendee" | "super_admin"
+      organizer_approval_status: "pending" | "approved" | "rejected"
       event_status: "draft" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
       ticket_status: "valid" | "used" | "refunded" | "cancelled"
@@ -703,6 +746,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "organizer", "attendee", "super_admin"],
+      organizer_approval_status: ["pending", "approved", "rejected"],
       event_status: ["draft", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
       ticket_status: ["valid", "used", "refunded", "cancelled"],

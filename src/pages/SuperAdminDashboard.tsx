@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2, Shield, Users, Calendar, Ticket, ExternalLink } from "lucide-react";
+import { Loader2, Shield, Users, Calendar, Ticket, ExternalLink, ClipboardCheck } from "lucide-react";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -28,15 +28,27 @@ interface OrderRow {
   guest_name: string;
 }
 
+interface ApprovalRow {
+  id: string;
+  org_name: string;
+  full_name: string | null;
+  email: string;
+  country: string;
+  status: string;
+  created_at: string;
+}
+
 const SuperAdminDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<null | boolean>(null);
-  const [tab, setTab] = useState<"overview" | "events" | "orders" | "organizers">("overview");
+  const [tab, setTab] = useState<"overview" | "approvals" | "events" | "orders" | "organizers">("overview");
   const [events, setEvents] = useState<EventRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [organizers, setOrganizers] = useState<{ id: string; org_name: string; events_published_count: number; contact_email: string | null; fee_locked_pct: number | null; paystack_subaccount_code: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -53,14 +65,16 @@ const SuperAdminDashboard = () => {
       const ok = roles.includes("super_admin") || roles.includes("admin");
       setAuthorized(ok);
       if (!ok) return;
-      const [{ data: evts }, { data: ords }, { data: orgs }] = await Promise.all([
+      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }] = await Promise.all([
         supabase.from("events").select("id, title, status, slug, starts_at, organizer_id").order("created_at", { ascending: false }).limit(50),
         supabase.from("orders").select("id, total_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
         supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code").order("created_at", { ascending: false }),
+        supabase.from("organizer_approval_requests").select("id, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
       ]);
       setEvents((evts ?? []) as EventRow[]);
       setOrders((ords ?? []) as OrderRow[]);
       setOrganizers((orgs ?? []) as typeof organizers);
+      setApprovals((pending ?? []) as ApprovalRow[]);
       setLoading(false);
     })();
   }, [user, authLoading, navigate]);
@@ -79,6 +93,36 @@ const SuperAdminDashboard = () => {
     setEvents((es) => es.filter((e) => e.id !== id));
     toast.success("Event deleted");
   };
+
+  const reviewApproval = async (requestId: string, action: "approve" | "reject") => {
+    setReviewingId(requestId);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-organizer-request", {
+        body: { requestId, action },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setApprovals((rows) =>
+        rows.map((r) => (r.id === requestId ? { ...r, status: action === "approve" ? "approved" : "rejected" } : r))
+      );
+      if (action === "approve") {
+        const { data: orgs } = await supabase
+          .from("organizer_profiles")
+          .select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code")
+          .order("created_at", { ascending: false });
+        setOrganizers((orgs ?? []) as typeof organizers);
+      }
+      toast.success(action === "approve" ? "Organizer approved — access email sent" : "Application rejected");
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error(e.message ?? "Review failed");
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const pendingCount = approvals.filter((a) => a.status === "pending").length;
 
   if (authLoading || authorized === null) {
     return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -121,7 +165,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2 border-b border-border">
-          {(["overview", "events", "orders", "organizers"] as const).map((t) => (
+          {(["overview", "approvals", "events", "orders", "organizers"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -129,7 +173,12 @@ const SuperAdminDashboard = () => {
                 tab === t ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t}
+              {t === "approvals" ? "Approvals" : t}
+              {t === "approvals" && pendingCount > 0 && (
+                <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {pendingCount}
+                </span>
+              )}
               {tab === t && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />}
             </button>
           ))}
@@ -163,6 +212,68 @@ const SuperAdminDashboard = () => {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {tab === "approvals" && (
+                <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
+                  <table className="w-full text-sm">
+                    <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Organization</th>
+                        <th className="px-4 py-3 text-left">Applicant</th>
+                        <th className="px-4 py-3 text-left">Email</th>
+                        <th className="px-4 py-3 text-left">Status</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {approvals.map((a) => (
+                        <tr key={a.id} className="border-t border-border">
+                          <td className="px-4 py-3 font-semibold">{a.org_name}</td>
+                          <td className="px-4 py-3">{a.full_name ?? "—"}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{a.email}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${
+                              a.status === "pending" ? "bg-amber-100 text-amber-800" :
+                              a.status === "approved" ? "bg-primary/15 text-primary" :
+                              "bg-destructive/15 text-destructive"
+                            }`}>
+                              {a.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {a.status === "pending" ? (
+                              <div className="inline-flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="acacia"
+                                  disabled={reviewingId === a.id}
+                                  onClick={() => reviewApproval(a.id, "approve")}
+                                >
+                                  {reviewingId === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardCheck className="h-3 w-3" />}
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={reviewingId === a.id}
+                                  onClick={() => reviewApproval(a.id, "reject")}
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Reviewed</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {approvals.length === 0 && (
+                        <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No organizer applications yet.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
 

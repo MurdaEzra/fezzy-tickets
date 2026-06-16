@@ -68,8 +68,7 @@ const PaymentCallback = () => {
                 <span>We've emailed your ticket(s) with QR codes. Show the QR at the gate — screenshots work too.</span>
               </div>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Button variant="acacia" size="lg" asChild><Link to="/account">View my tickets</Link></Button>
-                <Button variant="outline" size="lg" asChild><Link to="/events">Browse more events</Link></Button>
+                <Button variant="acacia" size="lg" asChild><Link to="/events">Browse more events</Link></Button>
               </div>
             </>
           )}
@@ -78,7 +77,7 @@ const PaymentCallback = () => {
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
               <h1 className="display mt-6 text-3xl">Still confirming</h1>
               <p className="mt-2 text-muted-foreground">It's taking longer than usual — we'll email you the moment your tickets are ready.</p>
-              <Button variant="outline" className="mt-6" asChild><Link to="/account">Go to my account</Link></Button>
+              <Button variant="outline" className="mt-6" asChild><Link to="/events">Browse events</Link></Button>
             </>
           )}
           {status === "failed" && (

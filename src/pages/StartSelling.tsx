@@ -14,7 +14,12 @@ const StartSelling = () => {
   const [orgName, setOrgName] = useState("");
 
   useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
+    if (user) {
+      getOrganizerAccessStatus(user.id).then((access) => {
+        if (access === "approved") navigate("/dashboard", { replace: true });
+        else if (access === "pending" || access === "rejected") navigate("/application-pending", { replace: true });
+      });
+    }
   }, [user, navigate]);
 
   const submit = (event: React.FormEvent) => {
@@ -36,7 +41,7 @@ const StartSelling = () => {
               Name your <span className="script font-normal text-primary text-[1.2em]">organization</span>
             </h1>
             <p className="mt-3 text-muted-foreground">
-              This name will be used for your organizer profile after you create your account.
+              This name will appear on your organizer profile. After you apply, our team will review your request before you can access the dashboard.
             </p>
             <form onSubmit={submit} className="mt-7 space-y-4">
               <div>

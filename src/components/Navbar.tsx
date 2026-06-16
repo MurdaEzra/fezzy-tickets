@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, Ticket, X, LogOut, User as UserIcon, Shield } from "lucide-react";
+import { Menu, Ticket, X, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
+import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -20,6 +21,7 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [atTop, setAtTop] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -31,10 +33,17 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) { setIsAdmin(false); return; }
+    if (!user) {
+      setIsAdmin(false);
+      setIsOrganizer(false);
+      return;
+    }
     supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
       const roles = (data ?? []).map((r) => r.role);
       setIsAdmin(roles.includes("super_admin") || roles.includes("admin"));
+    });
+    getOrganizerAccessStatus(user.id).then((status) => {
+      setIsOrganizer(status === "approved");
     });
   }, [user]);
 
@@ -51,7 +60,6 @@ const Navbar = () => {
     >
       <div className="container-px mx-auto flex h-16 max-w-7xl items-center justify-between">
         <Link to="/" className="group flex items-center gap-2.5">
-
           <div
             className="flex items gap-2 cursor-pointer"
             onClick={() => navigate('landing')}>
@@ -60,7 +68,6 @@ const Navbar = () => {
               alt="Lashawn Driving & Computer College"
               className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
           </div>  
-          
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -90,12 +97,11 @@ const Navbar = () => {
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">{user.email}</div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/account")}>
-                  <UserIcon className="mr-2 h-4 w-4" /> My account
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                  <Ticket className="mr-2 h-4 w-4" /> Organizer dashboard
-                </DropdownMenuItem>
+                {isOrganizer && (
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <Ticket className="mr-2 h-4 w-4" /> Organizer dashboard
+                  </DropdownMenuItem>
+                )}
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")}>
                     <Shield className="mr-2 h-4 w-4" /> Super admin
@@ -110,10 +116,10 @@ const Navbar = () => {
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/auth?mode=signin">Sign in</Link>
+                <Link to="/auth?mode=signin">Organizer sign in</Link>
               </Button>
               <Button variant="acacia" size="sm" asChild>
-                <Link to="/auth?mode=signup">Get started</Link>
+                <Link to="/start-selling">Sell tickets</Link>
               </Button>
             </>
           )}
@@ -152,7 +158,7 @@ const Navbar = () => {
                     <Link to="/auth?mode=signin" onClick={() => setOpen(false)}>Sign in</Link>
                   </Button>
                   <Button variant="acacia" className="flex-1" asChild>
-                    <Link to="/auth?mode=signup" onClick={() => setOpen(false)}>Get started</Link>
+                    <Link to="/start-selling" onClick={() => setOpen(false)}>Sell tickets</Link>
                   </Button>
                 </>
               )}

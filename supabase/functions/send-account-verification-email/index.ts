@@ -6,46 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function sendBrevoEmail({
-  recipientEmail,
-  subject,
-  htmlContent,
-}: {
-  recipientEmail: string;
-  subject: string;
-  htmlContent: string;
-}) {
-  const apiKey = Deno.env.get("BREVO_API_KEY");
-
-  if (!apiKey) {
-    throw new Error("BREVO_API_KEY not configured");
-  }
-
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "api-key": apiKey,
-    },
-    body: JSON.stringify({
-      sender: {
-        name: "Fezzy Tickets",
-        email: "tickets@fezzy.app",
-      },
-      to: [{ email: recipientEmail }],
-      subject,
-      htmlContent,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Brevo email failed");
-  }
-
-  return await response.json();
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -59,12 +19,21 @@ Deno.serve(async (req) => {
       country,
       marketingOptIn,
       orgName,
-      redirectTo,
     } = await req.json();
 
     if (!email || !password) {
       return new Response(
         JSON.stringify({ error: "Email and password are required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!orgName?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Organizer signup requires an organization name. Start at /start-selling." }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -89,7 +58,7 @@ Deno.serve(async (req) => {
         full_name: fullName ?? "",
         country: country ?? "",
         marketing_opt_in: Boolean(marketingOptIn),
-        org_name: orgName ?? "",
+        org_name: orgName.trim(),
       },
     });
 
@@ -107,52 +76,32 @@ Deno.serve(async (req) => {
       throw createError;
     }
 
-    const verificationRedirect = redirectTo || `${req.headers.get("origin") || "https://fezzytickets.com"}/account`;
+    const userId = createdUser?.user?.id;
+    if (!userId) {
+      throw new Error("User could not be created");
+    }
 
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "magiclink",
+    const { error: requestError } = await admin.from("organizer_approval_requests").insert({
+      user_id: userId,
+      org_name: orgName.trim(),
+      full_name: fullName ?? "",
       email,
-      options: {
-        redirectTo: verificationRedirect,
-      },
+      country: country ?? "Kenya",
+      marketing_opt_in: Boolean(marketingOptIn),
+      status: "pending",
     });
 
-    if (linkError) {
-      throw linkError;
+    if (requestError) {
+      await admin.auth.admin.deleteUser(userId);
+      throw requestError;
     }
-
-    const actionLink =
-      linkData?.properties?.action_link ||
-      linkData?.properties?.actionLink ||
-      linkData?.action_link;
-
-    if (!actionLink) {
-      throw new Error("Verification link could not be generated");
-    }
-
-    await sendBrevoEmail({
-      recipientEmail: email,
-      subject: "Verify your Fezzy Tickets account",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; color: #14213d; line-height: 1.5;">
-          <h2 style="margin-bottom: 8px;">Welcome to Fezzy Tickets</h2>
-          <p>Hi ${fullName || "there"},</p>
-          <p>Thanks for creating your account. Please verify your email address to finish setting up your profile.</p>
-          <p style="margin: 24px 0;">
-            <a href="${actionLink}" style="background:#1FAD66;color:#fff;text-decoration:none;padding:12px 18px;border-radius:999px;display:inline-block;">Verify email</a>
-          </p>
-          <p>If the button does not work, copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #2f6fed;">${actionLink}</p>
-          <p style="margin-top: 24px; font-size: 12px; color: #60708a;">This verification email was sent by Fezzy Tickets via Brevo.</p>
-        </div>
-      `,
-    });
 
     return new Response(
       JSON.stringify({
         ok: true,
-        userId: createdUser?.user?.id ?? null,
-        message: "Verification email sent",
+        userId,
+        pendingApproval: true,
+        message: "Application submitted for review",
       }),
       {
         status: 200,
@@ -162,7 +111,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Verification email could not be sent",
+        error: error instanceof Error ? error.message : "Signup could not be completed",
       }),
       {
         status: 500,
