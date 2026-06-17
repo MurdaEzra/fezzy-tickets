@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CreditCard, Loader2, Smartphone, Wallet, Shield } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Smartphone, Wallet } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,81 +9,79 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEventBySlug, fetchTiers, formatEventDateLong, formatPrice } from "@/lib/eventsApi";
-import { BUYER_FEE_LABEL, isEventDue } from "@/lib/pricing";
+import { useEventDetail, useEventTiers } from "@/hooks/useEvents";
+import { logActivity } from "@/lib/activityLog";
+import { formatEventDateLong, formatPrice } from "@/lib/eventsApi";
+import { BUYER_FEE_LABEL, BUYER_FEE_PCT, isEventDue } from "@/lib/pricing";
 
-interface EventLike {
-  id: string;
-  title: string;
-  slug: string;
-  image: string;
-  date: string;
-  venue: string;
-  city: string;
-  tiers: { id: string; name: string; price: number }[];
-}
+type TicketHolder = {
+  name: string;
+  email: string;
+  phone: string;
+};
+
+const emptyHolder = (): TicketHolder => ({ name: "", email: "", phone: "" });
 
 const Checkout = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: dbEvent, isLoading: eventLoading } = useEventDetail(slug);
+  const { data: tiers = [], isLoading: tiersLoading } = useEventTiers(dbEvent?.id);
 
-  const [evt, setEvt] = useState<EventLike | null>(null);
-  const [loading, setLoading] = useState(true);
   const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number }>({ subtotal: 0, fee: 0, total: 0 });
-
   const params = new URLSearchParams(window.location.search);
   const tierIdx = Number(params.get("tier") ?? 0);
-  const qty = Number(params.get("qty") ?? 1);
+  const qty = Math.max(1, Number(params.get("qty") ?? 1));
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [holders, setHolders] = useState<TicketHolder[]>(Array.from({ length: qty }, emptyHolder));
   const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "apple_pay">("mpesa");
   const [processing, setProcessing] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!slug) return;
-      const dbEvent = await fetchEventBySlug(slug).catch(() => null);
-      if (cancelled) return;
-      if (dbEvent) {
-        const tiers = await fetchTiers(dbEvent.id);
-        setEvt({
-          id: dbEvent.id,
-          title: dbEvent.title,
-          slug: dbEvent.slug,
-          image: dbEvent.cover_image_url ?? "",
-          date: dbEvent.starts_at,
-          venue: dbEvent.venue_name ?? "TBA",
-          city: dbEvent.city ?? "",
-          tiers: tiers.map((t) => ({ id: t.id, name: t.name, price: t.price_kes })),
-        });
-      }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [slug]);
+  const evt = useMemo(() => {
+    if (!dbEvent) return null;
+    return {
+      id: dbEvent.id,
+      title: dbEvent.title,
+      slug: dbEvent.slug,
+      image: dbEvent.cover_image_url ?? "",
+      date: dbEvent.starts_at,
+      venue: dbEvent.venue_name ?? "TBA",
+      city: dbEvent.city ?? "",
+      tiers: tiers.map((t) => ({ id: t.id, name: t.name, price: t.price_kes })),
+    };
+  }, [dbEvent, tiers]);
 
   useEffect(() => {
-    if (user) {
-      setEmail((e) => e || user.email || "");
-      const md = user.user_metadata as { full_name?: string } | undefined;
-      setName((n) => n || md?.full_name || "");
-    }
+    setHolders((prev) => {
+      const next = Array.from({ length: qty }, (_, i) => prev[i] ?? emptyHolder());
+      return next;
+    });
+  }, [qty]);
+
+  useEffect(() => {
+    if (!user) return;
+    const md = user.user_metadata as { full_name?: string } | undefined;
+    setHolders((prev) => {
+      if (!prev[0]) return prev;
+      const first = { ...prev[0] };
+      if (!first.email) first.email = user.email ?? "";
+      if (!first.name) first.name = md?.full_name ?? "";
+      return [first, ...prev.slice(1)];
+    });
   }, [user]);
 
   const tier = evt?.tiers[tierIdx] ?? evt?.tiers[0];
   const salesClosed = evt ? isEventDue(evt.date) : false;
+  const loading = eventLoading || tiersLoading;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!evt || !tier?.id) return;
-      const { data, error } = await supabase.functions.invoke('calculate-order', {
+      const { data, error } = await supabase.functions.invoke("calculate-order", {
         body: { eventId: evt.id, tierId: tier.id, quantity: qty },
       });
       if (!cancelled && !error && data) setCalc(data as typeof calc);
@@ -96,6 +94,10 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [evt, tier?.id, qty]);
 
+  const updateHolder = (index: number, field: keyof TicketHolder, value: string) => {
+    setHolders((prev) => prev.map((h, i) => (i === index ? { ...h, [field]: value } : h)));
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!evt || !tier?.id) return;
@@ -107,21 +109,34 @@ const Checkout = () => {
       toast.error("Please accept the Terms and Privacy Policy to continue.");
       return;
     }
-    if (paymentMethod === "mpesa" && !phone.trim()) {
-      toast.error("Please enter a phone number for M-Pesa payments.");
+
+    const normalized = holders.map((h) => ({
+      name: h.name.trim(),
+      email: h.email.trim(),
+      phone: h.phone.trim(),
+    }));
+
+    if (normalized.some((h) => !h.name || !h.email)) {
+      toast.error("Enter each ticket holder's name and email.");
       return;
     }
+    if (paymentMethod === "mpesa" && !normalized[0]?.phone) {
+      toast.error("Enter a phone number for the first ticket holder (used for M-Pesa).");
+      return;
+    }
+
     setProcessing(true);
     try {
       const callbackUrl = `${window.location.origin}/payment/callback`;
-      const { data, error } = await supabase.functions.invoke('paystack-init-transaction', {
+      const { data, error } = await supabase.functions.invoke("paystack-init-transaction", {
         body: {
           eventId: evt.id,
           tierId: tier.id,
           quantity: qty,
-          name,
-          email,
-          phone,
+          name: normalized[0].name,
+          email: normalized[0].email,
+          phone: normalized[0].phone,
+          holders: normalized,
           callbackUrl,
           method: paymentMethod,
           marketingOptIn,
@@ -129,14 +144,29 @@ const Checkout = () => {
       });
       const err = (data as { error?: string } | null)?.error ?? error?.message;
       if (err) {
+        await logActivity("checkout.failed", {
+          level: "error",
+          message: err,
+          metadata: { eventId: evt.id, tierId: tier.id, quantity: qty },
+          userId: user?.id,
+        });
         toast.error("Payment failed", { description: err });
         setProcessing(false);
         return;
       }
+
+      await logActivity("checkout.initiated", {
+        message: `Checkout for ${evt.title}`,
+        metadata: { eventId: evt.id, quantity: qty, paymentMethod },
+        userId: user?.id,
+      });
+
       const url = (data as { authorization_url: string }).authorization_url;
       window.location.href = url;
     } catch (err) {
-      toast.error("Payment failed", { description: (err as Error).message });
+      const message = (err as Error).message;
+      await logActivity("checkout.error", { level: "error", message, userId: user?.id });
+      toast.error("Payment failed", { description: message });
       setProcessing(false);
     }
   };
@@ -178,21 +208,54 @@ const Checkout = () => {
           <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
             <form onSubmit={submit} className="space-y-8">
               <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
-                <h2 className="font-display text-xl font-bold">Where should we send your tickets?</h2>
-                <p className="text-sm text-muted-foreground">Tickets with QR codes will be emailed to you instantly after payment.</p>
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="name">Full name</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="phone">Phone {paymentMethod === "mpesa" ? "(required for M-Pesa)" : "(optional)"}</Label>
-                    <Input id="phone" aria-label={paymentMethod === "mpesa" ? "M-Pesa phone" : "Phone"} placeholder="0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                  </div>
+                <h2 className="font-display text-xl font-bold">
+                  {qty > 1 ? "Ticket holder details" : "Where should we send your ticket?"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {qty > 1
+                    ? "Each ticket holder receives their own QR code by email."
+                    : "Your ticket with QR code will be emailed instantly after payment."}
+                </p>
+                <div className="mt-6 space-y-6">
+                  {holders.map((holder, index) => (
+                    <div key={index} className="rounded-2xl border border-border bg-background p-4">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Ticket {index + 1}
+                      </p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <Label htmlFor={`name-${index}`}>Full name</Label>
+                          <Input
+                            id={`name-${index}`}
+                            value={holder.name}
+                            onChange={(e) => updateHolder(index, "name", e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`email-${index}`}>Email</Label>
+                          <Input
+                            id={`email-${index}`}
+                            type="email"
+                            value={holder.email}
+                            onChange={(e) => updateHolder(index, "email", e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Label htmlFor={`phone-${index}`}>
+                            Phone {index === 0 && paymentMethod === "mpesa" ? "(required for M-Pesa)" : "(optional)"}
+                          </Label>
+                          <Input
+                            id={`phone-${index}`}
+                            placeholder="0712 345 678"
+                            value={holder.phone}
+                            onChange={(e) => updateHolder(index, "phone", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -200,9 +263,9 @@ const Checkout = () => {
                 <h2 className="font-display text-xl font-bold">Choose how to pay</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Select your preferred checkout method and continue to Paystack to complete payment.</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <PayBadge icon={Smartphone} label="M-Pesa" value="mpesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
-                  <PayBadge icon={CreditCard} label="Card" value="card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
-                  <PayBadge icon={Wallet} label="Apple" value="apple_pay" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
+                  <PayBadge icon={Smartphone} label="M-Pesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
+                  <PayBadge icon={CreditCard} label="Card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
+                  <PayBadge icon={Wallet} label="Apple" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
                 </div>
               </div>
 
@@ -238,8 +301,8 @@ const Checkout = () => {
                 {salesClosed
                   ? "Ticket sales closed"
                   : processing
-                    ? 'Redirecting to Paystack…'
-                    : `Pay ${calc ? formatPrice(calc.total) : '...'} with ${paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'apple_pay' ? 'Apple Pay' : 'Card'}`}
+                    ? "Redirecting to Paystack…"
+                    : `Pay ${calc ? formatPrice(calc.total) : "..."} with ${paymentMethod === "mpesa" ? "M-Pesa" : paymentMethod === "apple_pay" ? "Apple Pay" : "Card"}`}
               </Button>
             </form>
 
@@ -263,14 +326,14 @@ const Checkout = () => {
                 </div>
                 <dl className="mt-5 space-y-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <dt>Subtotal</dt><dd className="text-foreground">{calc ? formatPrice(calc.subtotal) : '...'}</dd>
+                    <dt>Subtotal</dt><dd className="text-foreground">{calc ? formatPrice(calc.subtotal) : "..."}</dd>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <dt>{BUYER_FEE_LABEL} (3.5%)</dt><dd className="text-foreground">{calc ? formatPrice(calc.fee) : '...'}</dd>
+                    <dt>{BUYER_FEE_LABEL} ({BUYER_FEE_PCT}%)</dt><dd className="text-foreground">{calc ? formatPrice(calc.fee) : "..."}</dd>
                   </div>
                   <div className="flex justify-between border-t border-border pt-3">
                     <dt className="font-semibold text-foreground">You pay</dt>
-                    <dd className="font-display text-xl font-bold text-foreground">{calc ? formatPrice(calc.total) : '...'}</dd>
+                    <dd className="font-display text-xl font-bold text-foreground">{calc ? formatPrice(calc.total) : "..."}</dd>
                   </div>
                 </dl>
                 {salesClosed && (
@@ -288,9 +351,9 @@ const Checkout = () => {
   );
 };
 
-const PayBadge = ({ icon: Icon, label, selected, onSelect, value }: { icon: typeof CreditCard; label: string; selected?: boolean; onSelect?: () => void; value: string }) => (
-  <button type="button" onClick={onSelect} className={`flex items-center gap-2 rounded-2xl border p-3 text-sm transition ${selected ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/80'}`}>
-    <span className={`grid h-8 w-8 place-items-center rounded-full ${selected ? 'bg-primary text-background' : 'bg-foreground text-background'}`}>
+const PayBadge = ({ icon: Icon, label, selected, onSelect }: { icon: typeof CreditCard; label: string; selected?: boolean; onSelect?: () => void }) => (
+  <button type="button" onClick={onSelect} className={`flex items-center gap-2 rounded-2xl border p-3 text-sm transition ${selected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/80"}`}>
+    <span className={`grid h-8 w-8 place-items-center rounded-full ${selected ? "bg-primary text-background" : "bg-foreground text-background"}`}>
       <Icon className="h-4 w-4" />
     </span>
     <span className="font-semibold text-foreground">{label}</span>

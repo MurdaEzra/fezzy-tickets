@@ -20,6 +20,10 @@ import { createOrganizerAdminInvite } from "@/lib/organizerInvites";
 import PayoutSetup from "./dashboard/PayoutSetup";
 import SharePanel from "@/components/dashboard/SharePanel";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
+import { UserAvatar } from "@/components/UserAvatar";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { PLATFORM_FEE_LABEL, PLATFORM_FEE_PCT, BUYER_FEE_PCT } from "@/lib/pricing";
+import { resolveDisplayName } from "@/lib/userProfile";
 import { toast } from "sonner";
 
 interface OrgProfile {
@@ -68,6 +72,8 @@ const OrganizerDashboard = () => {
   const [mobileMenu, setMobileMenu] = useState(false);
 
   const plan = (user?.user_metadata?.plan as string | undefined) || "Starter";
+  const { data: userProfile } = useUserProfile();
+  const displayName = resolveDisplayName(user, userProfile);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -191,11 +197,10 @@ const OrganizerDashboard = () => {
     );
   }
 
-  const initials = profile.org_name.slice(0, 2).toUpperCase();
   const isFirstEvent = profile.events_published_count === 0;
   const feeChip = profile.fee_locked_pct === null
-    ? "3.5% buyer fee"
-    : `${profile.fee_locked_pct}% platform fee`;
+    ? `First event free · then ${PLATFORM_FEE_PCT}%`
+    : `${profile.fee_locked_pct}% ${PLATFORM_FEE_LABEL.toLowerCase()}`;
 
   return (
     <div className="min-h-screen bg-cream-deep">
@@ -208,11 +213,10 @@ const OrganizerDashboard = () => {
           </div>
 
           <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-acacia text-sm font-bold text-primary-foreground shadow-acacia">
-              {initials}
-            </div>
+            <UserAvatar className="h-10 w-10 shadow-acacia" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-foreground">{profile.org_name}</p>
+              <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
+              <p className="truncate text-xs text-muted-foreground">{profile.org_name}</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
@@ -322,8 +326,10 @@ const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: Or
       <div className="flex items-center gap-3 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/15 to-primary/5 p-5 shadow-card-soft">
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-acacia text-2xl text-primary-foreground shadow-acacia">🎉</div>
         <div className="flex-1">
-          <p className="font-display text-base font-bold text-foreground">Buyer-paid service fee</p>
-          <p className="text-sm text-muted-foreground">Buyers pay a 3.5% service fee during checkout.</p>
+          <p className="font-display text-base font-bold text-foreground">Fee structure</p>
+          <p className="text-sm text-muted-foreground">
+            Buyers pay a {BUYER_FEE_PCT}% service fee at checkout. Platform fee to organizers is {PLATFORM_FEE_PCT}% per sale (waived on your first published event).
+          </p>
         </div>
       </div>
     )}

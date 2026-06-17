@@ -144,7 +144,7 @@ export default function PayoutSetup({ organizerId, feeLockedPct }: Props) {
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
-                Platform fee: {feeLockedPct ?? 5}%
+                Platform fee: {feeLockedPct ?? 10}%
               </span>
               {feeLockedPct === null && (
                 <span className="rounded-full bg-accent/20 px-2.5 py-0.5 font-bold text-accent-foreground">

@@ -1,9 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { installGlobalErrorLogging } from "@/lib/activityLog";
+import { queryClient } from "@/lib/queryClient";
 import Index from "./pages/Index.tsx";
 import Events from "./pages/Events.tsx";
 import EventDetail from "./pages/EventDetail.tsx";
@@ -25,7 +28,13 @@ import InviteAccept from "./pages/InviteAccept.tsx";
 import ApplicationPending from "./pages/ApplicationPending.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 
-const queryClient = new QueryClient();
+const ErrorLogging = () => {
+  const { user } = useAuth();
+  useEffect(() => {
+    installGlobalErrorLogging(user?.id);
+  }, [user?.id]);
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,6 +43,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ErrorLogging />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/events" element={<Events />} />
@@ -54,7 +64,6 @@ const App = () => (
             <Route path="/help" element={<Help />} />
             <Route path="/payment/callback" element={<PaymentCallback />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
-            {/* Branded organizer share link: fezzy.app/o/{handle}/{event-slug} */}
             <Route path="/o/:handle/:slug" element={<ShareRedirect />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

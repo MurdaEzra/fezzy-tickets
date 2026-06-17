@@ -226,6 +226,7 @@ Deno.serve(async (req) => {
 
     const ticketHtmls: string[] = [];
 
+    const ticketsByEmail = new Map<string, string[]>();
     for (const ticket of order.tickets) {
       const qrDataUrl = String(
         await qrcode(ticket.qr_token, {
@@ -233,24 +234,31 @@ Deno.serve(async (req) => {
         })
       );
 
-      ticketHtmls.push(
-        renderTicketHtml({
-          eventTitle: event.title,
-          date: dateStr,
-          venue: event.venue_name ?? "TBA",
-          city: event.city ?? "",
-          holderName: ticket.holder_name,
-          tierName:
-            ticket.ticket_tiers?.name ??
-            "General",
-          qrDataUrl,
-          ref,
-          accent,
-        })
-      );
+      const ticketHtml = renderTicketHtml({
+        eventTitle: event.title,
+        date: dateStr,
+        venue: event.venue_name ?? "TBA",
+        city: event.city ?? "",
+        holderName: ticket.holder_name,
+        tierName:
+          ticket.ticket_tiers?.name ??
+          "General",
+        qrDataUrl,
+        ref,
+        accent,
+      });
+
+      ticketHtmls.push(ticketHtml);
+      const list = ticketsByEmail.get(ticket.holder_email) ?? [];
+      list.push(ticketHtml);
+      ticketsByEmail.set(ticket.holder_email, list);
     }
 
-    const emailHtml = `
+    let delivery: "sent" | "failed" = "failed";
+    let sentCount = 0;
+
+    for (const [recipientEmail, htmlBlocks] of ticketsByEmail.entries()) {
+      const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -272,7 +280,7 @@ Deno.serve(async (req) => {
     "
   >
     <h1>
-      Your Tickets
+      Your Ticket${htmlBlocks.length > 1 ? "s" : ""}
     </h1>
 
     <p>
@@ -284,7 +292,7 @@ Deno.serve(async (req) => {
       <strong>${ref}</strong>
     </p>
 
-    ${ticketHtmls.join("")}
+    ${htmlBlocks.join("")}
 
     <p
       style="
@@ -301,22 +309,23 @@ Deno.serve(async (req) => {
 </html>
 `;
 
-    let delivery: "sent" | "failed" = "failed";
-
-    try {
-      await sendBrevoEmail({
-        recipientEmail: order.guest_email,
-        subject: `Your Tickets - ${event.title}`,
-        htmlContent: emailHtml,
-      });
-
-      delivery = "sent";
-    } catch (emailError) {
-      console.error(
-        "[BREVO EMAIL ERROR]",
-        emailError
-      );
+      try {
+        await sendBrevoEmail({
+          recipientEmail,
+          subject: `Your Ticket${htmlBlocks.length > 1 ? "s" : ""} - ${event.title}`,
+          htmlContent: emailHtml,
+        });
+        sentCount++;
+      } catch (emailError) {
+        console.error(
+          "[BREVO EMAIL ERROR]",
+          recipientEmail,
+          emailError
+        );
+      }
     }
+
+    delivery = sentCount > 0 ? "sent" : "failed";
 
     return new Response(
       JSON.stringify({
@@ -324,6 +333,7 @@ Deno.serve(async (req) => {
         delivery,
         ref,
         ticketCount: order.tickets.length,
+        emailsSent: sentCount,
       }),
       {
         headers: {

@@ -10,10 +10,7 @@ const corsHeaders = {
 };
 
 const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
-// Platform's overall fee % — Paystack subaccounts use `percentage_charge` to
-// indicate what the *main* account (platform) keeps. We charge 5% by default;
-// organizers with fee_locked_pct override it.
-const DEFAULT_PLATFORM_FEE_PCT = 5;
+const DEFAULT_PLATFORM_FEE_PCT = 10;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

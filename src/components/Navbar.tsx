@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
+import { UserAvatar } from "@/components/UserAvatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -27,9 +28,9 @@ const Navbar = () => {
 
   useEffect(() => {
     const onScroll = () => setAtTop(window.scrollY < 10);
-    window.addEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll);
     onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -47,27 +48,24 @@ const Navbar = () => {
     });
   }, [user]);
 
-  const initials = user?.email?.[0]?.toUpperCase() ?? "U";
-
   return (
     <header
       className={
         `sticky top-0 z-40 transition-all duration-300 ` +
         (atTop
-          ? 'border-b-0 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-none'
-          : 'border-b border-border/70 bg-background/85 backdrop-blur-xl')
+          ? "border-b-0 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-none"
+          : "border-b border-border/70 bg-background/85 backdrop-blur-xl")
       }
     >
       <div className="container-px mx-auto flex h-16 max-w-7xl items-center justify-between">
         <Link to="/" className="group flex items-center gap-2.5">
-          <div
-            className="flex items gap-2 cursor-pointer"
-            onClick={() => navigate('landing')}>
-              <img
+          <div className="flex items gap-2 cursor-pointer" onClick={() => navigate("/")}>
+            <img
               src={FEZZY_LOGO_URL}
-              alt="Lashawn Driving & Computer College"
-              className="h-16 md:h-36 lg:h-56 w-auto object-contain" />
-          </div>  
+              alt="Fezzy Tickets"
+              className="h-16 md:h-36 lg:h-56 w-auto object-contain"
+            />
+          </div>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -90,8 +88,8 @@ const Navbar = () => {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="grid h-10 w-10 place-items-center rounded-full bg-gradient-acacia font-semibold text-primary-foreground shadow-acacia">
-                  {initials}
+                <button className="rounded-full shadow-acacia ring-2 ring-transparent transition hover:ring-primary/30">
+                  <UserAvatar />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -125,13 +123,24 @@ const Navbar = () => {
           )}
         </div>
 
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="md:hidden grid h-10 w-10 place-items-center rounded-full border border-border"
-          aria-label="Toggle menu"
-        >
-          {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          {user && isOrganizer && (
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="rounded-full shadow-acacia ring-2 ring-primary/20"
+              aria-label="Open organizer dashboard"
+            >
+              <UserAvatar className="h-10 w-10" />
+            </button>
+          )}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="grid h-10 w-10 place-items-center rounded-full border border-border"
+            aria-label="Toggle menu"
+          >
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -147,6 +156,23 @@ const Navbar = () => {
                 {it.label}
               </Link>
             ))}
+            {user && isOrganizer && (
+              <button
+                onClick={() => { navigate("/dashboard"); setOpen(false); }}
+                className="flex items-center gap-3 py-3 text-sm font-medium text-foreground"
+              >
+                <UserAvatar className="h-8 w-8" />
+                Organizer dashboard
+              </button>
+            )}
+            {user && isAdmin && (
+              <button
+                onClick={() => { navigate("/admin"); setOpen(false); }}
+                className="flex items-center gap-3 py-3 text-sm font-medium text-foreground"
+              >
+                <Shield className="h-4 w-4" /> Super admin
+              </button>
+            )}
             <div className="mt-2 flex gap-2 border-t border-border pt-4">
               {user ? (
                 <Button variant="outline" className="flex-1" onClick={() => { signOut(); setOpen(false); }}>

@@ -142,11 +142,11 @@ export async function fetchRelatedEvents(category: string | null, excludeId: str
 export async function fetchOrganizerProfile(id: string) {
   const { data, error } = await supabase
     .from("organizer_profiles")
-    .select("id, org_name, logo_url, website")
+    .select("id, org_name, logo_url, website, contact_email, contact_phone, bio, events_published_count")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return data as DbOrganizer | null;
+  return data;
 }
 
 export async function fetchAccountTickets() {

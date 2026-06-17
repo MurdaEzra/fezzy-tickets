@@ -1,43 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader2, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";
-import {
-  fetchPublishedEventsWithTiers,
-  type DbEventWithTiers,
-} from "@/lib/eventsApi";
+import { useEventCategories, usePublishedEvents } from "@/hooks/useEvents";
 
 const ALL = "All" as const;
 
 const Events = () => {
   const [params, setParams] = useSearchParams();
-  const [events, setEvents] = useState<DbEventWithTiers[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: events = [], isLoading: loading } = usePublishedEvents();
+  const { data: categories = [] } = useEventCategories();
   const [activeCat, setActiveCat] = useState<string>(params.get("cat") ?? ALL);
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchPublishedEventsWithTiers()
-      .then((rows) => {
-        if (!cancelled) setEvents(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setEvents([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const categories = useMemo(() => {
-    return Array.from(new Set(events.map((event) => event.category).filter(Boolean) as string[])).sort();
-  }, [events]);
 
   const filtered = useMemo(() => {
     return events.filter((event) => {

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { logActivity } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 
@@ -93,6 +94,7 @@ const Auth = () => {
         if (data?.error) throw new Error(data.error);
 
         sessionStorage.removeItem("pendingOrgName");
+        await logActivity("organizer.application.submitted", { message: pendingOrgName, metadata: { email } });
         toast.success("Application submitted! We'll email you once approved.");
         navigate("/application-pending?submitted=1");
         return;

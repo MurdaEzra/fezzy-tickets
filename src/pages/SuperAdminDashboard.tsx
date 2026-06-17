@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2, Shield, Users, Calendar, Ticket, ExternalLink, ClipboardCheck } from "lucide-react";
+import { Loader2, Shield, Users, Calendar, Ticket, ExternalLink, ClipboardCheck, ScrollText } from "lucide-react";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatKES } from "@/lib/eventsApi";
+import { PLATFORM_FEE_PCT, BUYER_FEE_PCT } from "@/lib/pricing";
+import { logActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 
 interface EventRow {
@@ -21,11 +23,22 @@ interface EventRow {
 interface OrderRow {
   id: string;
   total_kes: number;
+  buyer_fee_kes: number;
+  platform_fee_kes: number;
   organizer_fee_kes: number;
   status: string;
   payment_method: string;
   created_at: string;
   guest_name: string;
+}
+
+interface LogRow {
+  id: string;
+  level: string;
+  action: string;
+  message: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
 }
 
 interface ApprovalRow {
@@ -42,9 +55,10 @@ const SuperAdminDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<null | boolean>(null);
-  const [tab, setTab] = useState<"overview" | "approvals" | "events" | "orders" | "organizers">("overview");
+  const [tab, setTab] = useState<"overview" | "approvals" | "events" | "orders" | "organizers" | "logs">("overview");
   const [events, setEvents] = useState<EventRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [logs, setLogs] = useState<LogRow[]>([]);
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [organizers, setOrganizers] = useState<{ id: string; org_name: string; events_published_count: number; contact_email: string | null; fee_locked_pct: number | null; paystack_subaccount_code: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,16 +79,18 @@ const SuperAdminDashboard = () => {
       const ok = roles.includes("super_admin") || roles.includes("admin");
       setAuthorized(ok);
       if (!ok) return;
-      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }] = await Promise.all([
+      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }] = await Promise.all([
         supabase.from("events").select("id, title, status, slug, starts_at, organizer_id").order("created_at", { ascending: false }).limit(50),
-        supabase.from("orders").select("id, total_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
+        supabase.from("orders").select("id, total_kes, buyer_fee_kes, platform_fee_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
         supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code").order("created_at", { ascending: false }),
         supabase.from("organizer_approval_requests").select("id, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
+        supabase.from("platform_logs").select("id, level, action, message, metadata, created_at").order("created_at", { ascending: false }).limit(200),
       ]);
       setEvents((evts ?? []) as EventRow[]);
       setOrders((ords ?? []) as OrderRow[]);
       setOrganizers((orgs ?? []) as typeof organizers);
       setApprovals((pending ?? []) as ApprovalRow[]);
+      setLogs((logRows ?? []) as LogRow[]);
       setLoading(false);
     })();
   }, [user, authLoading, navigate]);
@@ -83,6 +99,7 @@ const SuperAdminDashboard = () => {
     const { error } = await supabase.from("events").update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     setEvents((es) => es.map((e) => (e.id === id ? { ...e, status } : e)));
+    await logActivity("admin.event.status", { message: `Event ${status}`, metadata: { eventId: id, status }, userId: user?.id });
     toast.success(`Event ${status}`);
   };
 
@@ -91,6 +108,7 @@ const SuperAdminDashboard = () => {
     const { error } = await supabase.from("events").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     setEvents((es) => es.filter((e) => e.id !== id));
+    await logActivity("admin.event.delete", { level: "warn", message: "Event deleted", metadata: { eventId: id }, userId: user?.id });
     toast.success("Event deleted");
   };
 
@@ -114,6 +132,12 @@ const SuperAdminDashboard = () => {
         setOrganizers((orgs ?? []) as typeof organizers);
       }
       toast.success(action === "approve" ? "Organizer approved — access email sent" : "Application rejected");
+      await logActivity(`admin.organizer.${action}`, {
+        message: action === "approve" ? "Organizer approved" : "Organizer rejected",
+        metadata: { requestId },
+        userId: user?.id,
+        level: action === "reject" ? "warn" : "info",
+      });
     } catch (err) {
       const e = err as { message?: string };
       toast.error(e.message ?? "Review failed");
@@ -123,6 +147,9 @@ const SuperAdminDashboard = () => {
   };
 
   const pendingCount = approvals.filter((a) => a.status === "pending").length;
+  const errorCount = logs.filter((l) => l.level === "error").length;
+  const totalPlatformRev = orders.reduce((s, o) => s + (o.platform_fee_kes ?? o.organizer_fee_kes ?? 0), 0);
+  const totalBuyerFees = orders.reduce((s, o) => s + (o.buyer_fee_kes ?? 0), 0);
 
   if (authLoading || authorized === null) {
     return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -142,8 +169,6 @@ const SuperAdminDashboard = () => {
     );
   }
 
-  const totalPlatformRev = orders.reduce((s, o) => s + (o.organizer_fee_kes ?? 0), 0);
-
   return (
     <div className="min-h-screen bg-cream-deep">
       <Navbar />
@@ -158,14 +183,18 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-4">
           <Stat icon={Calendar} label="Events" value={String(events.length)} />
           <Stat icon={Users} label="Organizers" value={String(organizers.length)} />
-          <Stat icon={Ticket} label="Platform revenue" value={formatKES(totalPlatformRev)} />
+          <Stat icon={Ticket} label={`Platform fees (${PLATFORM_FEE_PCT}%)`} value={formatKES(totalPlatformRev)} />
+          <Stat icon={ScrollText} label={`Buyer fees (${BUYER_FEE_PCT}%)`} value={formatKES(totalBuyerFees)} />
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Platform fee ({PLATFORM_FEE_PCT}%) is charged to organizers per sale. Buyer service fee ({BUYER_FEE_PCT}%) is added at checkout.
+        </p>
 
         <div className="mt-8 flex flex-wrap gap-2 border-b border-border">
-          {(["overview", "approvals", "events", "orders", "organizers"] as const).map((t) => (
+          {(["overview", "approvals", "events", "orders", "organizers", "logs"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -173,10 +202,15 @@ const SuperAdminDashboard = () => {
                 tab === t ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "approvals" ? "Approvals" : t}
+              {t === "approvals" ? "Approvals" : t === "logs" ? "Logs" : t}
               {t === "approvals" && pendingCount > 0 && (
                 <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
                   {pendingCount}
+                </span>
+              )}
+              {t === "logs" && errorCount > 0 && (
+                <span className="ml-1.5 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                  {errorCount}
                 </span>
               )}
               {tab === t && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />}
@@ -320,7 +354,8 @@ const SuperAdminDashboard = () => {
                         <th className="px-4 py-3 text-left">Buyer</th>
                         <th className="px-4 py-3 text-left">Method</th>
                         <th className="px-4 py-3 text-right">Total</th>
-                        <th className="px-4 py-3 text-right">Platform cut</th>
+                        <th className="px-4 py-3 text-right">Buyer fee ({BUYER_FEE_PCT}%)</th>
+                        <th className="px-4 py-3 text-right">Platform fee ({PLATFORM_FEE_PCT}%)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -329,11 +364,12 @@ const SuperAdminDashboard = () => {
                           <td className="px-4 py-3 font-semibold">{o.guest_name}</td>
                           <td className="px-4 py-3 uppercase text-xs">{o.payment_method}</td>
                           <td className="px-4 py-3 text-right font-semibold">{formatKES(o.total_kes)}</td>
-                          <td className="px-4 py-3 text-right text-primary font-semibold">{formatKES(o.organizer_fee_kes)}</td>
+                          <td className="px-4 py-3 text-right">{formatKES(o.buyer_fee_kes ?? 0)}</td>
+                          <td className="px-4 py-3 text-right text-primary font-semibold">{formatKES(o.platform_fee_kes ?? o.organizer_fee_kes ?? 0)}</td>
                         </tr>
                       ))}
                       {orders.length === 0 && (
-                        <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No paid orders yet.</td></tr>
+                        <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No paid orders yet.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -348,7 +384,7 @@ const SuperAdminDashboard = () => {
                         <th className="px-4 py-3 text-left">Organization</th>
                         <th className="px-4 py-3 text-left">Email</th>
                         <th className="px-4 py-3 text-left">Payout</th>
-                        <th className="px-4 py-3 text-right">Fee</th>
+                        <th className="px-4 py-3 text-right">Platform fee</th>
                         <th className="px-4 py-3 text-right">Published</th>
                       </tr>
                     </thead>
@@ -362,10 +398,55 @@ const SuperAdminDashboard = () => {
                           <td className="px-4 py-3 text-xs">
                             {o.paystack_subaccount_code ? <span className="text-primary">Connected</span> : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-4 py-3 text-right">{o.fee_locked_pct ?? "0"}%</td>
+                          <td className="px-4 py-3 text-right">{o.fee_locked_pct ?? PLATFORM_FEE_PCT}%</td>
                           <td className="px-4 py-3 text-right">{o.events_published_count}</td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {tab === "logs" && (
+                <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
+                  <table className="w-full text-sm">
+                    <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Time</th>
+                        <th className="px-4 py-3 text-left">Level</th>
+                        <th className="px-4 py-3 text-left">Action</th>
+                        <th className="px-4 py-3 text-left">Message</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.map((log) => (
+                        <tr key={log.id} className="border-t border-border">
+                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${
+                              log.level === "error" ? "bg-destructive/15 text-destructive" :
+                              log.level === "warn" ? "bg-amber-100 text-amber-800" :
+                              "bg-primary/15 text-primary"
+                            }`}>
+                              {log.level}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs">{log.action}</td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {log.message ?? "—"}
+                            {Object.keys(log.metadata ?? {}).length > 0 && (
+                              <p className="mt-1 font-mono text-[10px] text-muted-foreground/80 truncate max-w-md">
+                                {JSON.stringify(log.metadata)}
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {logs.length === 0 && (
+                        <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No activity logged yet.</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

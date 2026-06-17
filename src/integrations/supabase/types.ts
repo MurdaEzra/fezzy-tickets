@@ -105,6 +105,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          buyer_fee_kes: number
           created_at: string
           event_id: string
           fee_waived: boolean
@@ -116,13 +117,16 @@ export type Database = {
           organizer_fee_kes: number
           payment_method: string
           payment_ref: string | null
+          platform_fee_kes: number
           status: Database["public"]["Enums"]["order_status"]
           subtotal_kes: number
+          ticket_holders: unknown | null
           total_kes: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          buyer_fee_kes?: number
           created_at?: string
           event_id: string
           fee_waived?: boolean
@@ -134,13 +138,16 @@ export type Database = {
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
+          platform_fee_kes?: number
           status?: Database["public"]["Enums"]["order_status"]
           subtotal_kes?: number
+          ticket_holders?: unknown | null
           total_kes?: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          buyer_fee_kes?: number
           created_at?: string
           event_id?: string
           fee_waived?: boolean
@@ -152,8 +159,10 @@ export type Database = {
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
+          platform_fee_kes?: number
           status?: Database["public"]["Enums"]["order_status"]
           subtotal_kes?: number
+          ticket_holders?: unknown | null
           total_kes?: number
           updated_at?: string
           user_id?: string | null
@@ -370,6 +379,36 @@ export type Database = {
           },
         ]
       }
+      platform_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          level: Database["public"]["Enums"]["log_level"]
+          message: string | null
+          metadata: Record<string, unknown>
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          level?: Database["public"]["Enums"]["log_level"]
+          message?: string | null
+          metadata?: Record<string, unknown>
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          level?: Database["public"]["Enums"]["log_level"]
+          message?: string | null
+          metadata?: Record<string, unknown>
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_kes: number
@@ -505,6 +544,7 @@ export type Database = {
           event_id: string
           holder_email: string
           holder_name: string
+          holder_phone: string | null
           id: string
           order_id: string
           qr_token: string
@@ -517,6 +557,7 @@ export type Database = {
           event_id: string
           holder_email: string
           holder_name: string
+          holder_phone: string | null
           id?: string
           order_id: string
           qr_token?: string
@@ -615,6 +656,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "organizer" | "attendee" | "super_admin"
       organizer_approval_status: "pending" | "approved" | "rejected"
+      log_level: "info" | "warn" | "error"
       event_status: "draft" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
       ticket_status: "valid" | "used" | "refunded" | "cancelled"
@@ -747,6 +789,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "organizer", "attendee", "super_admin"],
       organizer_approval_status: ["pending", "approved", "rejected"],
+      log_level: ["info", "warn", "error"],
       event_status: ["draft", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
       ticket_status: ["valid", "used", "refunded", "cancelled"],

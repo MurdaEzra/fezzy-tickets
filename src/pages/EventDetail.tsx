@@ -1,72 +1,30 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Check, Clock, Heart, Loader2, MapPin, Share2, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
+import { useEventDetail, useEventTiers, useOrganizerProfile, useRelatedEvents } from "@/hooks/useEvents";
 import {
-  fetchEventBySlug,
-  fetchOrganizerProfile,
-  fetchRelatedEvents,
-  fetchTiers,
   formatEventDateLong,
   formatEventTime,
   formatPrice,
   ticketsRemaining,
-  type DbEvent,
-  type DbEventWithTiers,
-  type DbOrganizer,
-  type DbTier,
 } from "@/lib/eventsApi";
-import { BUYER_FEE_LABEL, calculateBuyerFee, calculateBuyerTotal, isEventDue } from "@/lib/pricing";
+import { BUYER_FEE_LABEL, BUYER_FEE_PCT, calculateBuyerFee, calculateBuyerTotal, isEventDue } from "@/lib/pricing";
 
 const EventDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [event, setEvent] = useState<DbEvent | null>(null);
-  const [tiers, setTiers] = useState<DbTier[]>([]);
-  const [organizer, setOrganizer] = useState<DbOrganizer | null>(null);
-  const [related, setRelated] = useState<DbEventWithTiers[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: event, isLoading: eventLoading } = useEventDetail(slug);
+  const { data: tiers = [], isLoading: tiersLoading } = useEventTiers(event?.id);
+  const { data: organizer } = useOrganizerProfile(event?.organizer_id);
+  const { data: related = [] } = useRelatedEvents(event?.category, event?.id);
   const [selectedTier, setSelectedTier] = useState(0);
   const [qty, setQty] = useState(1);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!slug) return;
-      setLoading(true);
-      try {
-        const dbEvent = await fetchEventBySlug(slug);
-        if (!dbEvent) {
-          if (!cancelled) {
-            setEvent(null);
-            setTiers([]);
-          }
-          return;
-        }
-        const [dbTiers, dbOrganizer, dbRelated] = await Promise.all([
-          fetchTiers(dbEvent.id),
-          fetchOrganizerProfile(dbEvent.organizer_id),
-          fetchRelatedEvents(dbEvent.category, dbEvent.id),
-        ]);
-        if (!cancelled) {
-          setEvent(dbEvent);
-          setTiers(dbTiers);
-          setOrganizer(dbOrganizer);
-          setRelated(dbRelated);
-          setSelectedTier(0);
-          setQty(1);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+  const loading = eventLoading || tiersLoading;
 
   const tier = tiers[selectedTier];
   const remaining = tier ? ticketsRemaining(tier) : 0;
@@ -283,7 +241,7 @@ const EventDetail = () => {
                       <dd className="font-medium text-foreground">{formatPrice(subtotal)}</dd>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
-                      <dt>{BUYER_FEE_LABEL} (3.5%)</dt>
+                      <dt>{BUYER_FEE_LABEL} ({BUYER_FEE_PCT}%)</dt>
                       <dd className="font-medium text-foreground">{formatPrice(buyerFee)}</dd>
                     </div>
                     <div className="flex justify-between border-t border-border pt-3">
@@ -291,7 +249,7 @@ const EventDetail = () => {
                       <dd className="font-display text-xl font-bold text-foreground">{formatPrice(total)}</dd>
                     </div>
                     <p className="rounded-xl bg-primary/10 p-2.5 text-[11px] leading-snug text-primary">
-                      A 3.5% buyer service fee is added at checkout.
+                      A {BUYER_FEE_PCT}% buyer service fee is added at checkout.
                     </p>
                   </dl>
 

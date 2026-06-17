@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Loader2, Quote, Star } from "lucide-react";
 import EventCard from "@/components/EventCard";
@@ -7,31 +7,11 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Hero from "@/components/HeroSlideshow";
 import organizerImg from "@/assets/scene-organizer.jpg";
-import {
-  fetchPublishedEventsWithTiers,
-  type DbEventWithTiers,
-} from "@/lib/eventsApi";
+import { useFeaturedEvents } from "@/hooks/useEvents";
+import { PLATFORM_FEE_PCT, BUYER_FEE_PCT } from "@/lib/pricing";
 
 const Index = () => {
-  const [events, setEvents] = useState<DbEventWithTiers[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchPublishedEventsWithTiers({ limit: 6 })
-      .then((rows) => {
-        if (!cancelled) setEvents(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setEvents([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: events = [], isLoading: loading } = useFeaturedEvents(6);
 
   const featured = useMemo(() => events.slice(0, 3), [events]);
   const nextUp = useMemo(() => events.slice(3, 6), [events]);
@@ -86,8 +66,7 @@ const Index = () => {
                 <span className="script font-normal text-primary text-[1.2em]">pro</span>.
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-                Launch in minutes. Tier your pricing, scan tickets at the door, and let buyers
-                cover the 3.5% service fee at checkout.
+                Launch in minutes. Tier your pricing, scan tickets at the door. Buyers pay a {BUYER_FEE_PCT}% service fee; organizers are charged a {PLATFORM_FEE_PCT}% platform fee per sale.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button variant="acacia" size="lg" asChild>
@@ -100,9 +79,9 @@ const Index = () => {
 
               <div className="mt-10 grid grid-cols-3 gap-4">
                 {[
-                  { k: "1st", v: "event free" },
+                  { k: "10%", v: "platform fee" },
                   { k: "T+2", v: "M-Pesa payouts" },
-                  { k: "3.5%", v: "buyer service fee" },
+                  { k: `${BUYER_FEE_PCT}%`, v: "buyer service fee" },
                 ].map((stat) => (
                   <div key={stat.v}>
                     <p className="font-display text-2xl font-bold text-foreground">{stat.k}</p>

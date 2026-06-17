@@ -4,49 +4,36 @@ import { Calendar, Globe, Mail, MapPin, Phone, ShieldCheck } from "lucide-react"
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { useOrganizerProfile } from "@/hooks/useEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { DbEvent, formatEventDateLong, formatEventTime, formatKES } from "@/lib/eventsApi";
 import { FEZZY_LOGO_URL } from "@/lib/brand";
 
-interface OrganizerProfile {
-  id: string;
-  org_name: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  website: string | null;
-  bio: string | null;
-  logo_url: string | null;
-  events_published_count: number;
-}
 
 const OrganizerPublicPage = () => {
   const { id } = useParams();
-  const [profile, setProfile] = useState<OrganizerProfile | null>(null);
+  const { data: profile, isLoading: profileLoading } = useOrganizerProfile(id);
   const [events, setEvents] = useState<DbEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !profile) {
+      if (!profileLoading) setEventsLoading(false);
+      return;
+    }
     (async () => {
-      const { data: prof } = await supabase
-        .from("organizer_profiles")
+      const { data: evts } = await supabase
+        .from("events")
         .select("*")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (prof) {
-        setProfile(prof as OrganizerProfile);
-        const { data: evts } = await supabase
-          .from("events")
-          .select("*")
-          .eq("organizer_id", prof.id)
-          .eq("status", "published")
-          .order("starts_at", { ascending: true });
-        setEvents((evts ?? []) as DbEvent[]);
-      }
-      setLoading(false);
+        .eq("organizer_id", id)
+        .eq("status", "published")
+        .order("starts_at", { ascending: true });
+      setEvents((evts ?? []) as DbEvent[]);
+      setEventsLoading(false);
     })();
-  }, [id]);
+  }, [id, profile, profileLoading]);
+
+  const loading = profileLoading || eventsLoading;
 
   if (loading) {
     return <div className="min-h-screen bg-background"><Navbar /><main className="container-px mx-auto max-w-7xl py-24">Loading organizer...</main></div>;

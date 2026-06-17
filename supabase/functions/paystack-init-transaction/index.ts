@@ -12,6 +12,7 @@ const corsHeaders = {
 
 const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
 const BUYER_FEE_RATE = 0.035;
+const PLATFORM_FEE_RATE = 0.10;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -19,10 +20,26 @@ Deno.serve(async (req) => {
   try {
     if (!PAYSTACK_SECRET_KEY) return json({ error: "Paystack not configured" }, 500);
 
-    const { eventId, tierId, quantity, name, email, phone, callbackUrl, method } =
+    const { eventId, tierId, quantity, name, email, phone, holders, callbackUrl, method } =
       await req.json();
     if (!eventId || !tierId || !quantity || !name || !email) {
       return json({ error: "Missing parameters" }, 400);
+    }
+
+    const ticketHolders = Array.isArray(holders) && holders.length === quantity
+      ? holders.map((h: { name?: string; email?: string; phone?: string }) => ({
+          name: String(h.name ?? "").trim(),
+          email: String(h.email ?? "").trim(),
+          phone: String(h.phone ?? "").trim(),
+        }))
+      : Array.from({ length: quantity }).map(() => ({
+          name: String(name).trim(),
+          email: String(email).trim(),
+          phone: String(phone ?? "").trim(),
+        }));
+
+    if (ticketHolders.some((h) => !h.name || !h.email)) {
+      return json({ error: "Each ticket holder needs a name and email" }, 400);
     }
     const paymentMethod = typeof method === "string" && ["mpesa", "card", "apple_pay", "google_pay"].includes(method)
       ? method
@@ -39,7 +56,7 @@ Deno.serve(async (req) => {
 
     // Fetch event + tier + organizer subaccount + fee
     const [{ data: event }, { data: tier }] = await Promise.all([
-      admin.from("events").select("id, title, organizer_id, starts_at, status").eq("id", eventId).maybeSingle(),
+      admin.from("events").select("id, title, organizer_id, starts_at, status, fee_waived").eq("id", eventId).maybeSingle(),
       admin.from("ticket_tiers").select("id, name, price_kes, sold, quantity, event_id").eq("id", tierId).maybeSingle(),
     ]);
     if (!event || !tier || tier.event_id !== event.id || event.status !== "published") return json({ error: "Invalid event/tier" }, 400);
@@ -59,6 +76,7 @@ Deno.serve(async (req) => {
 
     const subtotal = tier.price_kes * quantity;
     const buyerFee = Math.round(subtotal * BUYER_FEE_RATE);
+    const platformFee = event.fee_waived ? 0 : Math.round(subtotal * PLATFORM_FEE_RATE);
     const total = subtotal + buyerFee;
 
     // Try to attach the user from the auth header (if any) — not required.
@@ -81,13 +99,16 @@ Deno.serve(async (req) => {
       .insert({
         event_id: eventId,
         user_id: userId,
-        guest_name: name,
-        guest_email: email,
-        guest_phone: phone ?? "",
+        guest_name: ticketHolders[0].name,
+        guest_email: ticketHolders[0].email,
+        guest_phone: ticketHolders[0].phone ?? phone ?? "",
         subtotal_kes: subtotal,
         total_kes: total,
-        organizer_fee_kes: buyerFee,
-        fee_waived: false,
+        buyer_fee_kes: buyerFee,
+        platform_fee_kes: platformFee,
+        organizer_fee_kes: platformFee,
+        ticket_holders: ticketHolders,
+        fee_waived: Boolean(event.fee_waived),
         payment_method: paymentMethod,
         status: "pending",
       })
@@ -109,6 +130,8 @@ Deno.serve(async (req) => {
         tier_id: tierId,
         quantity,
         buyer_fee_kes: buyerFee,
+        platform_fee_kes: platformFee,
+        ticket_holders: ticketHolders,
         payment_method: paymentMethod,
         custom_fields: [
           { display_name: "Event", variable_name: "event", value: event.title },
