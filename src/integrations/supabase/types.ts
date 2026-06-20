@@ -23,9 +23,11 @@ export type Database = {
           created_at: string
           description: string | null
           ends_at: string | null
+          event_dates: Json
           fee_waived: boolean
           id: string
           is_stream: boolean
+          lineup: Json
           latitude: number | null
           longitude: number | null
           organizer_id: string
@@ -49,9 +51,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          event_dates?: Json
           fee_waived?: boolean
           id?: string
           is_stream?: boolean
+          lineup?: Json
           latitude?: number | null
           longitude?: number | null
           organizer_id: string
@@ -75,9 +79,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          event_dates?: Json
           fee_waived?: boolean
           id?: string
           is_stream?: boolean
+          lineup?: Json
           latitude?: number | null
           longitude?: number | null
           organizer_id?: string
@@ -504,6 +510,7 @@ export type Database = {
           quantity: number
           sold: number
           sort_order: number
+          valid_dates: Json
         }
         Insert: {
           created_at?: string
@@ -515,6 +522,7 @@ export type Database = {
           quantity?: number
           sold?: number
           sort_order?: number
+          valid_dates?: Json
         }
         Update: {
           created_at?: string
@@ -526,6 +534,7 @@ export type Database = {
           quantity?: number
           sold?: number
           sort_order?: number
+          valid_dates?: Json
         }
         Relationships: [
           {
@@ -657,7 +666,7 @@ export type Database = {
       app_role: "admin" | "organizer" | "attendee" | "super_admin"
       organizer_approval_status: "pending" | "approved" | "rejected"
       log_level: "info" | "warn" | "error"
-      event_status: "draft" | "published" | "cancelled" | "completed"
+      event_status: "draft" | "pending_approval" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
       ticket_status: "valid" | "used" | "refunded" | "cancelled"
     }
@@ -790,7 +799,7 @@ export const Constants = {
       app_role: ["admin", "organizer", "attendee", "super_admin"],
       organizer_approval_status: ["pending", "approved", "rejected"],
       log_level: ["info", "warn", "error"],
-      event_status: ["draft", "published", "cancelled", "completed"],
+      event_status: ["draft", "pending_approval", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
       ticket_status: ["valid", "used", "refunded", "cancelled"],
     },

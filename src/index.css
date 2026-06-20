@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700;800&family=Jost:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700;800&family=Jost:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Bricolage+Grotesque:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -88,12 +88,12 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Space Grotesk', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11";
   }
 
   h1, h2, h3, h4, h5 {
-    font-family: 'Jost', 'Montserrat', ui-sans-serif, sans-serif;
+    font-family: 'Bricolage Grotesque', 'Jost', 'Montserrat', ui-sans-serif, sans-serif;
     letter-spacing: -0.02em;
     font-weight: 600;
   }
@@ -142,4 +142,144 @@
   .shadow-acacia { box-shadow: var(--shadow-acacia); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-card-soft { box-shadow: var(--shadow-card); }
+}
+
+.tm-grad-text {
+  background: linear-gradient(180deg, #ffffff 0%, #cfd2dc 60%, #6b7080 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tm-grad-green {
+  background: linear-gradient(120deg, #10ff8a 0%, #00d973 50%, #c4ff3d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dotgrid {
+  background-image: radial-gradient(rgba(255, 255, 255, .06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.ticket-shell {
+  position: relative;
+  background: #171922;
+  border: 1px solid #1f2230;
+  box-shadow: 0 0 0 1px rgba(16, 255, 138, .2), 0 20px 60px -20px rgba(16, 255, 138, .35);
+}
+
+.ticket-shell::before,
+.ticket-shell::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #06070a;
+  transform: translateY(-50%);
+}
+
+.ticket-shell::before { left: -9px; }
+.ticket-shell::after { right: -9px; }
+
+.live-dot {
+  position: relative;
+}
+
+.live-dot::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  background: #10ff8a;
+  opacity: .4;
+  animation: live-pulse 1.6s ease-out infinite;
+}
+
+@keyframes live-pulse {
+  0% { opacity: .6; transform: scale(.6); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+.eq {
+  display: flex;
+  height: 18px;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.eq span {
+  width: 3px;
+  background: #10ff8a;
+  animation: eq 1s ease-in-out infinite;
+}
+
+.eq span:nth-child(1) { height: 30%; animation-delay: 0s; }
+.eq span:nth-child(2) { height: 80%; animation-delay: .2s; }
+.eq span:nth-child(3) { height: 50%; animation-delay: .4s; }
+.eq span:nth-child(4) { height: 100%; animation-delay: .1s; }
+.eq span:nth-child(5) { height: 60%; animation-delay: .3s; }
+
+@keyframes eq {
+  0%, 100% { transform: scaleY(.4); }
+  50% { transform: scaleY(1); }
+}
+
+.ev-card {
+  transition: transform .4s cubic-bezier(.2, .7, .2, 1), box-shadow .4s, border-color .4s;
+}
+
+.ev-card:hover {
+  border-color: rgba(16, 255, 138, .7);
+  box-shadow: 0 30px 60px -25px rgba(16, 255, 138, .25);
+  transform: translateY(-6px);
+}
+
+.mapbg {
+  background:
+    linear-gradient(rgba(16,255,138,.06) 1px, transparent 1px) 0 0/40px 40px,
+    linear-gradient(90deg, rgba(16,255,138,.06) 1px, transparent 1px) 0 0/40px 40px,
+    radial-gradient(600px 300px at 70% 30%, rgba(16,255,138,.08), transparent 60%),
+    #0a0c11;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.tm-page {
+  --background: 220 25% 3%;
+  --foreground: 220 18% 96%;
+  --card: 224 20% 9%;
+  --card-foreground: 220 18% 96%;
+  --popover: 224 20% 9%;
+  --popover-foreground: 220 18% 96%;
+  --primary: 150 100% 53%;
+  --primary-foreground: 140 65% 5%;
+  --secondary: 224 18% 12%;
+  --secondary-foreground: 220 18% 96%;
+  --muted: 226 16% 18%;
+  --muted-foreground: 230 10% 62%;
+  --accent: 76 100% 62%;
+  --accent-foreground: 140 65% 5%;
+  --border: 229 21% 16%;
+  --input: 229 21% 18%;
+  --ring: 150 100% 53%;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(16,255,138,.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(0,217,115,.07), transparent 60%),
+    #06070a;
+  color: hsl(var(--foreground));
+}
+
+.tm-page table {
+  color: hsl(var(--foreground));
 }

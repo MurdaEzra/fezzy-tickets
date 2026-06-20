@@ -51,7 +51,7 @@ const ApplicationPending = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main className="bg-mesh">
         <section className="container-px mx-auto grid min-h-[calc(100vh-4rem)] max-w-xl place-items-center py-12">
@@ -108,3 +108,4 @@ const ApplicationPending = () => {
 };
 
 export default ApplicationPending;
+

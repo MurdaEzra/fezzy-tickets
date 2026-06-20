@@ -26,7 +26,7 @@ const Streams = () => {
   const upcoming = streams.filter((s) => new Date(s.starts_at).getTime() > now);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main>
         <section className="border-b border-border bg-mesh">
@@ -112,3 +112,4 @@ const StreamCard = ({ s, live }: { s: DbEvent; live?: boolean }) => (
 );
 
 export default Streams;
+

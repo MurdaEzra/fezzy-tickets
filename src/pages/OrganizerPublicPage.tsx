@@ -36,12 +36,12 @@ const OrganizerPublicPage = () => {
   const loading = profileLoading || eventsLoading;
 
   if (loading) {
-    return <div className="min-h-screen bg-background"><Navbar /><main className="container-px mx-auto max-w-7xl py-24">Loading organizer...</main></div>;
+    return <div className="tm-page min-h-screen bg-background"><Navbar /><main className="container-px mx-auto max-w-7xl py-24">Loading organizer...</main></div>;
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="tm-page min-h-screen bg-background">
         <Navbar />
         <main className="container-px mx-auto max-w-3xl py-28 text-center">
           <p className="eyebrow mb-3">Organizer</p>
@@ -54,7 +54,7 @@ const OrganizerPublicPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main>
         <section className="border-b border-border bg-mesh">
@@ -129,3 +129,4 @@ const OrganizerPublicPage = () => {
 };
 
 export default OrganizerPublicPage;
+

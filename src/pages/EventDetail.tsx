@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Check, Clock, Heart, Loader2, MapPin, Share2, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -13,6 +13,7 @@ import {
   ticketsRemaining,
 } from "@/lib/eventsApi";
 import { BUYER_FEE_LABEL, BUYER_FEE_PCT, calculateBuyerFee, calculateBuyerTotal, isEventDue } from "@/lib/pricing";
+import { toast } from "sonner";
 
 const EventDetail = () => {
   const { slug } = useParams();
@@ -32,14 +33,22 @@ const EventDetail = () => {
   const buyerFee = calculateBuyerFee(subtotal);
   const total = calculateBuyerTotal(subtotal);
   const salesClosed = event ? isEventDue(event.starts_at) : false;
+  const lineup = Array.isArray(event?.lineup) ? event.lineup.filter(Boolean) : [];
+  const lineupLabel = event?.category && ["Conference", "Tech", "Workshop", "Workshops"].includes(event.category) ? "Speakers" : "Artists";
   const goCheckout = () => {
     if (!event || !tier || remaining < 1 || salesClosed) return;
     navigate(`/events/${event.slug}/checkout?tier=${selectedTier}&qty=${qty}`);
   };
 
+  useEffect(() => {
+    if (!event || !salesClosed) return;
+    toast.info("Ticket Sale Ended");
+    navigate("/events", { replace: true });
+  }, [event, navigate, salesClosed]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="tm-page min-h-screen bg-background">
         <Navbar />
         <div className="container-px mx-auto max-w-3xl py-32 text-center">
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
@@ -50,7 +59,7 @@ const EventDetail = () => {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="tm-page min-h-screen bg-background">
         <Navbar />
         <div className="container-px mx-auto max-w-3xl py-32 text-center">
           <p className="eyebrow mb-4">404</p>
@@ -66,15 +75,15 @@ const EventDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main>
         <section className="relative isolate overflow-hidden border-b border-border">
           <div className="absolute inset-0 -z-10">
-            {event.cover_image_url ? (
-              <img src={event.cover_image_url} alt="" aria-hidden className="h-full w-full object-cover" />
+            {event.poster_url || event.cover_image_url ? (
+              <img src={event.poster_url || event.cover_image_url || ""} alt="" aria-hidden className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full bg-cream-deep" />
+              <div className="h-full w-full bg-secondary" />
             )}
             <div className="absolute inset-0" style={{ background: "var(--gradient-hero-overlay)" }} />
           </div>
@@ -98,15 +107,15 @@ const EventDetail = () => {
 
               <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-white">
                 <span className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-accent" />
+                    <Calendar className="h-4 w-4 text-primary" />
                   {formatEventDateLong(event.starts_at)}
                 </span>
                 <span className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-accent" />
+                    <Clock className="h-4 w-4 text-primary" />
                   {formatEventTime(event.starts_at)}
                 </span>
                 <span className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-accent" />
+                    <MapPin className="h-4 w-4 text-primary" />
                   {event.venue_name ?? "Venue TBA"} {event.city ? `- ${event.city}` : ""}
                 </span>
               </div>
@@ -123,10 +132,23 @@ const EventDetail = () => {
               </p>
             </div>
 
+            {lineup.length > 0 && (
+              <div>
+                <p className="eyebrow mb-4">{lineupLabel}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {lineup.map((name) => (
+                    <div key={name} className="rounded-2xl border border-border bg-card p-4 font-display text-lg font-bold text-foreground">
+                      {name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <p className="eyebrow mb-4">Venue</p>
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="relative aspect-[16/7] bg-cream-deep">
+                <div className="relative aspect-[16/7] bg-secondary">
                   <div className="absolute inset-0 grid place-items-center text-center">
                     <div>
                       <MapPin className="mx-auto h-8 w-8 text-primary" />
@@ -266,7 +288,7 @@ const EventDetail = () => {
         </section>
 
         {related.length > 0 && (
-          <section className="border-t border-border bg-cream-deep">
+          <section className="border-t border-border bg-secondary">
             <div className="container-px mx-auto max-w-7xl py-20">
               <p className="eyebrow mb-3">More like this</p>
               <h2 className="display mb-12 text-4xl text-foreground sm:text-5xl">
@@ -287,3 +309,4 @@ const EventDetail = () => {
 };
 
 export default EventDetail;
+

@@ -1,1 +1,1 @@
-export const FEZZY_LOGO_URL = "https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png";
+export const FEZZY_LOGO_URL = "https://res.cloudinary.com/dgfmhyebp/image/upload/v1781945211/logo_2_-Photoroom_ibnhk5.png";

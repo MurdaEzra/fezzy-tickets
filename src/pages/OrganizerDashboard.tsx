@@ -5,6 +5,7 @@ import {
   ExternalLink, Pencil, Loader2, MapPin, Sparkles, Users, DollarSign, Ticket as TicketIcon,
   Trash2, LogOut, ChevronRight, Copy, Check, Download, Share2, Link as LinkIcon,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 import QRCode from "qrcode";
 import Footer from "@/components/Footer";
@@ -41,7 +42,7 @@ interface OrgProfile {
   till_number?: string | null;
 }
 
-type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "team" | "settings";
+type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "attendees" | "team" | "settings";
 
 const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -50,6 +51,7 @@ const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "payout", label: "Payout", icon: Banknote },
   { id: "poster", label: "Poster designer", icon: ImageIcon },
   { id: "scan", label: "Scan tickets", icon: QrCode },
+  { id: "attendees", label: "Attendees", icon: Users },
   { id: "team", label: "Team & admins", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -65,6 +67,7 @@ const OrganizerDashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<OrgProfile | null>(null);
   const [events, setEvents] = useState<DbEvent[]>([]);
+  const [salesSummary, setSalesSummary] = useState({ ticketsSold: 0, revenueKes: 0 });
   const [loading, setLoading] = useState(true);
   const [creatingProfile, setCreatingProfile] = useState(false);
   const [orgName, setOrgName] = useState("");
@@ -129,6 +132,19 @@ const OrganizerDashboard = () => {
           .eq("organizer_id", prof.id)
           .order("created_at", { ascending: false });
         setEvents((evts ?? []) as DbEvent[]);
+        const { data: paidOrders } = await supabase
+          .from("orders")
+          .select("subtotal_kes, platform_fee_kes, total_kes, tickets(id), events!inner(organizer_id)")
+          .eq("status", "paid")
+          .eq("events.organizer_id", prof.id);
+        const summary = ((paidOrders ?? []) as Array<{ subtotal_kes?: number; platform_fee_kes?: number; total_kes?: number; tickets?: unknown[] }>).reduce(
+          (acc, order) => ({
+            ticketsSold: acc.ticketsSold + (Array.isArray(order.tickets) ? order.tickets.length : 0),
+            revenueKes: acc.revenueKes + Math.max(0, (order.subtotal_kes ?? order.total_kes ?? 0) - (order.platform_fee_kes ?? 0)),
+          }),
+          { ticketsSold: 0, revenueKes: 0 },
+        );
+        setSalesSummary(summary);
       }
       setLoading(false);
     })();
@@ -203,7 +219,7 @@ const OrganizerDashboard = () => {
     : `${profile.fee_locked_pct}% ${PLATFORM_FEE_LABEL.toLowerCase()}`;
 
   return (
-    <div className="min-h-screen bg-cream-deep">
+    <div className="tm-page min-h-screen bg-background">
       <div className="flex">
         <aside className={`${mobileMenu ? "fixed inset-y-0 left-0 z-50 w-72 translate-x-0" : "hidden md:flex md:w-72 md:translate-x-0"} flex-col border-r border-border bg-card md:sticky md:top-0 md:h-screen transition-transform`}>
           <div className="flex h-20 items-center gap-3 border-b border-border px-5">
@@ -277,7 +293,7 @@ const OrganizerDashboard = () => {
 
           <main className="container-px mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
             {section === "overview" && (
-              <Overview profile={profile} plan={plan} events={events} isFirstEvent={isFirstEvent} onGoTo={setSection} />
+              <Overview profile={profile} plan={plan} events={events} salesSummary={salesSummary} isFirstEvent={isFirstEvent} onGoTo={setSection} />
             )}
             {section === "events" && (
               <EventsList events={events} onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))} />
@@ -294,6 +310,9 @@ const OrganizerDashboard = () => {
             {section === "scan" && (
               <ScanPanel />
             )}
+            {section === "attendees" && (
+              <AttendeesPanel organizerId={profile.id} />
+            )}
             {section === "team" && (
               <TeamPanel organizerId={profile.id} organizerName={profile.org_name} userId={user?.id ?? ""} />
             )}
@@ -309,14 +328,14 @@ const OrganizerDashboard = () => {
   );
 };
 
-const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: OrgProfile; plan: string; events: DbEvent[]; isFirstEvent: boolean; onGoTo: (s: Section) => void }) => (
+const Overview = ({ profile, plan, events, salesSummary, isFirstEvent, onGoTo }: { profile: OrgProfile; plan: string; events: DbEvent[]; salesSummary: { ticketsSold: number; revenueKes: number }; isFirstEvent: boolean; onGoTo: (s: Section) => void }) => (
   <div className="space-y-8">
     <div className="rounded-[32px] border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-accent/10 p-6 shadow-soft md:p-8">
       <p className="eyebrow">Welcome back · {plan} plan</p>
       <h1 className="display mt-2 text-3xl text-foreground sm:text-4xl">{profile.org_name}</h1>
       <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Brighten your events with custom ticket design, unlock faster payouts, and invite trusted admins to help you manage everything.</p>
       <div className="mt-5 flex flex-wrap gap-2">
-        <span className="chip"><Sparkles className="h-3 w-3 text-primary" /> Ticket designer</span>
+        <span className="chip"><Sparkles className="h-3 w-3 text-primary" /> Custom posters</span>
         <span className="chip"><Users className="h-3 w-3 text-primary" /> Admin invites</span>
         <span className="chip"><Banknote className="h-3 w-3 text-primary" /> M-Pesa / till payouts</span>
       </div>
@@ -347,8 +366,8 @@ const Overview = ({ profile, plan, events, isFirstEvent, onGoTo }: { profile: Or
 
     <div className="grid gap-4 sm:grid-cols-3">
       <StatCard icon={TicketIcon} label="Events" value={String(events.length)} accent="from-primary/20 to-primary/5" />
-      <StatCard icon={Users} label="Tickets sold" value="0" accent="from-accent/20 to-accent/5" />
-      <StatCard icon={DollarSign} label="Revenue" value={formatKES(0)} accent="from-emerald-500/20 to-emerald-500/5" />
+      <StatCard icon={Users} label="Tickets sold" value={salesSummary.ticketsSold.toLocaleString()} accent="from-accent/20 to-accent/5" />
+      <StatCard icon={DollarSign} label="Revenue" value={formatKES(salesSummary.revenueKes)} accent="from-emerald-500/20 to-emerald-500/5" />
     </div>
 
     <div className="grid gap-4 sm:grid-cols-2">
@@ -435,9 +454,10 @@ const EventsGrid = ({ events, onDeleted }: { events: DbEvent[]; onDeleted?: (id:
                 <h3 className="font-display text-lg font-bold leading-tight text-foreground">{e.title}</h3>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                   e.status === "published" ? "bg-primary/15 text-primary" :
+                  e.status === "pending_approval" ? "bg-amber-500/15 text-amber-600" :
                   e.status === "draft" ? "bg-secondary text-muted-foreground" :
                   "bg-destructive/15 text-destructive"
-                }`}>{e.status}</span>
+                }`}>{e.status === "pending_approval" ? "Pending approval" : e.status}</span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{formatEventDate(e.starts_at)}</p>
               <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -523,9 +543,108 @@ const ScanPanel = () => (
   </div>
 );
 
+type AttendeeResult = {
+  id: string;
+  holder_name: string;
+  holder_email: string;
+  holder_phone: string | null;
+  status: string;
+  events: { title: string; starts_at: string } | null;
+  ticket_tiers: { name: string } | null;
+  orders: { payment_ref: string | null; guest_name: string; guest_email: string; total_kes: number; status: string } | null;
+};
+
+const AttendeesPanel = ({ organizerId }: { organizerId: string }) => {
+  const [bookingRef, setBookingRef] = useState("");
+  const [results, setResults] = useState<AttendeeResult[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  const searchAttendees = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const ref = bookingRef.trim();
+    if (!ref) {
+      toast.error("Enter a booking reference");
+      return;
+    }
+    setSearching(true);
+    setSearched(true);
+    const { data, error } = await supabase
+      .from("tickets")
+      .select("id, holder_name, holder_email, holder_phone, status, events!inner(title, starts_at, organizer_id), ticket_tiers(name), orders!inner(payment_ref, guest_name, guest_email, total_kes, status)")
+      .eq("events.organizer_id", organizerId)
+      .eq("orders.status", "paid")
+      .ilike("orders.payment_ref", `%${ref}%`);
+    setSearching(false);
+    if (error) {
+      toast.error("Attendee search failed", { description: error.message });
+      return;
+    }
+    setResults((data ?? []) as AttendeeResult[]);
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-foreground">Attendees</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Search paid attendees by booking reference.</p>
+      </div>
+
+      <form onSubmit={searchAttendees} className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
+        <Label htmlFor="booking-ref">Booking reference</Label>
+        <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+          <Input id="booking-ref" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} placeholder="e.g. FZY-12345 or payment ref" />
+          <Button type="submit" variant="acacia" disabled={searching}>
+            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            Search
+          </Button>
+        </div>
+      </form>
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
+        {searching ? (
+          <div className="grid min-h-32 place-items-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : !searched ? (
+          <p className="text-sm text-muted-foreground">Enter a booking reference to find the attendee tickets.</p>
+        ) : results.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No paid attendee matched that booking reference.</p>
+        ) : (
+          <div className="space-y-3">
+            {results.map((ticket) => (
+              <article key={ticket.id} className="rounded-2xl border border-border bg-background p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="font-display text-lg font-bold text-foreground">{ticket.holder_name}</p>
+                    <p className="text-sm text-muted-foreground">{ticket.holder_email}{ticket.holder_phone ? ` - ${ticket.holder_phone}` : ""}</p>
+                    <p className="mt-2 text-sm text-foreground">{ticket.events?.title ?? "Event"} - {ticket.ticket_tiers?.name ?? "Ticket"}</p>
+                    <p className="text-xs text-muted-foreground">Booking ref: {ticket.orders?.payment_ref ?? "N/A"}</p>
+                  </div>
+                  <div className="text-left md:text-right">
+                    <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-primary">{ticket.status}</span>
+                    <p className="mt-2 text-sm font-semibold text-foreground">{formatKES(ticket.orders?.total_kes ?? 0)}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+type OrganizerInvite = {
+  id: string;
+  token: string;
+  invited_email: string | null;
+  expires_at: string;
+  created_at: string;
+  accepted_by_user_id: string | null;
+};
+
 const TeamPanel = ({ organizerId, organizerName, userId }: { organizerId: string; organizerName: string; userId: string }) => {
   const [email, setEmail] = useState("");
-  const [invites, setInvites] = useState<any[]>([]);
+  const [invites, setInvites] = useState<OrganizerInvite[]>([]);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -673,3 +792,4 @@ const SettingsPanel = ({ profile, onDelete }: { profile: OrgProfile; onDelete: (
 };
 
 export default OrganizerDashboard;
+

@@ -2,7 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 const Privacy = () => (
-  <div className="min-h-screen bg-background">
+  <div className="tm-page min-h-screen bg-background">
     <Navbar />
     <main className="container-px mx-auto max-w-3xl py-16 md:py-24">
       <p className="eyebrow mb-3">Legal</p>
@@ -103,3 +103,4 @@ const Privacy = () => (
 );
 
 export default Privacy;
+

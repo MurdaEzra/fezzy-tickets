@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Plus, Trash2, Loader2, MapPin, Image as ImageIcon, Ticket, Eye, Save, Radio } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Trash2, Loader2, MapPin, Image as ImageIcon, Ticket, Save, Radio, X, CalendarIcon } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,15 @@ import MapPicker from "@/components/MapPicker";
 import TicketPreview, { ticketTemplateOptions } from "@/components/TicketPreview";
 import PosterDesigner from "@/components/PosterDesigner";
 import { formatEventDate } from "@/lib/eventsApi";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) + "-" + Math.random().toString(36).slice(2, 6);
 
 type Tab = "details" | "location" | "tickets" | "design" | "publish";
 
-interface TierDraft { id?: string; name: string; price_kes: number; quantity: number; description: string; }
+interface TierDraft { id?: string; name: string; price_kes: number; quantity: number; description: string; valid_dates: string[]; }
 
 const EventEditor = () => {
   const { id } = useParams();
@@ -49,6 +51,9 @@ const EventEditor = () => {
   const [lng, setLng] = useState<number | null>(null);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [eventDates, setEventDates] = useState<string[]>([]);
+  const [dateDraft, setDateDraft] = useState("");
+  const [lineupText, setLineupText] = useState("");
   const [isStream, setIsStream] = useState(false);
   const [streamUrl, setStreamUrl] = useState("");
   const [accent, setAccent] = useState("#1FAD66");
@@ -60,7 +65,7 @@ const EventEditor = () => {
   const [showQR, setShowQR] = useState(true);
   const [showDate, setShowDate] = useState(true);
   const [tiers, setTiers] = useState<TierDraft[]>([
-    { name: "General", price_kes: 1500, quantity: 100, description: "" },
+    { name: "General", price_kes: 1500, quantity: 100, description: "", valid_dates: [] },
   ]);
 
   useEffect(() => {
@@ -82,7 +87,9 @@ const EventEditor = () => {
         setVenueName(ev.venue_name ?? ""); setVenueAddress(ev.venue_address ?? "");
         setCity(ev.city ?? "Nairobi"); setCountry(ev.country ?? "Kenya");
         setLat(ev.latitude); setLng(ev.longitude);
-        setStartsAt(ev.starts_at?.slice(0, 16) ?? ""); setEndsAt(ev.ends_at?.slice(0, 16) ?? "");
+        setStartsAt(ev.starts_at?.slice(0, 10) ?? ""); setEndsAt(ev.ends_at?.slice(0, 10) ?? "");
+        setEventDates(Array.isArray(ev.event_dates) ? ev.event_dates as string[] : []);
+        setLineupText(Array.isArray(ev.lineup) ? (ev.lineup as string[]).join("\n") : "");
         setIsStream(ev.is_stream); setStreamUrl(ev.stream_url ?? "");
         const td = (ev.ticket_design ?? {}) as { accent?: string; theme?: string; pattern?: string; seatLabel?: string; seatArrangement?: "grid" | "rows" | "circle"; showLogo?: boolean; showQR?: boolean; showDate?: boolean };
         setAccent(td.accent ?? "#1FAD66");
@@ -95,7 +102,14 @@ const EventEditor = () => {
         setShowDate(td.showDate ?? true);
         const { data: ts } = await supabase.from("ticket_tiers").select("*").eq("event_id", id).order("sort_order");
         if (ts && ts.length) {
-          setTiers(ts.map((t) => ({ id: t.id, name: t.name, price_kes: t.price_kes, quantity: t.quantity, description: t.description ?? "" })));
+          setTiers(ts.map((t) => ({
+            id: t.id,
+            name: t.name,
+            price_kes: t.price_kes,
+            quantity: t.quantity,
+            description: t.description ?? "",
+            valid_dates: Array.isArray(t.valid_dates) ? t.valid_dates as string[] : [],
+          })));
         }
       }
       setLoading(false);
@@ -112,11 +126,29 @@ const EventEditor = () => {
     return data.publicUrl;
   };
 
+  const addEventDate = () => {
+    if (!dateDraft) return;
+    setEventDates((current) => Array.from(new Set([...current, dateDraft])).sort());
+    setDateDraft("");
+  };
+
+  const toggleTierDate = (index: number, date: string) => {
+    setTiers((arr) => arr.map((tier, tierIndex) => {
+      if (tierIndex !== index) return tier;
+      const valid_dates = tier.valid_dates.includes(date)
+        ? tier.valid_dates.filter((d) => d !== date)
+        : [...tier.valid_dates, date].sort();
+      return { ...tier, valid_dates };
+    }));
+  };
+
   const save = async (publish = false): Promise<string | null> => {
     if (!organizerId) return null;
     if (!title.trim() || !startsAt) {
       toast.error("Title and start date are required"); setTab("details"); return null;
     }
+    const explicitDates = eventDates.length ? eventDates : [startsAt.slice(0, 10)].filter(Boolean);
+    const lineup = lineupText.split("\n").map((item) => item.trim()).filter(Boolean);
     setSaving(true);
     try {
       const payload = {
@@ -125,12 +157,14 @@ const EventEditor = () => {
         cover_image_url: coverUrl, poster_url: posterUrl,
         venue_name: venueName, venue_address: venueAddress, city, country,
         latitude: lat, longitude: lng,
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        starts_at: new Date(`${startsAt}T00:00:00`).toISOString(),
+        ends_at: endsAt ? new Date(`${endsAt}T00:00:00`).toISOString() : null,
+        event_dates: explicitDates,
+        lineup,
         is_stream: isStream, stream_url: isStream ? streamUrl : null,
         ticket_design: { theme, accent, pattern, seatLabel, seatArrangement, showLogo, showQR, showDate },
         fee_waived: false,
-        status: publish ? "published" as const : "draft" as const,
+        status: publish ? "pending_approval" as const : "draft" as const,
       };
 
       let savedId = eventId;
@@ -152,13 +186,13 @@ const EventEditor = () => {
         const t = tiers[i];
         if (t.id) {
           await supabase.from("ticket_tiers").update({
-            name: t.name, price_kes: t.price_kes, quantity: t.quantity, description: t.description, sort_order: i,
+            name: t.name, price_kes: t.price_kes, quantity: t.quantity, description: t.description, valid_dates: t.valid_dates, sort_order: i,
           }).eq("id", t.id);
           existingIds.delete(t.id);
         } else {
           await supabase.from("ticket_tiers").insert({
             event_id: savedId, name: t.name, price_kes: t.price_kes,
-            quantity: t.quantity, description: t.description, sort_order: i,
+            quantity: t.quantity, description: t.description, valid_dates: t.valid_dates, sort_order: i,
           });
         }
       }
@@ -166,7 +200,7 @@ const EventEditor = () => {
         await supabase.from("ticket_tiers").delete().eq("id", orphan);
       }
 
-      toast.success(publish ? "Event published! 🎉" : "Saved as draft");
+      toast.success(publish ? "Event submitted for approval! 🎉" : "Saved as draft");
       return savedId;
     } catch (e) {
       toast.error("Save failed", { description: (e as Error).message });
@@ -175,19 +209,18 @@ const EventEditor = () => {
   };
 
   if (loading || authLoading) {
-    return <div className="min-h-screen bg-background"><Navbar /><div className="grid place-items-center py-32"><Loader2 className="h-6 w-6 animate-spin" /></div></div>;
+    return <div className="tm-page min-h-screen bg-background"><Navbar /><div className="grid place-items-center py-32"><Loader2 className="h-6 w-6 animate-spin" /></div></div>;
   }
 
   const tabs: { id: Tab; label: string; icon: typeof Plus }[] = [
     { id: "details", label: "Details", icon: ImageIcon },
     { id: "location", label: "Location", icon: MapPin },
     { id: "tickets", label: "Tickets", icon: Ticket },
-    { id: "design", label: "Design", icon: Eye },
     { id: "publish", label: "Publish", icon: ArrowRight },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main className="container-px mx-auto max-w-6xl py-8 md:py-12">
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -232,6 +265,14 @@ const EventEditor = () => {
                   <Field label="Description">
                     <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
                   </Field>
+                  <Field label="Artists / speakers">
+                    <Textarea
+                      value={lineupText}
+                      onChange={(e) => setLineupText(e.target.value)}
+                      rows={4}
+                      placeholder="Add one artist, speaker, or performer per line"
+                    />
+                  </Field>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Category">
                       <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
@@ -251,13 +292,129 @@ const EventEditor = () => {
                     </Field>
                   )}
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Starts at">
-                      <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+                    <Field label="Event date">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className={`flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition hover:bg-accent/30 ${
+                              startsAt ? "text-foreground" : "text-muted-foreground"
+                            }`}
+                          >
+                            <CalendarIcon className="h-4 w-4 text-primary" />
+                            {startsAt
+                              ? new Date(`${startsAt}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric" })
+                              : "Pick a date"}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={startsAt ? new Date(`${startsAt}T00:00:00`) : undefined}
+                            onSelect={(date) => {
+                              if (date) {
+                                const yyyy = date.getFullYear();
+                                const mm = String(date.getMonth() + 1).padStart(2, "0");
+                                const dd = String(date.getDate()).padStart(2, "0");
+                                setStartsAt(`${yyyy}-${mm}-${dd}`);
+                              }
+                            }}
+                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </Field>
-                    <Field label="Ends at (optional)">
-                      <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+                    <Field label="End date (optional)">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className={`flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition hover:bg-accent/30 ${
+                              endsAt ? "text-foreground" : "text-muted-foreground"
+                            }`}
+                          >
+                            <CalendarIcon className="h-4 w-4 text-primary" />
+                            {endsAt
+                              ? new Date(`${endsAt}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric" })
+                              : "Pick end date"}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={endsAt ? new Date(`${endsAt}T00:00:00`) : undefined}
+                            onSelect={(date) => {
+                              if (date) {
+                                const yyyy = date.getFullYear();
+                                const mm = String(date.getMonth() + 1).padStart(2, "0");
+                                const dd = String(date.getDate()).padStart(2, "0");
+                                setEndsAt(`${yyyy}-${mm}-${dd}`);
+                              }
+                            }}
+                            disabled={(date) => {
+                              const min = startsAt ? new Date(`${startsAt}T00:00:00`) : new Date(new Date().setHours(0, 0, 0, 0));
+                              return date < min;
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {endsAt && (
+                        <button type="button" onClick={() => setEndsAt("")} className="mt-1 text-xs text-muted-foreground hover:text-foreground">
+                          Clear end date
+                        </button>
+                      )}
                     </Field>
                   </div>
+                  <Field label="Additional event dates (optional — for multi-day events)">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground transition hover:bg-accent/30"
+                        >
+                          <CalendarIcon className="h-4 w-4 text-primary" />
+                          {dateDraft
+                            ? new Date(`${dateDraft}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                            : "Select a date to add"}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateDraft ? new Date(`${dateDraft}T00:00:00`) : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              const yyyy = date.getFullYear();
+                              const mm = String(date.getMonth() + 1).padStart(2, "0");
+                              const dd = String(date.getDate()).padStart(2, "0");
+                              setDateDraft(`${yyyy}-${mm}-${dd}`);
+                            }
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Button type="button" variant="outline" className="mt-2" onClick={addEventDate} disabled={!dateDraft}>
+                      <Plus className="h-4 w-4" /> Add date
+                    </Button>
+                    {eventDates.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {eventDates.map((date) => (
+                          <button
+                            key={date}
+                            type="button"
+                            onClick={() => setEventDates((current) => current.filter((d) => d !== date))}
+                            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground"
+                          >
+                            {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                            <X className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Field>
                 </div>
               </Card>
 
@@ -276,6 +433,29 @@ const EventEditor = () => {
                       Upload image
                     </span>
                   </label>
+                </div>
+              </Card>
+
+              <Card title="Custom poster">
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                  <div className="aspect-[4/5] w-36 overflow-hidden rounded-2xl border border-border bg-secondary">
+                    {posterUrl ? <img src={posterUrl} alt="" className="h-full w-full object-cover" /> :
+                      <div className="grid h-full w-full place-items-center text-muted-foreground"><ImageIcon className="h-6 w-6" /></div>}
+                  </div>
+                  <div>
+                    <label className="cursor-pointer">
+                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const f = e.target.files?.[0]; if (!f) return;
+                        const url = await uploadAsset(f, "posters"); if (url) setPosterUrl(url);
+                      }} />
+                      <span className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-foreground/15 px-5 text-sm font-semibold hover:bg-foreground/[0.04]">
+                        Upload poster
+                      </span>
+                    </label>
+                    <p className="mt-2 max-w-sm text-xs text-muted-foreground">
+                      Uploaded posters are displayed exactly as provided.
+                    </p>
+                  </div>
                 </div>
               </Card>
             </div>
@@ -305,16 +485,41 @@ const EventEditor = () => {
             <Card title="Ticket tiers">
               <div className="space-y-3">
                 {tiers.map((t, i) => (
-                  <div key={i} className="grid gap-3 rounded-2xl border border-border bg-background p-4 sm:grid-cols-[1fr_120px_120px_auto]">
-                    <Input value={t.name} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="e.g. Early Bird" />
-                    <Input type="number" value={t.price_kes} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, price_kes: Number(e.target.value) } : x))} placeholder="Price KES" />
-                    <Input type="number" value={t.quantity} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))} placeholder="Qty" />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setTiers((arr) => arr.filter((_, j) => j !== i))} disabled={tiers.length === 1}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                  <div key={i} className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px_auto]">
+                      <Input value={t.name} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="e.g. Early Bird" />
+                      <Input type="number" value={t.price_kes} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, price_kes: Number(e.target.value) } : x))} placeholder="Price KES" />
+                      <Input type="number" value={t.quantity} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))} placeholder="Qty" />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setTiers((arr) => arr.filter((_, j) => j !== i))} disabled={tiers.length === 1}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <Input value={t.description} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} placeholder="Tier notes (optional)" />
+                    {eventDates.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valid dates</p>
+                        <div className="flex flex-wrap gap-2">
+                          {eventDates.map((date) => {
+                            const selected = t.valid_dates.includes(date);
+                            return (
+                              <button
+                                key={date}
+                                type="button"
+                                onClick={() => toggleTierDate(i, date)}
+                                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                  selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={() => setTiers((arr) => [...arr, { name: "", price_kes: 0, quantity: 100, description: "" }])}>
+                <Button type="button" variant="outline" onClick={() => setTiers((arr) => [...arr, { name: "", price_kes: 0, quantity: 100, description: "", valid_dates: [] }])}>
                   <Plus className="h-4 w-4" /> Add tier
                 </Button>
               </div>
@@ -323,7 +528,7 @@ const EventEditor = () => {
 
           {tab === "design" && (
             <div className="grid gap-6 lg:grid-cols-2">
-              <Card title="Ticket designer">
+              <Card title="Design options">
                 <div className="space-y-4">
                   <Field label="Theme">
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -411,15 +616,23 @@ const EventEditor = () => {
           )}
 
           {tab === "publish" && (
-            <Card title="Ready to go live?">
+            <Card title="Ready to submit for review?">
               <ul className="space-y-2 text-sm">
                 <Bullet ok={!!title}>Title</Bullet>
-                <Bullet ok={!!startsAt}>Start date & time</Bullet>
+                <Bullet ok={!!startsAt}>Start date</Bullet>
                 <Bullet ok={!!coverUrl}>Cover image (recommended)</Bullet>
                 <Bullet ok={lat !== null && lng !== null}>Location pin</Bullet>
                 <Bullet ok={tiers.every((t) => t.name && t.price_kes >= 0)}>Ticket tiers</Bullet>
               </ul>
-              <div className="mt-6 rounded-2xl bg-primary/[0.07] p-4 text-sm">
+              <div className="mt-6 rounded-2xl bg-amber-500/[0.08] border border-amber-500/20 p-4 text-sm">
+                <p className="font-semibold text-foreground">
+                  ⏳ Your event will be reviewed by our team before going live.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Events are typically approved within a few hours. You'll see the status update on your dashboard.
+                </p>
+              </div>
+              <div className="mt-4 rounded-2xl bg-primary/[0.07] p-4 text-sm">
                 <p className="font-semibold text-foreground">
                   Buyer service fee: <span className="text-primary">3.5% of each ticket order</span>
                 </p>
@@ -432,7 +645,7 @@ const EventEditor = () => {
                 if (ok) navigate("/dashboard");
               }}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                Publish event
+                Submit for approval
               </Button>
             </Card>
           )}
@@ -465,3 +678,4 @@ const Bullet = ({ ok, children }: { ok: boolean; children: React.ReactNode }) =>
 );
 
 export default EventEditor;
+

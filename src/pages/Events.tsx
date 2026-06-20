@@ -4,14 +4,14 @@ import { Loader2, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";
-import { useEventCategories, usePublishedEvents } from "@/hooks/useEvents";
+import { useAllEvents, categoriesFromEvents } from "@/hooks/useEvents";
 
 const ALL = "All" as const;
 
 const Events = () => {
   const [params, setParams] = useSearchParams();
-  const { data: events = [], isLoading: loading } = usePublishedEvents();
-  const { data: categories = [] } = useEventCategories();
+  const { data: events = [], isLoading: loading } = useAllEvents();
+  const categories = useMemo(() => categoriesFromEvents(events), [events]);
   const [activeCat, setActiveCat] = useState<string>(params.get("cat") ?? ALL);
   const [query, setQuery] = useState("");
 
@@ -37,21 +37,22 @@ const Events = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main>
-        <section className="relative isolate overflow-hidden border-b border-border bg-mesh">
+        <section className="relative isolate overflow-hidden border-b border-border">
+          <div className="dotgrid absolute inset-0 opacity-40" />
           <div className="container-px mx-auto max-w-7xl pb-12 pt-16 md:pb-16 md:pt-24">
-            <p className="eyebrow mb-3">Discover</p>
-            <h1 className="display text-5xl text-foreground sm:text-6xl md:text-7xl">
-              What's <span className="script font-normal text-primary text-[1.2em]">on</span>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-primary">Discover</p>
+            <h1 className="font-display text-5xl font-extrabold text-foreground sm:text-6xl md:text-7xl">
+              What's <span className="tm-grad-green">on</span>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
-              Curated events across Kenya and the world. Filter by mood, moment, or city.
+              All events across Kenya and the world. Filter by mood, moment, or city.
             </p>
 
-            <div className="mt-10 flex max-w-xl items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card-soft">
-              <Search className="h-4 w-4 text-muted-foreground" />
+            <div className="mt-10 flex max-w-xl items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-card-soft transition focus-within:border-primary">
+              <Search className="h-4 w-4 text-primary" />
               <input
                 type="text"
                 value={query}
@@ -70,8 +71,8 @@ const Events = () => {
                     onClick={() => setCat(category)}
                     className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                       active
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-card text-foreground hover:border-foreground/40"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-foreground hover:border-primary/60 hover:text-primary"
                     }`}
                   >
                     {category}
@@ -114,3 +115,4 @@ const Events = () => {
 };
 
 export default Events;
+

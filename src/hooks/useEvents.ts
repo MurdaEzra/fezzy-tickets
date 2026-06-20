@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  fetchAllEventsWithTiers,
   fetchEventBySlug,
   fetchOrganizerProfile,
   fetchPublishedEventsWithTiers,
@@ -7,7 +8,15 @@ import {
   fetchTiers,
   type DbEventWithTiers,
 } from "@/lib/eventsApi";
+import { fetchHomepageSettings } from "@/lib/homepageSettings";
 import { queryKeys } from "@/lib/queryClient";
+
+export function useAllEvents(opts: { stream?: boolean; limit?: number } = {}) {
+  return useQuery({
+    queryKey: queryKeys.events.all(opts),
+    queryFn: () => fetchAllEventsWithTiers(opts),
+  });
+}
 
 export function usePublishedEvents(opts: { stream?: boolean; limit?: number } = {}) {
   return useQuery({
@@ -64,6 +73,13 @@ export function useOrganizerProfile(organizerId: string | undefined) {
     queryKey: queryKeys.organizer.profile(organizerId ?? ""),
     queryFn: () => fetchOrganizerProfile(organizerId!),
     enabled: !!organizerId,
+  });
+}
+
+export function useHomepageSettings() {
+  return useQuery({
+    queryKey: ["homepage-settings"],
+    queryFn: fetchHomepageSettings,
   });
 }
 

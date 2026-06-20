@@ -1,27 +1,36 @@
 import { Link } from "react-router-dom";
-import { Ticket, Instagram, Twitter, Facebook } from "lucide-react";
+import { Facebook, Instagram, Music2, Ticket, Wallet } from "lucide-react";
+import { FEZZY_LOGO_URL } from "@/lib/brand";
 
 const cols = [
   {
     title: "Discover",
     links: [
-      ["Browse events", "/events"],
-      ["This weekend", "/events"],
-      ["Categories", "/events"],
+      ["All events", "/events"],
+      ["Concerts", "/events"],
+      ["Sports", "/events"],
+      ["Festivals", "/events"],
+      ["Theatre", "/events"],
+      ["Comedy", "/events"],
     ],
   },
   {
-    title: "Organize",
+    title: "For you",
     links: [
-      ["Pricing", "/pricing"],
-      ["For Organizers", "/organizer"],
+      ["My tickets", "/auth?mode=signin"],
+      ["Sell tickets", "/start-selling"],
+      ["Streams", "/streams"],
+      ["Mobile app", "/events"],
+      ["Fezzy Rewards", "/events"],
     ],
   },
   {
-    title: "Company",
+    title: "Support",
     links: [
-      ["About", "/"],
-      ["Help Center", "/help"],
+      ["Help centre", "/help"],
+      ["Terms of use", "/terms"],
+      ["Privacy", "/privacy"],
+      ["Report fraud", "/help"],
       ["Contact", "/help"],
     ],
   },
@@ -29,54 +38,27 @@ const cols = [
 
 const Footer = () => {
   return (
-    <footer className="relative overflow-hidden border-t border-border bg-cream-deep">
-      {/* Centered Watermark */}
-      <div
-        className="absolute inset-0 bg-center bg-no-repeat opacity-[0.04] pointer-events-none"
-        style={{
-          backgroundImage:
-            "url('https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png')",
-          backgroundSize: "500px",
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 container-px mx-auto max-w-7xl py-16">
-        <div className="grid gap-12 md:grid-cols-5">
-          {/* Brand */}
-          <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-acacia shadow-acacia">
-                <Ticket
-                  className="h-4 w-4 text-primary-foreground"
-                  strokeWidth={2.5}
-                />
-              </span>
-
-              <span className="font-display text-xl font-bold text-foreground">
-                Fezzy
-                <span className="script ml-0.5 text-2xl text-primary">
-                  tickets
-                </span>
+    <footer className="border-t border-[#1f2230] bg-[#0c0d12]">
+      <div className="mx-auto max-w-[1400px] px-5 pb-10 pt-16 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <Link to="/" className="mb-5 flex items-center gap-2">
+              <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl">
+                <img src={FEZZY_LOGO_URL} alt="Fezzy Tickets" className="h-8 w-auto object-contain" />
               </span>
             </Link>
-
-            <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Born in{" "}
-              <span className="font-medium text-foreground">Nairobi</span>.
-              Every concert, festival, match, and gathering is one ticket away.
-              Come let's experience the fun together!
+            <p className="max-w-sm leading-relaxed text-[#8a8fa3]">
+              Kenya's ticketing platform for concerts, festivals, matches, theatre and unforgettable weekends.
             </p>
-
-            <div className="mt-6 flex gap-2">
-              {[Instagram, Twitter, Facebook].map((Icon, i) => (
+            <div className="mt-5 flex items-center gap-3">
+              {[Instagram, Music2, Facebook].map((Icon, index) => (
                 <a
-                  key={i}
+                  key={index}
                   href="https://instagram.com/fezzytickets"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Social Media"
-                  className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-foreground hover:text-background"
+                  aria-label="Fezzy social link"
+                  className="grid h-10 w-10 place-items-center rounded-full border border-[#2a2e3f] text-[#8a8fa3] transition hover:border-[#10ff8a] hover:text-[#10ff8a]"
                 >
                   <Icon className="h-4 w-4" />
                 </a>
@@ -84,18 +66,13 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Navigation Columns */}
           {cols.map((col) => (
-            <div key={col.title}>
-              <p className="eyebrow mb-4">{col.title}</p>
-
-              <ul className="space-y-2.5 text-sm">
+            <div key={col.title} className="lg:col-span-2">
+              <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#8a8fa3]">{col.title}</p>
+              <ul className="space-y-3 text-sm">
                 {col.links.map(([label, to]) => (
                   <li key={label}>
-                    <Link
-                      to={to}
-                      className="text-muted-foreground transition-colors hover:text-foreground"
-                    >
+                    <Link to={to} className="text-[#cfd2dc] transition hover:text-[#10ff8a]">
                       {label}
                     </Link>
                   </li>
@@ -103,15 +80,28 @@ const Footer = () => {
               </ul>
             </div>
           ))}
+
+          <div className="lg:col-span-2">
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#8a8fa3]">Payments</p>
+            <div className="space-y-2 text-sm text-[#cfd2dc]">
+              <span className="flex items-center gap-2 rounded border border-[#2a2e3f] px-3 py-2">
+                <Wallet className="h-4 w-4 text-[#10ff8a]" /> M-Pesa
+              </span>
+              <span className="flex items-center gap-2 rounded border border-[#2a2e3f] px-3 py-2">
+                <Ticket className="h-4 w-4 text-[#10ff8a]" /> Visa
+              </span>
+              <span className="flex items-center gap-2 rounded border border-[#2a2e3f] px-3 py-2">
+                <Ticket className="h-4 w-4 text-[#10ff8a]" /> Mastercard
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
-          <p>
-            © {new Date().getFullYear()} Fezzy Tickets · Nairobi, Kenya 🇰🇪
-          </p>
+        <div className="my-10 h-px bg-gradient-to-r from-transparent via-[#2a2e3f] to-transparent" />
 
-          <p>M-Pesa · Visa · Apple Pay</p>
+        <div className="flex flex-col items-center justify-between gap-5 text-xs text-[#8a8fa3] md:flex-row">
+          <p>© {new Date().getFullYear()} Fezzy Tickets Ltd - Nairobi, Kenya</p>
+          <p>Verified tickets - Secure checkout - Local support</p>
         </div>
       </div>
     </footer>
@@ -119,4 +109,3 @@ const Footer = () => {
 };
 
 export default Footer;
-

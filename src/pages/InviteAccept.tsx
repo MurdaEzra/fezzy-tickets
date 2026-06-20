@@ -70,7 +70,7 @@ const InviteAccept = () => {
   }, [loading, navigate, token, user]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main className="container-px mx-auto flex min-h-[70vh] max-w-2xl items-center py-16">
         <section className="w-full rounded-[32px] border border-border bg-card p-8 text-center shadow-soft md:p-10">
@@ -109,3 +109,4 @@ const InviteAccept = () => {
 };
 
 export default InviteAccept;
+

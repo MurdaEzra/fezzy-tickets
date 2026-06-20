@@ -19,9 +19,11 @@ export type DbEvent = {
   longitude: number | null;
   starts_at: string;
   ends_at: string | null;
+  event_dates: string[];
+  lineup: string[];
   is_stream: boolean;
   stream_url: string | null;
-  status: "draft" | "published" | "cancelled" | "completed";
+  status: "draft" | "pending_approval" | "published" | "cancelled" | "completed";
   fee_waived: boolean;
 };
 
@@ -34,6 +36,7 @@ export type DbTier = {
   quantity: number;
   sold: number;
   sort_order: number;
+  valid_dates: string[];
 };
 
 export type DbOrganizer = {
@@ -76,11 +79,25 @@ export const formatEventDateLong = (iso: string) =>
 export const formatEventTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
+export async function fetchAllEventsWithTiers(opts: { stream?: boolean; limit?: number } = {}) {
+  let q = supabase
+    .from("events")
+    .select("*, ticket_tiers(*)")
+    .order("starts_at", { ascending: true })
+    .order("sort_order", { referencedTable: "ticket_tiers", ascending: true });
+  if (opts.stream !== undefined) q = q.eq("is_stream", opts.stream);
+  if (opts.limit) q = q.limit(opts.limit);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as DbEventWithTiers[];
+}
+
 export async function fetchPublishedEvents(opts: { stream?: boolean; limit?: number } = {}) {
   let q = supabase
     .from("events")
     .select("*")
     .eq("status", "published")
+    .gt("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
   if (opts.stream !== undefined) q = q.eq("is_stream", opts.stream);
   if (opts.limit) q = q.limit(opts.limit);
@@ -94,6 +111,7 @@ export async function fetchPublishedEventsWithTiers(opts: { stream?: boolean; li
     .from("events")
     .select("*, ticket_tiers(*)")
     .eq("status", "published")
+    .gt("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true })
     .order("sort_order", { referencedTable: "ticket_tiers", ascending: true });
   if (opts.stream !== undefined) q = q.eq("is_stream", opts.stream);
@@ -130,6 +148,7 @@ export async function fetchRelatedEvents(category: string | null, excludeId: str
     .from("events")
     .select("*, ticket_tiers(*)")
     .eq("status", "published")
+    .gt("starts_at", new Date().toISOString())
     .eq("category", category)
     .neq("id", excludeId)
     .order("starts_at", { ascending: true })

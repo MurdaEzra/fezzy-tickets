@@ -141,7 +141,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main className="bg-mesh">
         <section className="container-px mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl gap-12 py-12 md:grid-cols-2 md:items-center md:py-16">
@@ -280,3 +280,4 @@ const Auth = () => {
 };
 
 export default Auth;
+

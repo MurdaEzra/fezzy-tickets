@@ -24,7 +24,7 @@ const faqs = [
 ];
 
 const Help = () => (
-  <div className="min-h-screen bg-background">
+  <div className="tm-page min-h-screen bg-background">
     <Navbar />
     <main className="container-px mx-auto max-w-6xl py-10 md:py-14">
       <section className="rounded-[32px] border border-border bg-card p-8 shadow-soft md:p-10">
@@ -74,3 +74,4 @@ const Help = () => (
 );
 
 export default Help;
+

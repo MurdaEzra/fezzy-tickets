@@ -190,7 +190,7 @@ const Scan = () => {
   }
 
   return (
-    <div className="min-h-screen bg-cream-deep">
+    <div className="tm-page min-h-screen bg-background">
       {/* Toaster scoped to this page — positioned top-center for visibility */}
       <Toaster
         position="top-center"
@@ -346,3 +346,4 @@ const ResultBanner = ({
 };
 
 export default Scan;
+

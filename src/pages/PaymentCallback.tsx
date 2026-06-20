@@ -42,7 +42,7 @@ const PaymentCallback = () => {
   }, [reference]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main className="container-px mx-auto max-w-2xl py-20">
         <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-soft md:p-12">
@@ -101,3 +101,4 @@ const PaymentCallback = () => {
 };
 
 export default PaymentCallback;
+

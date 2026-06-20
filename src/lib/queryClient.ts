@@ -16,6 +16,8 @@ export const queryClient = new QueryClient({
 
 export const queryKeys = {
   events: {
+    all: (opts?: { stream?: boolean; limit?: number }) =>
+      ["events", "all", opts ?? {}] as const,
     published: (opts?: { stream?: boolean; limit?: number }) =>
       ["events", "published", opts ?? {}] as const,
     featured: (limit: number) => ["events", "featured", limit] as const,

@@ -46,7 +46,7 @@ const Checkout = () => {
       id: dbEvent.id,
       title: dbEvent.title,
       slug: dbEvent.slug,
-      image: dbEvent.cover_image_url ?? "",
+      image: dbEvent.poster_url ?? dbEvent.cover_image_url ?? "",
       date: dbEvent.starts_at,
       venue: dbEvent.venue_name ?? "TBA",
       city: dbEvent.city ?? "",
@@ -173,7 +173,7 @@ const Checkout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="tm-page min-h-screen bg-background">
         <Navbar />
         <div className="container-px mx-auto max-w-3xl py-32 text-center">
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
@@ -183,7 +183,7 @@ const Checkout = () => {
   }
   if (!evt || !tier) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="tm-page min-h-screen bg-background">
         <Navbar />
         <div className="container-px mx-auto max-w-3xl py-32 text-center">
           <h1 className="display text-4xl">Event not found</h1>
@@ -194,7 +194,7 @@ const Checkout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main className="bg-mesh">
         <section className="container-px mx-auto max-w-6xl py-12 md:py-16">
@@ -361,3 +361,4 @@ const PayBadge = ({ icon: Icon, label, selected, onSelect }: { icon: typeof Cred
 );
 
 export default Checkout;
+

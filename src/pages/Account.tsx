@@ -62,7 +62,7 @@ const Account = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="tm-page min-h-screen bg-background">
       <Navbar />
       <main>
         <section className="border-b border-border bg-mesh">
@@ -100,7 +100,7 @@ const Account = () => {
                 return (
                   <article key={ticket.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
                     <div className="flex">
-                      <div className="relative w-32 flex-shrink-0 bg-cream-deep sm:w-44">
+                      <div className="relative w-32 flex-shrink-0 bg-secondary sm:w-44">
                         {event?.cover_image_url ? (
                           <img src={event.cover_image_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
                         ) : (
@@ -153,3 +153,4 @@ const Account = () => {
 };
 
 export default Account;
+
