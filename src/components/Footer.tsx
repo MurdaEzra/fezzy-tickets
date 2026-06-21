@@ -102,7 +102,7 @@ const Footer = () => {
             <div className="mt-3 text-[10px] font-mono-label text-ash">
               Nairobi - Kenya
               <br />
-              +254 728135200
+              <a href="tel:+254728135200">+254 728135200</a>
             </div>
           </div>
         </div>
