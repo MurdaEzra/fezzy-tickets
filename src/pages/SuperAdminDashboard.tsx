@@ -14,7 +14,7 @@ import { FEZZY_LOGO_URL } from "@/lib/brand";
 import { formatKES, formatEventDate, formatEventDateLong, formatEventTime, formatPrice } from "@/lib/eventsApi";
 import { PLATFORM_FEE_PCT, BUYER_FEE_PCT } from "@/lib/pricing";
 import { logActivity } from "@/lib/activityLog";
-import { defaultLiveBarItems, fetchHomepageSettings, updateHomepageSettings } from "@/lib/homepageSettings";
+import { defaultLiveBarItems, fetchHomepageSettings, updateHomepageSettings, type Artist, type IconicVenue } from "@/lib/homepageSettings";
 import { queryClient } from "@/lib/queryClient";
 import { toast } from "sonner";
 
@@ -103,6 +103,22 @@ const SuperAdminDashboard = () => {
   const [savingHomepage, setSavingHomepage] = useState(false);
   const [liveBarText, setLiveBarText] = useState(defaultLiveBarItems.join("\n"));
   const [headlinerEventId, setHeadlinerEventId] = useState<string>("");
+  const [trendingEventIds, setTrendingEventIds] = useState<string[]>([]);
+  const [calendarEventIds, setCalendarEventIds] = useState<string[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [iconicVenues, setIconicVenues] = useState<IconicVenue[]>([]);
+  const [uploadingArtistIndex, setUploadingArtistIndex] = useState<number | null>(null);
+  const [uploadingVenueIndex, setUploadingVenueIndex] = useState<number | null>(null);
+
+  const uploadImage = async (file: File, folder: "artists" | "venues") => {
+    if (!user) return null;
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${user.id}/${folder}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("event-assets").upload(path, file, { upsert: true });
+    if (error) { toast.error("Upload failed", { description: error.message }); return null; }
+    const { data } = supabase.storage.from("event-assets").getPublicUrl(path);
+    return data.publicUrl;
+  };
 
   // Event detail panel state
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
@@ -141,6 +157,10 @@ const SuperAdminDashboard = () => {
       setLogs((logRows ?? []) as LogRow[]);
       setLiveBarText(settings.live_bar_items.join("\n"));
       setHeadlinerEventId(settings.headliner_event_id ?? "");
+      setTrendingEventIds(settings.trending_event_ids ?? []);
+      setCalendarEventIds(settings.calendar_event_ids ?? []);
+      setArtists(settings.artists ?? []);
+      setIconicVenues(settings.iconic_venues ?? []);
       setLoading(false);
     })();
   }, [user, authLoading, navigate]);
@@ -252,6 +272,10 @@ const SuperAdminDashboard = () => {
       await updateHomepageSettings({
         live_bar_items,
         headliner_event_id: headlinerEventId || null,
+        trending_event_ids: trendingEventIds,
+        calendar_event_ids: calendarEventIds,
+        artists,
+        iconic_venues: iconicVenues,
         updated_by: user?.id,
       });
       queryClient.invalidateQueries({ queryKey: ["homepage-settings"] });
@@ -467,68 +491,291 @@ const SuperAdminDashboard = () => {
                   )}
 
                   {view === "homepage" && (
-                    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-                      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Live bar</p>
-                            <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Announcement messages</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              Add one message per line. These messages appear in the moving live bar above the navbar.
-                            </p>
+                    <div className="space-y-6">
+                      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+                        <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Live bar</p>
+                              <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Announcement messages</h2>
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                Add one message per line. These messages appear in the moving live bar above the navbar.
+                              </p>
+                            </div>
+                            <Megaphone className="h-6 w-6 text-primary" />
                           </div>
-                          <Megaphone className="h-6 w-6 text-primary" />
+                          <textarea
+                            value={liveBarText}
+                            onChange={(event) => setLiveBarText(event.target.value)}
+                            rows={7}
+                            className="mt-6 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground outline-none transition focus:border-primary"
+                            placeholder="Write each live bar message on a new line"
+                          />
+                          <div className="mt-5 rounded-2xl border border-border bg-background p-4">
+                            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Preview</p>
+                            <div className="no-scrollbar flex gap-8 overflow-hidden text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              {liveBarText.split("\n").filter(Boolean).map((item, index) => (
+                                <span key={`${item}-${index}`} className="flex shrink-0 items-center gap-2">
+                                  <Megaphone className="h-3.5 w-3.5 text-primary" />
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <textarea
-                          value={liveBarText}
-                          onChange={(event) => setLiveBarText(event.target.value)}
-                          rows={7}
-                          className="mt-6 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground outline-none transition focus:border-primary"
-                          placeholder="Write each live bar message on a new line"
-                        />
-                        <div className="mt-5 rounded-2xl border border-border bg-background p-4">
-                          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Preview</p>
-                          <div className="no-scrollbar flex gap-8 overflow-hidden text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            {liveBarText.split("\n").filter(Boolean).map((item, index) => (
-                              <span key={`${item}-${index}`} className="flex shrink-0 items-center gap-2">
-                                <Megaphone className="h-3.5 w-3.5 text-primary" />
-                                {item}
-                              </span>
-                            ))}
+
+                        <div className="space-y-6">
+                          <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                            <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Headliner</p>
+                            <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Featured event</h2>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              Choose the event shown in the homepage hero ticket.
+                            </p>
+                            <select
+                              value={headlinerEventId}
+                              onChange={(event) => setHeadlinerEventId(event.target.value)}
+                              className="mt-6 h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm text-foreground outline-none transition focus:border-primary"
+                            >
+                              <option value="">Use newest event</option>
+                              {events.map((event) => (
+                                <option key={event.id} value={event.id}>
+                                  {event.title} ({statusLabel(event.status)})
+                                </option>
+                              ))}
+                            </select>
+                            <div className="mt-5 space-y-2 rounded-2xl border border-border bg-background p-4 text-sm">
+                              <p className="font-semibold text-foreground">
+                                {events.find((event) => event.id === headlinerEventId)?.title ?? "Newest event fallback"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                The homepage falls back automatically if the selected event is unpublished or unavailable.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                            <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Trending events</p>
+                            <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Select trending events</h2>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              Select events to show in the trending section.
+                            </p>
+                            <div className="mt-6 max-h-60 overflow-y-auto space-y-2">
+                              {events.map((event) => (
+                                <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={trendingEventIds.includes(event.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setTrendingEventIds([...trendingEventIds, event.id]);
+                                      } else {
+                                        setTrendingEventIds(trendingEventIds.filter(id => id !== event.id));
+                                      }
+                                    }}
+                                    className="h-4 w-4 rounded border-gray-300 text-[#10ff8a] focus:ring-[#10ff8a]"
+                                  />
+                                  <span className="text-sm">{event.title}</span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Headliner</p>
-                        <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Featured event</h2>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          Choose the event shown in the homepage hero ticket.
-                        </p>
-                        <select
-                          value={headlinerEventId}
-                          onChange={(event) => setHeadlinerEventId(event.target.value)}
-                          className="mt-6 h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm text-foreground outline-none transition focus:border-primary"
-                        >
-                          <option value="">Use newest event</option>
-                          {events.map((event) => (
-                            <option key={event.id} value={event.id}>
-                              {event.title} ({statusLabel(event.status)})
-                            </option>
-                          ))}
-                        </select>
-                        <div className="mt-5 space-y-2 rounded-2xl border border-border bg-background p-4 text-sm">
-                          <p className="font-semibold text-foreground">
-                            {events.find((event) => event.id === headlinerEventId)?.title ?? "Newest event fallback"}
+                      <div className="grid gap-6 lg:grid-cols-3">
+                        <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Calendar</p>
+                          <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Calendar events</h2>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Select events for the weekend calendar.
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            The homepage falls back automatically if the selected event is unpublished or unavailable.
-                          </p>
+                          <div className="mt-6 max-h-60 overflow-y-auto space-y-2">
+                            {events.map((event) => (
+                              <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={calendarEventIds.includes(event.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCalendarEventIds([...calendarEventIds, event.id]);
+                                    } else {
+                                      setCalendarEventIds(calendarEventIds.filter(id => id !== event.id));
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300 text-[#10ff8a] focus:ring-[#10ff8a]"
+                                />
+                                <span className="text-sm">{event.title}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
+
+                        <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Artists</p>
+                          <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Manage artists</h2>
+                          <div className="mt-6 space-y-4">
+                            {artists.map((artist, index) => (
+                              <div key={index} className="space-y-2 p-3 border border-border rounded-xl bg-background">
+                                <input
+                                  type="text"
+                                  value={artist.name}
+                                  onChange={(e) => {
+                                    const newArtists = [...artists];
+                                    newArtists[index].name = e.target.value;
+                                    setArtists(newArtists);
+                                  }}
+                                  placeholder="Artist name"
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={artist.genre}
+                                  onChange={(e) => {
+                                    const newArtists = [...artists];
+                                    newArtists[index].genre = e.target.value;
+                                    setArtists(newArtists);
+                                  }}
+                                  placeholder="Genre"
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={artist.shows}
+                                  onChange={(e) => {
+                                    const newArtists = [...artists];
+                                    newArtists[index].shows = e.target.value;
+                                    setArtists(newArtists);
+                                  }}
+                                  placeholder="Shows info"
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                {artist.image && (
+                                  <div className="w-20 h-20 rounded-lg overflow-hidden">
+                                    <img src={artist.image} alt={artist.name} className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={uploadingArtistIndex === index}
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setUploadingArtistIndex(index);
+                                    const url = await uploadImage(file, "artists");
+                                    if (url) {
+                                      const newArtists = [...artists];
+                                      newArtists[index].image = url;
+                                      setArtists(newArtists);
+                                    }
+                                    setUploadingArtistIndex(null);
+                                  }}
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => setArtists(artists.filter((_, i) => i !== index))}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => setArtists([...artists, { name: "", genre: "", shows: "", image: "" }])}
+                            >
+                              Add artist
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Venues</p>
+                          <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Iconic venues</h2>
+                          <div className="mt-6 space-y-4">
+                            {iconicVenues.map((venue, index) => (
+                              <div key={index} className="space-y-2 p-3 border border-border rounded-xl bg-background">
+                                <input
+                                  type="text"
+                                  value={venue.name}
+                                  onChange={(e) => {
+                                    const newVenues = [...iconicVenues];
+                                    newVenues[index].name = e.target.value;
+                                    setIconicVenues(newVenues);
+                                  }}
+                                  placeholder="Venue name"
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={venue.city}
+                                  onChange={(e) => {
+                                    const newVenues = [...iconicVenues];
+                                    newVenues[index].city = e.target.value;
+                                    setIconicVenues(newVenues);
+                                  }}
+                                  placeholder="City"
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={venue.events}
+                                  onChange={(e) => {
+                                    const newVenues = [...iconicVenues];
+                                    newVenues[index].events = e.target.value;
+                                    setIconicVenues(newVenues);
+                                  }}
+                                  placeholder="Events info"
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                {venue.image && (
+                                  <div className="w-20 h-20 rounded-lg overflow-hidden">
+                                    <img src={venue.image} alt={venue.name} className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={uploadingVenueIndex === index}
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setUploadingVenueIndex(index);
+                                    const url = await uploadImage(file, "venues");
+                                    if (url) {
+                                      const newVenues = [...iconicVenues];
+                                      newVenues[index].image = url;
+                                      setIconicVenues(newVenues);
+                                    }
+                                    setUploadingVenueIndex(null);
+                                  }}
+                                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => setIconicVenues(iconicVenues.filter((_, i) => i !== index))}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => setIconicVenues([...iconicVenues, { name: "", city: "", events: "", image: "" }])}
+                            >
+                              Add venue
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-center">
                         <Button
                           onClick={saveHomepageSettings}
                           disabled={savingHomepage}
-                          className="mt-6 w-full bg-[#10ff8a] text-[#04130a] hover:bg-[#5dffaf]"
+                          className="w-full max-w-md bg-[#10ff8a] text-[#04130a] hover:bg-[#5dffaf]"
                         >
                           {savingHomepage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                           Save homepage

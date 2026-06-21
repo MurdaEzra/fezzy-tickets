@@ -26,7 +26,7 @@ const Checkout = () => {
   const { data: dbEvent, isLoading: eventLoading } = useEventDetail(slug);
   const { data: tiers = [], isLoading: tiersLoading } = useEventTiers(dbEvent?.id);
 
-  const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number }>({ subtotal: 0, fee: 0, total: 0 });
+  const [calc, setCalc] = useState<{ subtotal: number; fee: number; total: number; discount?: number; discountPercent?: number }>({ subtotal: 0, fee: 0, total: 0 });
   const params = new URLSearchParams(window.location.search);
   const tierIdx = Number(params.get("tier") ?? 0);
   const qty = Math.max(1, Number(params.get("qty") ?? 1));
@@ -36,6 +36,9 @@ const Checkout = () => {
   const [processing, setProcessing] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ id: string; discountPercent: number } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
 
   const evt = useMemo(() => {
     if (!dbEvent) return null;
@@ -74,12 +77,25 @@ const Checkout = () => {
   const salesClosed = evt ? isEventDue(evt.date) : false;
   const loading = eventLoading || tiersLoading;
 
+  const calculateOrder = async () => {
+    if (!evt || !tier?.id) return;
+    const { data, error } = await supabase.functions.invoke("calculate-order", {
+      body: { eventId: evt.id, tierId: tier.id, quantity: qty, promoCode: promoApplied ? promoCode : null },
+    });
+    if (!error && data) setCalc(data as typeof calc);
+    if (error || (data as { error?: string } | null)?.error) {
+      toast.error("Checkout unavailable", {
+        description: (data as { error?: string } | null)?.error ?? error?.message ?? "Please try again.",
+      });
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!evt || !tier?.id) return;
       const { data, error } = await supabase.functions.invoke("calculate-order", {
-        body: { eventId: evt.id, tierId: tier.id, quantity: qty },
+        body: { eventId: evt.id, tierId: tier.id, quantity: qty, promoCode: promoApplied ? promoCode : null },
       });
       if (!cancelled && !error && data) setCalc(data as typeof calc);
       if (!cancelled && (error || (data as { error?: string } | null)?.error)) {
@@ -89,7 +105,49 @@ const Checkout = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [evt, tier?.id, qty]);
+  }, [evt, tier?.id, qty, promoApplied]);
+
+  const applyPromo = async () => {
+    if (!promoCode.trim() || !dbEvent?.id) return;
+    setPromoLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("promo_codes")
+        .select("id, discount_percent, max_uses, used_count, starts_at, ends_at")
+        .eq("event_id", dbEvent.id)
+        .eq("code", promoCode.trim().toUpperCase())
+        .single();
+
+      if (error || !data) {
+        toast.error("Invalid promo code");
+        setPromoApplied(null);
+        return;
+      }
+
+      const now = new Date();
+      if (data.starts_at && new Date(data.starts_at) > now) {
+        toast.error("Promo code not active yet");
+        setPromoApplied(null);
+        return;
+      }
+      if (data.ends_at && new Date(data.ends_at) < now) {
+        toast.error("Promo code expired");
+        setPromoApplied(null);
+        return;
+      }
+      if (data.max_uses && data.used_count >= data.max_uses) {
+        toast.error("Promo code fully redeemed");
+        setPromoApplied(null);
+        return;
+      }
+
+      setPromoApplied({ id: data.id, discountPercent: data.discount_percent });
+      calculateOrder();
+      toast.success("Promo code applied");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const updateHolder = (index: number, field: keyof TicketHolder, value: string) => {
     setHolders((prev) => prev.map((h, i) => (i === index ? { ...h, [field]: value } : h)));
@@ -137,6 +195,7 @@ const Checkout = () => {
           callbackUrl,
           method: paymentMethod,
           marketingOptIn,
+          promoCodeId: promoApplied?.id,
         },
       });
       const err = (data as { error?: string } | null)?.error ?? error?.message;
@@ -325,6 +384,11 @@ const Checkout = () => {
                   <div className="flex justify-between text-cream-dim">
                     <dt>Subtotal</dt><dd className="text-cream">{calc ? formatPrice(calc.subtotal) : "..."}</dd>
                   </div>
+                  {calc.discount && (
+                    <div className="flex justify-between text-fezzy">
+                      <dt>Discount ({calc.discountPercent}%)</dt><dd>-{formatPrice(calc.discount)}</dd>
+                    </div>
+                  )}
                   <div className="flex justify-between text-cream-dim">
                     <dt>{BUYER_FEE_LABEL} ({BUYER_FEE_PCT}%)</dt><dd className="text-cream">{calc ? formatPrice(calc.fee) : "..."}</dd>
                   </div>
@@ -333,6 +397,46 @@ const Checkout = () => {
                     <dd className="font-display text-xl text-cream">{calc ? formatPrice(calc.total) : "..."}</dd>
                   </div>
                 </dl>
+                
+                <div className="mt-5 space-y-3">
+                  {!promoApplied ? (
+                    <div className="flex gap-2">
+                      <input
+                        placeholder="Promo code"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        className="flex-1 border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash"
+                      />
+                      <button
+                        type="button"
+                        onClick={applyPromo}
+                        disabled={promoLoading}
+                        className="btn-ember px-4"
+                      >
+                        {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between border border-fezzy/30 bg-fezzy/10 p-3">
+                      <div>
+                        <p className="font-mono-label text-fezzy-glow">Promo applied</p>
+                        <p className="font-semibold text-cream">{promoCode}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPromoApplied(null);
+                          setPromoCode("");
+                          calculateOrder();
+                        }}
+                        className="text-sm text-cream-dim hover:text-cream"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {salesClosed && (
                   <p className="mt-4 border border-ember/30 bg-ember/10 p-3 font-mono-label text-ember">
                     Ticket sales are closed because this event has started.

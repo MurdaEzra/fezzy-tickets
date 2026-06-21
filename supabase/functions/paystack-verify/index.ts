@@ -72,7 +72,7 @@ async function finalizeOrder(
 
   const { data: order } = await admin
     .from("orders")
-    .select("id, status, event_id, guest_name, guest_email, guest_phone, ticket_holders")
+    .select("id, status, event_id, guest_name, guest_email, guest_phone, ticket_holders, promo_code_id")
     .eq("id", orderId)
     .maybeSingle();
   if (!order || order.status === "paid") return;
@@ -81,6 +81,21 @@ async function finalizeOrder(
     .from("orders")
     .update({ status: "paid", payment_ref: reference })
     .eq("id", orderId);
+
+  if (order.promo_code_id) {
+    const { data: promo } = await admin
+      .from("promo_codes")
+      .select("used_count")
+      .eq("id", order.promo_code_id)
+      .maybeSingle();
+
+    if (promo) {
+      await admin
+        .from("promo_codes")
+        .update({ used_count: (promo.used_count ?? 0) + 1 })
+        .eq("id", order.promo_code_id);
+    }
+  }
 
   const tierId = tx.metadata?.tier_id;
   const quantity = Number(tx.metadata?.quantity ?? 1);

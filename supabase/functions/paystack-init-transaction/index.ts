@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   try {
     if (!PAYSTACK_SECRET_KEY) return json({ error: "Paystack not configured" }, 500);
 
-    const { eventId, tierId, quantity, name, email, phone, holders, callbackUrl, method } =
+    const { eventId, tierId, quantity, name, email, phone, holders, callbackUrl, method, promoCodeId } =
       await req.json();
     if (!eventId || !tierId || !quantity || !name || !email) {
       return json({ error: "Missing parameters" }, 400);
@@ -55,9 +55,10 @@ Deno.serve(async (req) => {
     );
 
     // Fetch event + tier + organizer subaccount + fee
-    const [{ data: event }, { data: tier }] = await Promise.all([
+    const [{ data: event }, { data: tier }, { data: promo }] = await Promise.all([
       admin.from("events").select("id, title, organizer_id, starts_at, status, fee_waived").eq("id", eventId).maybeSingle(),
       admin.from("ticket_tiers").select("id, name, price_kes, sold, quantity, event_id").eq("id", tierId).maybeSingle(),
+      promoCodeId ? admin.from("promo_codes").select("id, discount_percent, max_uses, used_count, starts_at, ends_at").eq("id", promoCodeId).maybeSingle() : Promise.resolve({ data: null })
     ]);
     if (!event || !tier || tier.event_id !== event.id || event.status !== "published") return json({ error: "Invalid event/tier" }, 400);
     if (new Date(event.starts_at).getTime() <= Date.now()) {
@@ -65,6 +66,17 @@ Deno.serve(async (req) => {
     }
     if (quantity < 1 || tier.sold + quantity > tier.quantity) {
       return json({ error: "Not enough tickets remaining" }, 400);
+    }
+
+    let discount = 0;
+    if (promo) {
+      const now = new Date();
+      const isValid = (!promo.starts_at || new Date(promo.starts_at) <= now) &&
+                      (!promo.ends_at || new Date(promo.ends_at) >= now) &&
+                      (!promo.max_uses || promo.used_count < promo.max_uses);
+      if (isValid) {
+        discount = Math.round((tier.price_kes * quantity) * (promo.discount_percent / 100));
+      }
     }
 
     const { data: organizer } = await admin
@@ -75,9 +87,10 @@ Deno.serve(async (req) => {
     if (!organizer) return json({ error: "Organizer not found" }, 400);
 
     const subtotal = tier.price_kes * quantity;
-    const buyerFee = Math.round(subtotal * BUYER_FEE_RATE);
-    const platformFee = event.fee_waived ? 0 : Math.round(subtotal * PLATFORM_FEE_RATE);
-    const total = subtotal + buyerFee;
+    const discountedSubtotal = subtotal - discount;
+    const buyerFee = Math.round(discountedSubtotal * BUYER_FEE_RATE);
+    const platformFee = event.fee_waived ? 0 : Math.round(discountedSubtotal * PLATFORM_FEE_RATE);
+    const total = discountedSubtotal + buyerFee;
 
     // Try to attach the user from the auth header (if any) — not required.
     let userId: string | null = null;
@@ -110,6 +123,7 @@ Deno.serve(async (req) => {
         ticket_holders: ticketHolders,
         fee_waived: Boolean(event.fee_waived),
         payment_method: paymentMethod,
+        promo_code_id: promo?.id,
         status: "pending",
       })
       .select()

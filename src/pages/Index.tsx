@@ -16,7 +16,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useFeaturedEvents, useHomepageSettings } from "@/hooks/useEvents";
-import { artists, categories, iconicVenues, pastEvents, trendingEvents, weekendCalendar } from "@/data/homepage";
+import { categories, pastEvents } from "@/data/homepage";
 import { formatEventDate, formatPrice, lowestTierPrice, ticketsRemaining } from "@/lib/eventsApi";
 import { pickHeadliner } from "@/lib/homepageSettings";
 import { isEventDue } from "@/lib/pricing";
@@ -33,8 +33,6 @@ const eventImages = [
   asset("koroga.jpg"),
 ];
 
-const artistImages = [asset("artist-1.jpg"), asset("artist-2.jpg"), asset("artist-3.jpg"), asset("artist-4.jpg")];
-const venueImages = [asset("venue-1.jpg"), asset("venue-2.jpg"), asset("venue-3.webp")];
 const pastImages = [asset("festival-grid-1.jpg"), asset("tembea-kenya.jpg"), asset("blankets-wine.png"), asset("festival-grid-2.jpg")];
 
 const Index = () => {
@@ -49,20 +47,58 @@ const Index = () => {
   const headlinerLowestPrice = headliner ? lowestTierPrice(headlinerTiers) : null;
   const headlinerBuying = headlinerTiers.reduce((sum, tier) => sum + tier.sold, 0);
 
-  const endedEvents = events
-    .filter((event) => isEventDue(event.starts_at))
-    .map((event, index) => ({
-      title: event.title,
-      date: formatEventDate(event.starts_at),
-      venue: event.venue_name ?? event.city ?? "Venue TBA",
-      attendance: "Ticket sale ended",
-      image: event.cover_image_url || event.poster_url || pastImages[index % pastImages.length],
-    }));
+  // Trending events: use homepage settings if available, else fallback to first events
+  const trendingEventIds = homepageSettings?.trending_event_ids ?? [];
+  const displayedTrendingEvents = trendingEventIds.length > 0
+    ? trendingEventIds
+        .map((id) => events.find((e) => e.id === id))
+        .filter(Boolean)
+        .map((event, index) => ({
+          title: event?.title ?? "",
+          date: formatEventDate(event?.starts_at ?? ""),
+          venue: event?.venue_name ?? event?.city ?? "Venue TBA",
+          city: event?.city ?? "",
+          price: event?.ticket_tiers?.[0] ? formatPrice(event.ticket_tiers[0].price_kes) : "Sold out",
+          image: event?.cover_image_url || event?.poster_url || eventImages[index % eventImages.length],
+          tag: "Trending",
+          organizer: "",
+          slug: event?.slug,
+        }))
+    : events.slice(0, 6).map((event, index) => ({
+        title: event.title,
+        date: formatEventDate(event.starts_at),
+        venue: event.venue_name ?? event.city ?? "Venue TBA",
+        city: event.city ?? "",
+        price: event.ticket_tiers?.[0] ? formatPrice(event.ticket_tiers[0].price_kes) : "Sold out",
+        image: event.cover_image_url || event.poster_url || eventImages[index % eventImages.length],
+        tag: "Trending",
+        organizer: "",
+        slug: event.slug,
+      }));
 
-  const displayedPastEvents = [...endedEvents, ...pastEvents.map((event, index) => ({ ...event, image: pastImages[index % pastImages.length] }))].slice(0, 4);
-  const displayedTrendingEvents = trendingEvents.map((event, index) => ({ ...event, image: eventImages[index % eventImages.length] }));
-  const displayedArtists = artists.map((artist, index) => ({ ...artist, image: artistImages[index % artistImages.length] }));
-  const displayedVenues = iconicVenues.map((venue, index) => ({ ...venue, image: venueImages[index % venueImages.length] }));
+  // Calendar events: use homepage settings if available
+  const calendarEventIds = homepageSettings?.calendar_event_ids ?? [];
+  const displayedCalendarEvents = calendarEventIds.length > 0
+    ? calendarEventIds
+        .map((id) => events.find((e) => e.id === id))
+        .filter(Boolean)
+        .map((event, index) => ({
+          day: index === 0 ? "Fri" : index === 1 ? "Sat" : index === 2 ? "Sat" : "Sun",
+          date: new Date(event?.starts_at ?? "").getDate().toString(),
+          title: event?.title ?? "",
+          location: event?.venue_name ?? event?.city ?? "",
+          price: event?.ticket_tiers?.[0] ? formatPrice(event.ticket_tiers[0].price_kes) : "Sold out",
+          slug: event?.slug,
+          image: event?.cover_image_url || event?.poster_url || eventImages[index % eventImages.length],
+        }))
+    : [];
+
+  // Artists and Venues from homepage settings
+  const displayedArtists = homepageSettings?.artists ?? [];
+  const displayedVenues = homepageSettings?.iconic_venues ?? [];
+
+  // Past events: use hardcoded ones
+  const displayedPastEvents = pastEvents.map((event, index) => ({ ...event, image: pastImages[index % pastImages.length] }));
 
   const submitPresale = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -188,72 +224,75 @@ const Index = () => {
         </section>
 
         <EditorialHeader eyebrow="002 - Trending" title="This week's hottest events" action="View all events" to="/events" />
-        <section id="trending" className="relative border-b border-cream/10">
-          <div className="mx-auto grid max-w-1440 gap-px bg-cream/10 px-5 pb-20 lg:grid-cols-3 lg:px-8">
-            {displayedTrendingEvents.map((event, index) => (
-              <Link key={event.title} to="/events" className="group bg-ink transition-colors hover:bg-ink-card">
-                <div className="relative h-72 overflow-hidden">
-                  <img src={event.image} alt={event.title} className="h-full w-full object-cover img-zoom" />
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.82)_100%)]" />
-                  <div className="absolute left-5 top-5 stamp text-fezzy-glow">{event.tag}</div>
-                  <div className="absolute bottom-5 left-5 right-5">
-                    <div className="mb-2 font-mono-label text-fezzy-glow">{event.date}</div>
-                    <h3 className="font-display text-4xl leading-none text-cream transition-colors group-hover:text-fezzy-glow">{event.title}</h3>
-                  </div>
-                </div>
-                <div className="grid min-h-[132px] grid-cols-[1fr_auto] gap-4 p-5">
-                  <div>
-                    <p className="flex items-center gap-2 text-sm text-cream-dim">
-                      <MapPin className="h-4 w-4 text-fezzy" />
-                      {event.venue}, {event.city}
-                    </p>
-                    <p className="mt-3 font-mono-label text-ash">By {event.organizer}</p>
-                    <p className="mt-4 text-sm text-cream-dim">
-                      From <span className="font-semibold text-cream">{event.price}</span>
-                    </p>
-                  </div>
-                  <span className="flex h-11 w-11 items-center justify-center border border-cream/20 text-fezzy transition-colors group-hover:border-fezzy group-hover:bg-fezzy group-hover:text-ink">
-                    <ArrowUpRight className="h-5 w-5" />
-                  </span>
-                </div>
-                {index < 3 && <div className="h-1 bg-fezzy" />}
-              </Link>
-            ))}
+  <section id="trending" className="relative border-b border-cream/10">
+    <div className="mx-auto grid max-w-1440 gap-px bg-cream/10 px-5 pb-20 lg:grid-cols-3 lg:px-8">
+      {displayedTrendingEvents.map((event, index) => (
+        <Link key={event.title} to={event.slug ? `/events/${event.slug}` : "/events"} className="group bg-ink transition-colors hover:bg-ink-card">
+          <div className="relative h-72 overflow-hidden">
+            <img src={event.image} alt={event.title} className="h-full w-full object-cover img-zoom" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.82)_100%)]" />
+            <div className="absolute left-5 top-5 stamp text-fezzy-glow">{event.tag}</div>
+            <div className="absolute bottom-5 left-5 right-5">
+              <div className="mb-2 font-mono-label text-fezzy-glow">{event.date}</div>
+              <h3 className="font-display text-4xl leading-none text-cream transition-colors group-hover:text-fezzy-glow">{event.title}</h3>
+            </div>
           </div>
-        </section>
+          <div className="grid min-h-[132px] grid-cols-[1fr_auto] gap-4 p-5">
+            <div>
+              <p className="flex items-center gap-2 text-sm text-cream-dim">
+                <MapPin className="h-4 w-4 text-fezzy" />
+                {event.venue}, {event.city}
+              </p>
+              <p className="mt-3 font-mono-label text-ash">{event.organizer || "Organizer TBA"}</p>
+              <p className="mt-4 text-sm text-cream-dim">
+                From <span className="font-semibold text-cream">{event.price}</span>
+              </p>
+            </div>
+            <span className="flex h-11 w-11 items-center justify-center border border-cream/20 text-fezzy transition-colors group-hover:border-fezzy group-hover:bg-fezzy group-hover:text-ink">
+              <ArrowUpRight className="h-5 w-5" />
+            </span>
+          </div>
+          {index < 3 && <div className="h-1 bg-fezzy" />}
+        </Link>
+      ))}
+    </div>
+  </section>
 
-        <section className="relative border-b border-cream/10 bg-ink-soft">
-          <div className="mx-auto grid max-w-1440 gap-10 px-5 py-20 lg:grid-cols-12 lg:px-8">
-            <div className="lg:col-span-4">
-              <SectionTitle eyebrow="003 - Weekend" title="Your calendar is calling" />
-              <p className="mt-5 max-w-sm leading-relaxed text-cream-dim">Friday to Sunday plans, sorted by date with fast links straight to event browsing.</p>
+  <section className="relative border-b border-cream/10 bg-ink-soft">
+    <div className="mx-auto grid max-w-1440 gap-10 px-5 py-20 lg:grid-cols-12 lg:px-8">
+      <div className="lg:col-span-4">
+        <SectionTitle eyebrow="003 - Weekend" title="Your calendar is calling" />
+        <p className="mt-5 max-w-sm leading-relaxed text-cream-dim">Friday to Sunday plans, sorted by date with fast links straight to event browsing.</p>
+      </div>
+      <div className="grid gap-px bg-cream/10 lg:col-span-8">
+        {displayedCalendarEvents.map((item, index) => (
+          <Link key={`${item.day}-${item.title}`} to={item.slug ? `/events/${item.slug}` : "/events"} className="group grid gap-5 bg-ink-soft p-5 transition-colors hover:bg-ink-card sm:grid-cols-[92px_auto_1fr_auto]">
+            <div className={`grid h-20 w-20 place-items-center text-center text-ink ${index === 0 ? "bg-fezzy" : "bg-cream"}`}>
+              <div>
+                <div className="font-mono-label text-ink">{item.day}</div>
+                <div className="font-display text-4xl leading-none">{item.date}</div>
+              </div>
             </div>
-            <div className="grid gap-px bg-cream/10 lg:col-span-8">
-              {weekendCalendar.map((item, index) => (
-                <Link key={`${item.day}-${item.title}`} to="/events" className="group grid gap-5 bg-ink-soft p-5 transition-colors hover:bg-ink-card sm:grid-cols-[92px_1fr_auto]">
-                  <div className={`grid h-20 w-20 place-items-center text-center text-ink ${index === 0 ? "bg-fezzy" : "bg-cream"}`}>
-                    <div>
-                      <div className="font-mono-label text-ink">{item.day}</div>
-                      <div className="font-display text-4xl leading-none">{item.date}</div>
-                    </div>
-                  </div>
-                  <div className="self-center">
-                    <h3 className="font-display text-3xl leading-none text-cream group-hover:text-fezzy-glow">{item.title}</h3>
-                    <p className="mt-2 flex items-center gap-2 text-sm text-cream-dim">
-                      <MapPin className="h-4 w-4 text-fezzy" />
-                      {item.location}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between gap-4 self-center text-sm sm:block sm:text-right">
-                    <p className="font-mono-label text-ash">From</p>
-                    <p className="font-semibold text-cream">{item.price}</p>
-                    <ChevronRight className="mt-2 hidden h-5 w-5 text-fezzy sm:ml-auto sm:block" />
-                  </div>
-                </Link>
-              ))}
+            <div className="w-20 h-20 rounded-lg overflow-hidden">
+              <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
             </div>
-          </div>
-        </section>
+            <div className="self-center">
+              <h3 className="font-display text-3xl leading-none text-cream group-hover:text-fezzy-glow">{item.title}</h3>
+              <p className="mt-2 flex items-center gap-2 text-sm text-cream-dim">
+                <MapPin className="h-4 w-4 text-fezzy" />
+                {item.location}
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 self-center text-sm sm:block sm:text-right">
+              <p className="font-mono-label text-ash">From</p>
+              <p className="font-semibold text-cream">{item.price}</p>
+              <ChevronRight className="mt-2 hidden h-5 w-5 text-fezzy sm:ml-auto sm:block" />
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  </section>
 
         <section className="relative overflow-hidden border-b border-cream/10">
           <div className="mx-auto max-w-1440 px-5 py-20 lg:px-8">

@@ -99,6 +99,47 @@ export type Database = {
           venue_address?: string | null
           venue_name?: string | null
         }
+      }
+      promo_codes: {
+        Row: {
+          id: string
+          event_id: string
+          organizer_id: string
+          code: string
+          discount_percent: number
+          max_uses: number | null
+          used_count: number
+          starts_at: string | null
+          ends_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          organizer_id: string
+          code: string
+          discount_percent: number
+          max_uses?: number | null
+          used_count?: number
+          starts_at?: string | null
+          ends_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          organizer_id?: string
+          code?: string
+          discount_percent?: number
+          max_uses?: number | null
+          used_count?: number
+          starts_at?: string | null
+          ends_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
         Relationships: [
           {
             foreignKeyName: "events_organizer_id_fkey"

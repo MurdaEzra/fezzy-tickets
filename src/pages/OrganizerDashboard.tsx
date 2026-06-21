@@ -42,11 +42,12 @@ interface OrgProfile {
   till_number?: string | null;
 }
 
-type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "attendees" | "team" | "settings";
+type Section = "overview" | "events" | "share" | "payout" | "poster" | "scan" | "attendees" | "team" | "settings" | "promos";
 
 const MENU: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "events", label: "Events", icon: Calendar },
+  { id: "promos", label: "Promo codes", icon: TicketIcon },
   { id: "share", label: "Share & banners", icon: Share2 },
   { id: "payout", label: "Payout", icon: Banknote },
   { id: "poster", label: "Poster designer", icon: ImageIcon },
@@ -312,6 +313,9 @@ const OrganizerDashboard = () => {
             )}
             {section === "attendees" && (
               <AttendeesPanel organizerId={profile.id} />
+            )}
+            {section === "promos" && (
+              <PromosPanel profile={profile} events={events} />
             )}
             {section === "team" && (
               <TeamPanel organizerId={profile.id} organizerName={profile.org_name} userId={user?.id ?? ""} />
@@ -787,6 +791,224 @@ const SettingsPanel = ({ profile, onDelete }: { profile: OrgProfile; onDelete: (
           </Button>
         </div>
       </section>
+    </div>
+  );
+};
+
+type PromoCode = {
+  id: string;
+  event_id: string;
+  organizer_id: string;
+  code: string;
+  discount_percent: number;
+  max_uses: number | null;
+  used_count: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const PromosPanel = ({ profile, events }: { profile: OrgProfile; events: DbEvent[] }) => {
+  const [promos, setPromos] = useState<PromoCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [code, setCode] = useState("");
+  const [discountPercent, setDiscountPercent] = useState(10);
+  const [maxUses, setMaxUses] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("promo_codes")
+        .select("*")
+        .eq("organizer_id", profile.id)
+        .order("created_at", { ascending: false });
+      setPromos((data ?? []) as PromoCode[]);
+      setLoading(false);
+    })();
+  }, [profile.id]);
+
+  const createPromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventId || !code.trim()) {
+      toast.error("Please select an event and enter a promo code");
+      return;
+    }
+    if (discountPercent < 1 || discountPercent > 100) {
+      toast.error("Discount must be between 1 and 100 percent");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const { data, error } = await supabase
+        .from("promo_codes")
+        .insert({
+          event_id: selectedEventId,
+          organizer_id: profile.id,
+          code: code.trim(),
+          discount_percent: discountPercent,
+          max_uses: maxUses.trim() ? parseInt(maxUses) : null,
+          starts_at: startsAt || null,
+          ends_at: endsAt || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to create promo code", { description: error.message });
+        return;
+      }
+
+      setPromos([data as PromoCode, ...promos]);
+      setCode("");
+      setDiscountPercent(10);
+      setMaxUses("");
+      setStartsAt("");
+      setEndsAt("");
+      setSelectedEventId("");
+      toast.success("Promo code created");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const deletePromo = async (id: string) => {
+    const confirmed = window.confirm("Delete this promo code?");
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("promo_codes").delete().eq("id", id);
+    if (error) {
+      toast.error("Failed to delete promo code", { description: error.message });
+      return;
+    }
+
+    setPromos(promos.filter(p => p.id !== id));
+    toast.success("Promo code deleted");
+  };
+
+  const copyCode = async (promoCode: string) => {
+    await navigator.clipboard.writeText(promoCode);
+    toast.success("Promo code copied");
+  };
+
+  if (loading) {
+    return (
+      <div className="grid min-h-64 place-items-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-foreground">Promo codes</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Create and manage discount codes for your events.</p>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
+        <h2 className="font-display text-lg font-bold text-foreground">Create new promo</h2>
+        <form onSubmit={createPromo} className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="event">Event</Label>
+              <select
+                id="event"
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="">Select an event</option>
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>{e.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="code">Code</Label>
+              <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. SUMMER20" />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <Label htmlFor="discount">Discount (%)</Label>
+              <Input
+                id="discount"
+                type="number"
+                min="1"
+                max="100"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(parseInt(e.target.value) || 0)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="max-uses">Max uses (optional)</Label>
+              <Input
+                id="max-uses"
+                type="number"
+                min="1"
+                value={maxUses}
+                onChange={(e) => setMaxUses(e.target.value)}
+                placeholder="Unlimited"
+              />
+            </div>
+            <div>
+              <Label htmlFor="starts-at">Starts at (optional)</Label>
+              <Input id="starts-at" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="ends-at">Ends at (optional)</Label>
+              <Input id="ends-at" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </div>
+          </div>
+          <Button type="submit" variant="acacia" disabled={creating} className="w-full sm:w-auto">
+            {creating && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Create promo code
+          </Button>
+        </form>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8">
+        <h2 className="font-display text-lg font-bold text-foreground">Your promo codes</h2>
+        <div className="mt-4 space-y-3">
+          {promos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No promo codes yet.</p>
+          ) : (
+            promos.map((promo) => {
+              const event = events.find(e => e.id === promo.event_id);
+              return (
+                <div key={promo.id} className="flex items-start justify-between gap-4 p-4 border border-border rounded-2xl bg-background">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground">{promo.code}</span>
+                      <span className="chip">{promo.discount_percent}% OFF</span>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {event?.title || "Unknown event"} · {promo.used_count} / {promo.max_uses || "∞"} uses
+                    </p>
+                    {(promo.starts_at || promo.ends_at) && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {promo.starts_at && `Starts: ${new Date(promo.starts_at).toLocaleString()}`}
+                        {promo.starts_at && promo.ends_at && " · "}
+                        {promo.ends_at && `Ends: ${new Date(promo.ends_at).toLocaleString()}`}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => copyCode(promo.code)}>Copy</Button>
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deletePromo(promo.id)}>Delete</Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
     </div>
   );
 };

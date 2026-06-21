@@ -11,7 +11,7 @@ const corsHeaders = {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { eventId, tierId, quantity } = await req.json();
+    const { eventId, tierId, quantity, promoCode } = await req.json();
     if (!eventId || !tierId || !quantity) {
       return json({ error: 'Missing parameters' }, 400);
     }
@@ -34,12 +34,45 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Not enough tickets remaining' }, 400);
     }
 
+    let discountPercent = 0;
+    let discount = 0;
+
+    if (promoCode) {
+      const { data: promo } = await supabase
+        .from('promo_codes')
+        .select('id, discount_percent, max_uses, used_count, starts_at, ends_at')
+        .eq('event_id', eventId)
+        .eq('code', promoCode.trim().toUpperCase())
+        .maybeSingle();
+
+      if (promo) {
+        const now = new Date();
+        const isValid = (!promo.starts_at || new Date(promo.starts_at) <= now) &&
+                        (!promo.ends_at || new Date(promo.ends_at) >= now) &&
+                        (!promo.max_uses || promo.used_count < promo.max_uses);
+
+        if (isValid) {
+          discountPercent = promo.discount_percent;
+        }
+      }
+    }
+
     const price = tier.price_kes;
     const subtotal = price * quantity;
-    const fee = Math.round(subtotal * BUYER_FEE_RATE);
-    const total = subtotal + fee;
+    discount = discountPercent > 0 ? Math.round(subtotal * (discountPercent / 100)) : 0;
+    const discountedSubtotal = subtotal - discount;
+    const fee = Math.round(discountedSubtotal * BUYER_FEE_RATE);
+    const total = discountedSubtotal + fee;
 
-    return json({ price, subtotal, fee, total, feePct: 3.5 });
+    return json({
+      price,
+      subtotal,
+      discount,
+      discountPercent,
+      fee,
+      total,
+      feePct: 3.5
+    });
   } catch (err) {
     return json({ error: 'Internal error', details: err instanceof Error ? err.message : String(err) }, 500);
   }
