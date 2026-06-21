@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Calendar, Loader2, MapPin, Ticket, Trash2 } from "lucide-react";
+import { ArrowRight, Calendar, Loader2, MapPin, Ticket, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
   fetchAccountTickets,
@@ -62,68 +61,68 @@ const Account = () => {
   };
 
   return (
-    <div className="tm-page min-h-screen bg-background">
+    <div className="fezzy-editorial min-h-screen bg-ink text-cream">
       <Navbar />
       <main>
-        <section className="border-b border-border bg-mesh">
-          <div className="container-px mx-auto max-w-7xl py-16">
-            <p className="eyebrow mb-3">My account</p>
-            <h1 className="display text-4xl text-foreground sm:text-5xl md:text-6xl">
-              Hello, <span className="script font-normal text-primary text-[1.2em]">{name}</span>
+        <section className="border-b border-cream/10 noise-overlay">
+          <div className="mx-auto max-w-1440 px-5 py-16 lg:px-8">
+            <p className="mb-4 font-mono-label text-fezzy-glow">My account</p>
+            <h1 className="font-display text-4xl text-cream sm:text-5xl md:text-6xl">
+              Hello, {name}
             </h1>
-            <p className="mt-3 text-base text-muted-foreground">{user.email}</p>
+            <p className="mt-3 text-base text-cream-dim">{user.email}</p>
           </div>
         </section>
 
-        <section className="container-px mx-auto max-w-7xl py-12">
+        <section className="mx-auto max-w-1440 px-5 py-12 lg:px-8">
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-display text-2xl font-bold text-foreground">Your tickets</h2>
-            <Button variant="outline" size="sm" asChild><Link to="/events">Browse more</Link></Button>
+            <h2 className="font-display text-2xl text-cream">Your tickets</h2>
+            <Link to="/events" className="btn-outline-editorial px-4 py-2">Browse more</Link>
           </div>
 
           {ticketsLoading ? (
             <div className="grid min-h-48 place-items-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-ash" />
             </div>
           ) : tickets.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
-              <Ticket className="mx-auto h-10 w-10 text-muted-foreground" />
-              <p className="mt-4 font-display text-2xl font-bold text-foreground">No tickets yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">When you grab tickets, they'll appear here.</p>
-              <Button variant="acacia" className="mt-6" asChild><Link to="/events">Find events</Link></Button>
+            <div className="border border-dashed border-cream/20 bg-ink-card p-16 text-center">
+              <Ticket className="mx-auto h-10 w-10 text-ash" />
+              <p className="mt-4 font-display text-2xl text-cream">No tickets yet</p>
+              <p className="mt-1 text-sm text-cream-dim">When you grab tickets, they'll appear here.</p>
+              <Link to="/events" className="btn-ember mt-6 inline-flex">
+                Find events <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-px bg-cream/10 md:grid-cols-2">
               {tickets.map((ticket) => {
                 const event = ticket.events;
                 const tier = ticket.ticket_tiers;
                 return (
-                  <article key={ticket.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
-                    <div className="flex">
-                      <div className="relative w-32 flex-shrink-0 bg-secondary sm:w-44">
-                        {event?.cover_image_url ? (
-                          <img src={event.cover_image_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="grid h-full min-h-40 place-items-center px-3 text-center">
-                            <Ticket className="h-8 w-8 text-primary" />
-                          </div>
-                        )}
+                  <article key={ticket.id} className="flex bg-ink transition-colors hover:bg-ink-card">
+                    <div className="relative w-32 flex-shrink-0 bg-ink-soft sm:w-44">
+                      {event?.cover_image_url ? (
+                        <img src={event.cover_image_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="grid h-full min-h-40 place-items-center px-3 text-center">
+                          <Ticket className="h-8 w-8 text-fezzy" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 p-5">
+                      <p className="font-mono-label text-fezzy">{ticket.status}</p>
+                      <h3 className="mt-1 font-display text-lg leading-tight text-cream">
+                        {event?.title ?? "Event unavailable"}
+                      </h3>
+                      <div className="mt-3 space-y-1 text-xs text-cream-dim">
+                        {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-fezzy" /> {formatEventDate(event.starts_at)}</p>}
+                        {event && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-fezzy" /> {event.venue_name ?? "Venue TBA"}, {event.city ?? "Location TBA"}</p>}
                       </div>
-                      <div className="flex-1 p-5">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{ticket.status}</p>
-                        <h3 className="mt-1 font-display text-lg font-bold leading-tight text-foreground">
-                          {event?.title ?? "Event unavailable"}
-                        </h3>
-                        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                          {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {formatEventDate(event.starts_at)}</p>}
-                          {event && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {event.venue_name ?? "Venue TBA"}, {event.city ?? "Location TBA"}</p>}
-                        </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                          <span className="font-display text-sm font-bold text-foreground">
-                            {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
-                          </span>
-                          <Button size="sm" variant="outline" disabled>QR emailed</Button>
-                        </div>
+                      <div className="mt-4 flex items-center justify-between border-t border-cream/10 pt-3">
+                        <span className="font-display text-sm text-cream">
+                          {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
+                        </span>
+                        <span className="border border-cream/20 px-3 py-1 font-mono-label text-ash">QR emailed</span>
                       </div>
                     </div>
                   </article>
@@ -133,16 +132,16 @@ const Account = () => {
           )}
         </section>
 
-        <section className="container-px mx-auto max-w-7xl pb-12">
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+        <section className="mx-auto max-w-1440 px-5 pb-12 lg:px-8">
+          <div className="border border-ember/30 bg-ember/10 p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="font-display text-lg font-bold text-foreground">Delete account</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Permanently remove your buyer account and sign out.</p>
+                <h2 className="font-display text-lg text-cream">Delete account</h2>
+                <p className="mt-1 text-sm text-cream-dim">Permanently remove your buyer account and sign out.</p>
               </div>
-              <Button variant="destructive" onClick={handleDeleteAccount}>
+              <button onClick={handleDeleteAccount} className="inline-flex items-center gap-2 border border-ember bg-ember px-4 py-2 font-mono-label text-cream transition-colors hover:bg-ember-deep">
                 <Trash2 className="h-4 w-4" /> Delete account
-              </Button>
+              </button>
             </div>
           </div>
         </section>
@@ -153,4 +152,3 @@ const Account = () => {
 };
 
 export default Account;
-

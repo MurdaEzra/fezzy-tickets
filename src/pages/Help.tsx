@@ -24,21 +24,21 @@ const faqs = [
 ];
 
 const Help = () => (
-  <div className="tm-page min-h-screen bg-background">
+  <div className="fezzy-editorial min-h-screen bg-ink text-cream">
     <Navbar />
-    <main className="container-px mx-auto max-w-6xl py-10 md:py-14">
-      <section className="rounded-[32px] border border-border bg-card p-8 shadow-soft md:p-10">
-        <p className="eyebrow">Support hub</p>
-        <h1 className="display mt-3 text-4xl text-foreground md:text-5xl">Help for organizers and guests</h1>
-        <p className="mt-4 max-w-3xl text-muted-foreground">Find quick answers, manage payout options, invite co-admins, and polish your event pages in one place.</p>
+    <main className="mx-auto max-w-1440 px-5 py-10 md:py-14 lg:px-8">
+      <section className="border border-cream/10 bg-ink-card p-8 md:p-10">
+        <p className="font-mono-label text-fezzy-glow">Support hub</p>
+        <h1 className="mt-3 font-display text-4xl text-cream md:text-5xl">Help for organizers and guests</h1>
+        <p className="mt-4 max-w-3xl text-cream-dim">Find quick answers, manage payout options, invite co-admins, and polish your event pages in one place.</p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {supportCards.map((item) => {
             const Icon = item.icon;
             return (
-              <article key={item.title} className="rounded-3xl border border-border bg-secondary/60 p-5">
-                <Icon className="h-6 w-6 text-primary" />
-                <h2 className="mt-3 font-display text-xl font-bold text-foreground">{item.title}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{item.text}</p>
+              <article key={item.title} className="border border-cream/10 bg-ink-soft p-5">
+                <Icon className="h-6 w-6 text-fezzy" />
+                <h2 className="mt-3 font-display text-xl text-cream">{item.title}</h2>
+                <p className="mt-2 text-sm text-cream-dim">{item.text}</p>
               </article>
             );
           })}
@@ -46,25 +46,25 @@ const Help = () => (
       </section>
 
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-[32px] border border-border bg-card p-8 shadow-soft">
-          <h2 className="font-display text-2xl font-bold text-foreground">Frequently asked questions</h2>
+        <article className="border border-cream/10 bg-ink-card p-8">
+          <h2 className="font-display text-2xl text-cream">Frequently asked questions</h2>
           <div className="mt-6 space-y-4">
             {faqs.map((item) => (
-              <details key={item.q} className="rounded-2xl border border-border bg-secondary/40 p-4">
-                <summary className="cursor-pointer list-none font-semibold text-foreground">{item.q}</summary>
-                <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
+              <details key={item.q} className="border border-cream/10 bg-ink-soft p-4">
+                <summary className="cursor-pointer list-none font-semibold text-cream">{item.q}</summary>
+                <p className="mt-3 text-sm text-cream-dim">{item.a}</p>
               </details>
             ))}
           </div>
         </article>
 
-        <article className="rounded-[32px] border border-border bg-card p-8 shadow-soft">
-          <h2 className="font-display text-2xl font-bold text-foreground">Need a hand?</h2>
-          <p className="mt-3 text-sm text-muted-foreground">We’re here to help with admin access, ticket design, payouts, and event publishing.</p>
-          <ul className="mt-5 space-y-3 text-sm text-foreground">
-            <li className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/50 p-3"><Users className="h-4 w-4 text-primary" /> Invite co-admins from the Team menu.</li>
-            <li className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/50 p-3"><Ticket className="h-4 w-4 text-primary" /> Customize ticket layouts and seat styles before publishing.</li>
-            <li className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/50 p-3"><Sparkles className="h-4 w-4 text-primary" /> Update posters, banners, and payout setup in one dashboard.</li>
+        <article className="border border-cream/10 bg-ink-card p-8">
+          <h2 className="font-display text-2xl text-cream">Need a hand?</h2>
+          <p className="mt-3 text-sm text-cream-dim">We're here to help with admin access, ticket design, payouts, and event publishing.</p>
+          <ul className="mt-5 space-y-3 text-sm text-cream">
+            <li className="flex items-center gap-3 border border-cream/10 bg-ink-soft p-3"><Users className="h-4 w-4 text-fezzy" /> Invite co-admins from the Team menu.</li>
+            <li className="flex items-center gap-3 border border-cream/10 bg-ink-soft p-3"><Ticket className="h-4 w-4 text-fezzy" /> Customize ticket layouts and seat styles before publishing.</li>
+            <li className="flex items-center gap-3 border border-cream/10 bg-ink-soft p-3"><Sparkles className="h-4 w-4 text-fezzy" /> Update posters, banners, and payout setup in one dashboard.</li>
           </ul>
         </article>
       </section>
@@ -74,4 +74,3 @@ const Help = () => (
 );
 
 export default Help;
-

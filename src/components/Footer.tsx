@@ -35,12 +35,7 @@ const columns = [
   },
 ];
 
-const trustItems = [
-  [ShieldCheck, "100% Verified", "Authentic tickets, every time"],
-  [RefreshCcw, "Easy refunds", "Clear event policies"],
-  [Headphones, "24/7 Support", "Swahili and English"],
-  [Lock, "Secure payments", "M-Pesa, Visa, Mastercard"],
-];
+
 
 const marqueeItems = ["Live moments", "Unforgettable nights", "M-Pesa ready", "NBO - MBA - KIS - NAK - ELD", "Tickets in 30s", "FEZZY - KE"];
 
@@ -49,20 +44,6 @@ const Footer = () => {
     <footer className="border-t border-cream/10 bg-ink">
       <div className="border-b border-cream/10">
         <div className="mx-auto max-w-1440 px-5 py-10 lg:px-8">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {trustItems.map(([Icon, title, body]) => {
-              const TrustIcon = Icon as typeof ShieldCheck;
-              return (
-                <div key={title as string} className="flex items-start gap-3">
-                  <TrustIcon className="mt-1 h-5 w-5 shrink-0 text-fezzy" />
-                  <div>
-                    <div className="font-display text-lg leading-none text-cream">{title as string}</div>
-                    <div className="mt-1 font-mono-label text-cream-dim">{body as string}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
@@ -90,7 +71,7 @@ const Footer = () => {
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
-              {["M-Pesa", "Visa", "Mastercard"].map((payment) => (
+              {["M-Pesa", "Visa", "Airtel Money"].map((payment) => (
                 <span key={payment} className="border border-cream/20 px-3 py-1.5 font-mono-label text-cream-dim">
                   {payment}
                 </span>
@@ -115,13 +96,13 @@ const Footer = () => {
 
           <div className="col-span-12 lg:col-span-1">
             <div className="mb-4 font-mono-label text-fezzy">Contact</div>
-            <a href="mailto:hello@fezzy.co.ke" className="break-all text-xs font-mono-label text-cream-dim transition-colors hover:text-fezzy">
-              hello@fezzy.co.ke
+            <a href="mailto:hello@fezzytickets.com" className="break-all text-xs font-mono-label text-cream-dim transition-colors hover:text-fezzy">
+              hello@fezzytickets.com
             </a>
             <div className="mt-3 text-[10px] font-mono-label text-ash">
               Nairobi - Kenya
               <br />
-              +254 700 000 000
+              +254 728135200
             </div>
           </div>
         </div>

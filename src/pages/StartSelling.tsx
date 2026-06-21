@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 
@@ -32,33 +29,35 @@ const StartSelling = () => {
   };
 
   return (
-    <div className="tm-page min-h-screen bg-background">
+    <div className="fezzy-editorial min-h-screen bg-ink text-cream">
       <Navbar />
-      <main className="bg-mesh">
-        <section className="container-px mx-auto grid min-h-[calc(100vh-4rem)] max-w-5xl place-items-center py-12">
-          <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-7 shadow-soft md:p-10">
-            <span className="chip"><Sparkles className="h-3 w-3 text-primary" /> Organizer setup</span>
-            <h1 className="display mt-4 text-4xl text-foreground sm:text-5xl">
-              Submit your <span className="script font-normal text-primary text-[1.2em]">organization</span>
+      <main>
+        <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-1440 place-items-center px-5 py-12 lg:px-8">
+          <div className="w-full max-w-xl border border-cream/10 bg-ink-card p-7 md:p-10">
+            <span className="inline-flex items-center gap-1.5 border border-cream/20 px-3 py-1 font-mono-label text-fezzy">
+              Organizer setup
+            </span>
+            <h1 className="mt-4 font-display text-4xl text-cream sm:text-5xl">
+              Submit your organization
             </h1>
-            <p className="mt-3 text-muted-foreground">
+            <p className="mt-3 text-cream-dim">
               Start by giving us your organization name. Next, you'll create your account and submit the details for admin review before dashboard access is approved.
             </p>
             <form onSubmit={submit} className="mt-7 space-y-4">
               <div>
-                <Label htmlFor="orgName">Organization name</Label>
-                <Input
-                  id="orgName"
+                <label className="mb-1.5 block font-mono-label text-cream-dim">Organization name</label>
+                <input
                   value={orgName}
                   onChange={(event) => setOrgName(event.target.value)}
                   placeholder="e.g. Solstice Collective"
                   required
+                  className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash"
                 />
               </div>
-              <Button type="submit" variant="acacia" size="lg" className="w-full" disabled={loading}>
+              <button type="submit" className="btn-ember w-full justify-center" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                 Continue to account
-              </Button>
+              </button>
             </form>
           </div>
         </section>
@@ -69,4 +68,3 @@ const StartSelling = () => {
 };
 
 export default StartSelling;
-

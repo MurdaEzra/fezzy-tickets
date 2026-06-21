@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Clock, Loader2, XCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,57 +43,57 @@ const ApplicationPending = () => {
 
   if (authLoading || status === "loading") {
     return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="fezzy-editorial min-h-screen grid place-items-center bg-ink text-cream">
+        <Loader2 className="h-6 w-6 animate-spin text-ash" />
       </div>
     );
   }
 
   return (
-    <div className="tm-page min-h-screen bg-background">
+    <div className="fezzy-editorial min-h-screen bg-ink text-cream">
       <Navbar />
-      <main className="bg-mesh">
-        <section className="container-px mx-auto grid min-h-[calc(100vh-4rem)] max-w-xl place-items-center py-12">
-          <div className="w-full rounded-3xl border border-border bg-card p-8 text-center shadow-soft md:p-10">
+      <main>
+        <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-xl place-items-center px-5 py-12 lg:px-8">
+          <div className="w-full border border-cream/10 bg-ink-card p-8 text-center md:p-10">
             {status === "rejected" ? (
               <>
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-destructive/15 text-destructive">
+                <div className="mx-auto grid h-14 w-14 place-items-center bg-ember/15 text-ember">
                   <XCircle className="h-7 w-7" />
                 </div>
-                <h1 className="display mt-6 text-3xl text-foreground">Application not approved</h1>
-                <p className="mt-3 text-muted-foreground">
+                <h1 className="mt-6 font-display text-3xl text-cream">Application not approved</h1>
+                <p className="mt-3 text-cream-dim">
                   Your organizer application{orgName ? ` for ${orgName}` : ""} was not approved at this time.
                   Contact support if you have questions.
                 </p>
-                <Button variant="outline" className="mt-8" onClick={() => signOut().then(() => navigate("/"))}>
+                <button className="btn-outline-editorial mt-8" onClick={() => signOut().then(() => navigate("/"))}>
                   Back to home
-                </Button>
+                </button>
               </>
             ) : (
               <>
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary/15 text-primary">
+                <div className="mx-auto grid h-14 w-14 place-items-center bg-fezzy/15 text-fezzy">
                   <Clock className="h-7 w-7" />
                 </div>
-                <h1 className="display mt-6 text-3xl text-foreground">
+                <h1 className="mt-6 font-display text-3xl text-cream">
                   {justSubmitted ? "Application submitted" : "Awaiting approval"}
                 </h1>
-                <p className="mt-3 text-muted-foreground">
+                <p className="mt-3 text-cream-dim">
                   {justSubmitted
                     ? "Thanks! Your organizer application is with our team for review."
                     : "Your organizer application is still pending review."}
                   {orgName ? ` We'll notify you at your email once ${orgName} is approved.` : " We'll email you once you're approved."}
                 </p>
-                <p className="mt-4 text-sm text-muted-foreground">
+                <p className="mt-4 text-sm text-ash">
                   After approval, you'll receive an email with a link to access your organizer dashboard.
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                  <Button variant="outline" asChild>
-                    <Link to="/"><ArrowLeft className="mr-2 h-4 w-4" /> Back to home</Link>
-                  </Button>
+                  <Link to="/" className="btn-outline-editorial">
+                    <ArrowLeft className="h-4 w-4" /> Back to home
+                  </Link>
                   {user && (
-                    <Button variant="ghost" onClick={() => signOut().then(() => navigate("/"))}>
+                    <button className="font-mono-label text-cream-dim transition-colors hover:text-cream" onClick={() => signOut().then(() => navigate("/"))}>
                       Sign out
-                    </Button>
+                    </button>
                   )}
                 </div>
               </>
@@ -108,4 +107,3 @@ const ApplicationPending = () => {
 };
 
 export default ApplicationPending;
-

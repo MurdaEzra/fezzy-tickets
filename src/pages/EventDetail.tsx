@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Check, Clock, Heart, Loader2, MapPin, Share2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Check, Circle, Clock, Loader2, MapPin, Share2, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";
-import { Button } from "@/components/ui/button";
 import { useEventDetail, useEventTiers, useOrganizerProfile, useRelatedEvents } from "@/hooks/useEvents";
 import {
   formatEventDateLong,
@@ -48,10 +47,10 @@ const EventDetail = () => {
 
   if (loading) {
     return (
-      <div className="tm-page min-h-screen bg-background">
+      <div className="fezzy-editorial min-h-screen bg-ink text-cream">
         <Navbar />
-        <div className="container-px mx-auto max-w-3xl py-32 text-center">
-          <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="mx-auto max-w-1440 px-5 py-32 text-center lg:px-8">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-ash" />
         </div>
       </div>
     );
@@ -59,15 +58,13 @@ const EventDetail = () => {
 
   if (!event) {
     return (
-      <div className="tm-page min-h-screen bg-background">
+      <div className="fezzy-editorial min-h-screen bg-ink text-cream">
         <Navbar />
-        <div className="container-px mx-auto max-w-3xl py-32 text-center">
-          <p className="eyebrow mb-4">404</p>
-          <h1 className="display text-5xl text-foreground">Event not found</h1>
-          <p className="mt-4 text-muted-foreground">The event you're looking for has moved or is not published.</p>
-          <Button variant="acacia" size="lg" className="mt-8" asChild>
-            <Link to="/events">Browse all events</Link>
-          </Button>
+        <div className="mx-auto max-w-1440 px-5 py-32 text-center lg:px-8">
+          <p className="mb-4 font-mono-label text-fezzy-glow">404</p>
+          <h1 className="font-display text-5xl text-cream">Event not found</h1>
+          <p className="mt-4 text-cream-dim">The event you're looking for has moved or is not published.</p>
+          <Link to="/events" className="btn-ember mt-8 inline-flex">Browse all events</Link>
         </div>
         <Footer />
       </div>
@@ -75,47 +72,45 @@ const EventDetail = () => {
   }
 
   return (
-    <div className="tm-page min-h-screen bg-background">
+    <div className="fezzy-editorial min-h-screen bg-ink text-cream">
       <Navbar />
       <main>
-        <section className="relative isolate overflow-hidden border-b border-border">
+        <section className="relative overflow-hidden border-b border-cream/10">
           <div className="absolute inset-0 -z-10">
             {event.poster_url || event.cover_image_url ? (
               <img src={event.poster_url || event.cover_image_url || ""} alt="" aria-hidden className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full bg-secondary" />
+              <div className="h-full w-full bg-ink-soft" />
             )}
-            <div className="absolute inset-0" style={{ background: "var(--gradient-hero-overlay)" }} />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0.75)_50%,rgba(0,0,0,0.95)_100%)]" />
           </div>
-          <div className="container-px mx-auto max-w-7xl pb-20 pt-12 md:pb-28 md:pt-16">
+          <div className="mx-auto max-w-1440 px-5 pb-20 pt-12 md:pb-28 md:pt-16 lg:px-8">
             <Link
               to="/events"
-              className="inline-flex items-center gap-2 text-sm text-white/90 transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 font-mono-label text-cream-dim transition-colors hover:text-cream"
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to browse
             </Link>
-            <div className="mt-10 max-w-3xl animate-fade-up">
+            <div className="mt-10 max-w-3xl">
               {event.category && (
-                <div className="mb-5 flex items-center gap-2">
-                  <span className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground">
-                    {event.category}
-                  </span>
+                <div className="mb-5">
+                  <span className="stamp text-fezzy-glow">{event.category}</span>
                 </div>
               )}
-              <h1 className="display text-5xl text-white sm:text-6xl md:text-7xl">{event.title}</h1>
-              {event.tagline && <p className="script mt-3 text-3xl text-white/90 md:text-4xl">{event.tagline}</p>}
+              <h1 className="font-display text-5xl text-cream sm:text-6xl md:text-7xl">{event.title}</h1>
+              {event.tagline && <p className="mt-3 text-lg text-cream-dim md:text-xl">{event.tagline}</p>}
 
-              <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-white">
+              <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-cream">
                 <span className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-primary" />
+                  <Calendar className="h-4 w-4 text-fezzy" />
                   {formatEventDateLong(event.starts_at)}
                 </span>
                 <span className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-primary" />
+                  <Clock className="h-4 w-4 text-fezzy" />
                   {formatEventTime(event.starts_at)}
                 </span>
                 <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-primary" />
+                  <MapPin className="h-4 w-4 text-fezzy" />
                   {event.venue_name ?? "Venue TBA"} {event.city ? `- ${event.city}` : ""}
                 </span>
               </div>
@@ -123,21 +118,21 @@ const EventDetail = () => {
           </div>
         </section>
 
-        <section className="container-px mx-auto grid max-w-7xl gap-12 py-16 lg:grid-cols-[1fr_420px] lg:py-20">
+        <section className="mx-auto grid max-w-1440 gap-12 px-5 py-16 lg:grid-cols-[1fr_420px] lg:px-8 lg:py-20">
           <div className="space-y-14">
             <div>
-              <p className="eyebrow mb-4">About</p>
-              <p className="text-lg leading-relaxed text-foreground/90">
+              <p className="mb-4 font-mono-label text-fezzy-glow">About</p>
+              <p className="text-lg leading-relaxed text-cream-dim">
                 {event.description || "Event details will be added by the organizer soon."}
               </p>
             </div>
 
             {lineup.length > 0 && (
               <div>
-                <p className="eyebrow mb-4">{lineupLabel}</p>
+                <p className="mb-4 font-mono-label text-fezzy-glow">{lineupLabel}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {lineup.map((name) => (
-                    <div key={name} className="rounded-2xl border border-border bg-card p-4 font-display text-lg font-bold text-foreground">
+                    <div key={name} className="border border-cream/10 bg-ink-card p-4 font-display text-lg text-cream">
                       {name}
                     </div>
                   ))}
@@ -146,14 +141,14 @@ const EventDetail = () => {
             )}
 
             <div>
-              <p className="eyebrow mb-4">Venue</p>
-              <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="relative aspect-[16/7] bg-secondary">
+              <p className="mb-4 font-mono-label text-fezzy-glow">Venue</p>
+              <div className="overflow-hidden border border-cream/10 bg-ink-card">
+                <div className="relative aspect-[16/7] bg-ink-soft">
                   <div className="absolute inset-0 grid place-items-center text-center">
                     <div>
-                      <MapPin className="mx-auto h-8 w-8 text-primary" />
-                      <p className="mt-3 font-display text-2xl font-bold">{event.venue_name ?? "Venue TBA"}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <MapPin className="mx-auto h-8 w-8 text-fezzy" />
+                      <p className="mt-3 font-display text-2xl text-cream">{event.venue_name ?? "Venue TBA"}</p>
+                      <p className="text-sm text-cream-dim">
                         {[event.city, event.country].filter(Boolean).join(", ") || "Location TBA"}
                       </p>
                     </div>
@@ -163,48 +158,47 @@ const EventDetail = () => {
             </div>
 
             <div>
-              <p className="eyebrow mb-4">Organizer</p>
-              <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-5">
+              <p className="mb-4 font-mono-label text-fezzy-glow">Organizer</p>
+              <div className="flex items-center justify-between border border-cream/10 bg-ink-card p-5">
                 <div className="flex items-center gap-4">
                   {organizer?.logo_url ? (
-                    <img src={organizer.logo_url} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    <img src={organizer.logo_url} alt="" className="h-12 w-12 object-cover" />
                   ) : (
-                    <span className="grid h-12 w-12 place-items-center rounded-full bg-gradient-acacia font-display text-lg font-bold text-primary-foreground">
+                    <span className="grid h-12 w-12 place-items-center bg-fezzy font-display text-lg text-ink">
                       {(organizer?.org_name ?? "O").charAt(0)}
                     </span>
                   )}
                   <div>
-                    <p className="font-semibold text-foreground">{organizer?.org_name ?? "Organizer"}</p>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <ShieldCheck className="h-3 w-3 text-primary" /> Verified organizer
+                    <p className="font-semibold text-cream">{organizer?.org_name ?? "Organizer"}</p>
+                    <p className="flex items-center gap-1 text-xs text-cream-dim">
+                      <ShieldCheck className="h-3 w-3 text-fezzy" /> Verified organizer
                     </p>
                   </div>
                 </div>
                 {organizer?.website && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={organizer.website} target="_blank" rel="noreferrer">Website</a>
-                  </Button>
+                  <a href={organizer.website} target="_blank" rel="noreferrer" className="btn-outline-editorial px-4 py-2">
+                    Website
+                  </a>
                 )}
               </div>
             </div>
           </div>
 
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
+            <div className="border border-cream/10 bg-ink-card p-6">
               <div className="flex items-baseline justify-between">
-                <p className="eyebrow">Tickets</p>
-                <div className="flex gap-1.5">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Save"><Heart className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Share"><Share2 className="h-4 w-4" /></Button>
-                </div>
+                <p className="font-mono-label text-fezzy-glow">Tickets</p>
+                <button className="border border-cream/20 p-2 text-cream-dim transition-colors hover:border-fezzy hover:text-fezzy" aria-label="Share">
+                  <Share2 className="h-4 w-4" />
+                </button>
               </div>
 
               {salesClosed ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-border bg-background p-5 text-sm text-muted-foreground">
+                <div className="mt-5 border border-dashed border-cream/20 bg-ink-soft p-5 text-sm text-cream-dim">
                   Ticket sales are closed because this event has started.
                 </div>
               ) : tiers.length === 0 ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-border bg-background p-5 text-sm text-muted-foreground">
+                <div className="mt-5 border border-dashed border-cream/20 bg-ink-soft p-5 text-sm text-cream-dim">
                   Tickets are not on sale yet.
                 </div>
               ) : (
@@ -213,27 +207,31 @@ const EventDetail = () => {
                     {tiers.map((ticketTier, index) => {
                       const active = index === selectedTier;
                       const tierRemaining = ticketsRemaining(ticketTier);
+                      const tierColor = index === 0 ? "#00b060" : index === 1 ? "#d4ff3a" : "#ff4d1a";
                       return (
                         <button
                           key={ticketTier.id}
                           onClick={() => { setSelectedTier(index); setQty(1); }}
                           disabled={tierRemaining < 1}
-                          className={`w-full rounded-2xl border-2 p-4 text-left transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
+                          className={`w-full border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                             active
-                              ? "border-primary bg-primary/[0.06]"
-                              : "border-border bg-background hover:border-foreground/30"
+                              ? "border-fezzy bg-fezzy/[0.08]"
+                              : "border-cream/15 bg-ink hover:border-cream/30"
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <p className="font-display text-lg font-bold text-foreground">{ticketTier.name}</p>
-                            <p className="font-bold text-foreground">{formatPrice(ticketTier.price_kes)}</p>
+                            <p className="flex items-center gap-2 font-display text-lg text-cream">
+                              <Circle className="h-2 w-2 fill-current" style={{ color: tierColor }} />
+                              {ticketTier.name}
+                            </p>
+                            <p className="font-semibold text-cream">{formatPrice(ticketTier.price_kes)}</p>
                           </div>
                           {ticketTier.description && (
-                            <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
-                              <Check className="mt-0.5 h-3 w-3 flex-shrink-0 text-primary" /> {ticketTier.description}
+                            <p className="mt-2 flex items-start gap-2 text-xs text-cream-dim">
+                              <Check className="mt-0.5 h-3 w-3 flex-shrink-0 text-fezzy" /> {ticketTier.description}
                             </p>
                           )}
-                          <p className="mt-2 text-[11px] uppercase tracking-wider text-muted-foreground/80">
+                          <p className="mt-2 font-mono-label text-ash">
                             {tierRemaining} remaining
                           </p>
                         </button>
@@ -241,44 +239,48 @@ const EventDetail = () => {
                     })}
                   </div>
 
-                  <div className="mt-6 flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3">
-                    <span className="text-sm font-medium text-foreground">Quantity</span>
+                  <div className="mt-6 flex items-center justify-between border border-cream/15 bg-ink px-4 py-3">
+                    <span className="text-sm font-medium text-cream">Quantity</span>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setQty((current) => Math.max(1, current - 1))}
-                        className="grid h-8 w-8 place-items-center rounded-full border border-border text-foreground transition-colors hover:border-primary hover:text-primary"
+                        className="grid h-8 w-8 place-items-center border border-cream/20 text-cream transition-colors hover:border-fezzy hover:text-fezzy"
                       >-</button>
-                      <span className="w-6 text-center font-bold tabular-nums">{qty}</span>
+                      <span className="w-6 text-center font-semibold tabular-nums text-cream">{qty}</span>
                       <button
                         onClick={() => setQty((current) => Math.min(remaining, current + 1))}
                         disabled={remaining < 1}
-                        className="grid h-8 w-8 place-items-center rounded-full border border-border text-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        className="grid h-8 w-8 place-items-center border border-cream/20 text-cream transition-colors hover:border-fezzy hover:text-fezzy disabled:cursor-not-allowed disabled:opacity-50"
                       >+</button>
                     </div>
                   </div>
 
                   <dl className="mt-5 space-y-2 text-sm">
-                    <div className="flex justify-between text-muted-foreground">
+                    <div className="flex justify-between text-cream-dim">
                       <dt>Subtotal</dt>
-                      <dd className="font-medium text-foreground">{formatPrice(subtotal)}</dd>
+                      <dd className="font-medium text-cream">{formatPrice(subtotal)}</dd>
                     </div>
-                    <div className="flex justify-between text-muted-foreground">
+                    <div className="flex justify-between text-cream-dim">
                       <dt>{BUYER_FEE_LABEL} ({BUYER_FEE_PCT}%)</dt>
-                      <dd className="font-medium text-foreground">{formatPrice(buyerFee)}</dd>
+                      <dd className="font-medium text-cream">{formatPrice(buyerFee)}</dd>
                     </div>
-                    <div className="flex justify-between border-t border-border pt-3">
-                      <dt className="font-semibold text-foreground">You pay</dt>
-                      <dd className="font-display text-xl font-bold text-foreground">{formatPrice(total)}</dd>
+                    <div className="flex justify-between border-t border-cream/10 pt-3">
+                      <dt className="font-semibold text-cream">You pay</dt>
+                      <dd className="font-display text-xl text-cream">{formatPrice(total)}</dd>
                     </div>
-                    <p className="rounded-xl bg-primary/10 p-2.5 text-[11px] leading-snug text-primary">
+                    <p className="border border-fezzy/20 bg-fezzy/10 p-2.5 font-mono-label text-fezzy">
                       A {BUYER_FEE_PCT}% buyer service fee is added at checkout.
                     </p>
                   </dl>
 
-                  <Button variant="acacia" size="lg" className="mt-6 w-full" onClick={goCheckout} disabled={!tier || remaining < 1 || salesClosed}>
-                    Get tickets
-                  </Button>
-                  <p className="mt-3 text-center text-[11px] text-muted-foreground">
+                  <button
+                    className="btn-ember mt-6 w-full justify-center"
+                    onClick={goCheckout}
+                    disabled={!tier || remaining < 1 || salesClosed}
+                  >
+                    Get tickets <ArrowRight className="h-4 w-4" />
+                  </button>
+                  <p className="mt-3 text-center font-mono-label text-ash">
                     M-Pesa checkout. Instant delivery after payment confirmation.
                   </p>
                 </>
@@ -288,13 +290,13 @@ const EventDetail = () => {
         </section>
 
         {related.length > 0 && (
-          <section className="border-t border-border bg-secondary">
-            <div className="container-px mx-auto max-w-7xl py-20">
-              <p className="eyebrow mb-3">More like this</p>
-              <h2 className="display mb-12 text-4xl text-foreground sm:text-5xl">
-                You might also <span className="script font-normal text-primary text-[1.2em]">love</span>
+          <section className="border-t border-cream/10 bg-ink-soft">
+            <div className="mx-auto max-w-1440 px-5 py-20 lg:px-8">
+              <p className="mb-4 font-mono-label text-fezzy-glow">More like this</p>
+              <h2 className="mb-12 font-display text-5xl text-cream lg:text-7xl">
+                You might also love
               </h2>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-px bg-cream/10 sm:grid-cols-2 lg:grid-cols-3">
                 {related.map((relatedEvent, index) => (
                   <EventCard key={relatedEvent.id} event={relatedEvent} index={index} />
                 ))}
@@ -309,4 +311,3 @@ const EventDetail = () => {
 };
 
 export default EventDetail;
-

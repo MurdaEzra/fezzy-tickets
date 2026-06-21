@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Calendar, MapPin } from "lucide-react";
+import { ArrowUpRight, MapPin } from "lucide-react";
 import {
   formatEventDate,
   formatPrice,
@@ -13,11 +13,11 @@ interface Props {
 }
 
 const statusBadge = (status: string) => {
-  const map: Record<string, { bg: string; label: string }> = {
-    draft: { bg: "bg-yellow-500/90 text-yellow-950", label: "Draft" },
-    pending_approval: { bg: "bg-amber-500/90 text-white", label: "Pending" },
-    cancelled: { bg: "bg-red-500/90 text-white", label: "Cancelled" },
-    completed: { bg: "bg-zinc-500/90 text-white", label: "Completed" },
+  const map: Record<string, { label: string }> = {
+    draft: { label: "Draft" },
+    pending_approval: { label: "Pending" },
+    cancelled: { label: "Cancelled" },
+    completed: { label: "Completed" },
   };
   return map[status] ?? null;
 };
@@ -30,66 +30,65 @@ const EventCard = ({ event, index = 0 }: Props) => {
   return (
     <Link
       to={`/events/${event.slug}`}
-      className="group block animate-fade-up"
-      style={{ animationDelay: `${index * 60}ms` }}
+      className="group bg-ink transition-colors hover:bg-ink-card"
     >
-      <article className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft transition-all duration-500 hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_30px_60px_-25px_hsl(var(--primary)/.3)]">
-        <div className="relative aspect-[4/3] overflow-hidden">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={event.title}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110"
-            />
-          ) : (
-            <div className="grid h-full w-full place-items-center bg-secondary px-6 text-center">
-              <p className="font-display text-2xl font-bold text-foreground">{event.title}</p>
-            </div>
+      <div className="relative h-72 overflow-hidden">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={event.title}
+            loading="lazy"
+            className="h-full w-full object-cover img-zoom"
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-ink-soft px-6 text-center">
+            <p className="font-display text-2xl text-cream">{event.title}</p>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.82)_100%)]" />
+        <div className="absolute left-5 top-5 flex items-center gap-2">
+          {event.category && (
+            <span className="stamp text-fezzy-glow">{event.category}</span>
           )}
-          <div className="absolute left-4 top-4 flex items-center gap-2">
-            {event.category && (
-              <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-sm">
-                {event.category}
-              </span>
-            )}
-            {badge && (
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm ${badge.bg}`}>
-                {badge.label}
-              </span>
-            )}
-          </div>
-          <div className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-soft transition-all duration-500 group-hover:opacity-100">
-            <ArrowUpRight className="h-4 w-4" />
-          </div>
-        </div>
-
-        <div className="p-5">
-          <div className="flex items-center gap-3 text-xs text-primary">
-            <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
-              <Calendar className="h-3 w-3" />
-              {formatEventDate(event.starts_at)}
+          {badge && (
+            <span className="border border-ember bg-ember/80 px-2.5 py-1 font-mono-label text-cream">
+              {badge.label}
             </span>
+          )}
+        </div>
+        <div className="absolute bottom-5 left-5 right-5">
+          <div className="mb-2 font-mono-label text-fezzy-glow">
+            {formatEventDate(event.starts_at)}
           </div>
-          <h3 className="mt-3 font-display text-xl font-bold leading-tight tracking-tight text-foreground text-balance">
+          <h3 className="font-display text-4xl leading-none text-cream transition-colors group-hover:text-fezzy-glow">
             {event.title}
           </h3>
-          <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <MapPin className="h-3 w-3" />
-              {event.city || event.country || "Location TBA"}
-            </p>
-            {priceFrom === null ? (
-              <p className="text-sm font-bold text-foreground">Sales soon</p>
-            ) : (
-              <p className="text-sm font-bold text-foreground">
-                <span className="font-normal text-muted-foreground">from </span>
-                {formatPrice(priceFrom)}
-              </p>
-            )}
-          </div>
         </div>
-      </article>
+      </div>
+      <div className="grid min-h-[132px] grid-cols-[1fr_auto] gap-4 p-5">
+        <div>
+          <p className="flex items-center gap-2 text-sm text-cream-dim">
+            <MapPin className="h-4 w-4 text-fezzy" />
+            {event.city || event.country || "Location TBA"}
+          </p>
+          <p className="mt-4 text-sm text-cream-dim">
+            {priceFrom === null ? (
+              <span className="font-semibold text-cream">Sales soon</span>
+            ) : (
+              <>
+                From{" "}
+                <span className="font-semibold text-cream">
+                  {formatPrice(priceFrom)}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        <span className="flex h-11 w-11 items-center justify-center border border-cream/20 text-fezzy transition-colors group-hover:border-fezzy group-hover:bg-fezzy group-hover:text-ink">
+          <ArrowUpRight className="h-5 w-5" />
+        </span>
+      </div>
+      <div className="h-1 bg-fezzy" />
     </Link>
   );
 };

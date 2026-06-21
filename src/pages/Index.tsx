@@ -101,7 +101,7 @@ const Index = () => {
                 <div className="mb-8 hidden items-center gap-3 md:flex">
                   <span className="font-mono-label text-fezzy-glow">001 - Live from Nairobi</span>
                   <span className="h-px max-w-[200px] flex-1 bg-cream/15" />
-                  <span className="font-mono-label text-cream-dim">Est. 2024</span>
+                  <span className="font-mono-label text-cream-dim">Est. 2026</span>
                 </div>
 
                 <h1 className="hidden font-display text-cream md:block">
@@ -146,11 +146,10 @@ const Index = () => {
                       <button
                         key={category}
                         onClick={() => setActiveCategory(category)}
-                        className={`border px-3 py-1.5 font-mono-label transition-all ${
-                          activeCategory === category
+                        className={`border px-3 py-1.5 font-mono-label transition-all ${activeCategory === category
                             ? "border-cream bg-cream text-ink"
                             : "border-cream/20 text-cream-dim hover:border-fezzy hover:text-fezzy"
-                        }`}
+                          }`}
                       >
                         {category}
                       </button>
@@ -171,16 +170,16 @@ const Index = () => {
                   tiers={
                     headlinerTiers.length
                       ? headlinerTiers.slice(0, 3).map((tier, index) => ({
-                          name: tier.name,
-                          price: formatPrice(tier.price_kes),
-                          note: `${ticketsRemaining(tier)} left`,
-                          color: index === 0 ? "#00b060" : index === 1 ? "#d4ff3a" : "#ff4d1a",
-                        }))
+                        name: tier.name,
+                        price: formatPrice(tier.price_kes),
+                        note: `${ticketsRemaining(tier)} left`,
+                        color: index === 0 ? "#00b060" : index === 1 ? "#d4ff3a" : "#ff4d1a",
+                      }))
                       : [
-                          { name: "Regular", price: "KSh 3,500", note: "Available", color: "#00b060" },
-                          { name: "VIP", price: "KSh 12,000", note: "Available", color: "#d4ff3a" },
-                          { name: "VVIP Table", price: "KSh 250,000", note: "Limited", color: "#ff4d1a" },
-                        ]
+                        { name: "Regular", price: "KSh 3,500", note: "Available", color: "#00b060" },
+                        { name: "VIP", price: "KSh 12,000", note: "Available", color: "#d4ff3a" },
+                        { name: "VVIP Table", price: "KSh 250,000", note: "Limited", color: "#ff4d1a" },
+                      ]
                   }
                 />
               </div>
@@ -338,7 +337,7 @@ const Index = () => {
                   <p className="font-mono-label text-fezzy">Door tools</p>
                   <h3 className="mt-2 font-display text-4xl leading-none text-cream">Scan. Admit. Track.</h3>
                 </div>
-                <div className="barcode h-16 w-24 opacity-50" />
+                <div className="qr-code h-16 w-16 opacity-50" />
               </div>
               <div className="space-y-3">
                 {["Realtime ticket validation", "Tier sales and payout visibility", "Fraud-resistant QR delivery"].map((item) => (
@@ -465,11 +464,10 @@ const Index = () => {
                               key={city}
                               type="button"
                               onClick={() => setSelectedCity(city)}
-                              className={`border px-1 py-2 text-[10px] font-mono-label transition-all ${
-                                selectedCity === city
+                              className={`border px-1 py-2 text-[10px] font-mono-label transition-all ${selectedCity === city
                                   ? "border-lime bg-lime text-ink"
                                   : "border-cream/15 text-cream-dim hover:border-cream"
-                              }`}
+                                }`}
                             >
                               {label}
                             </button>
@@ -484,7 +482,7 @@ const Index = () => {
                     </div>
 
                     <div className="mt-5 border-t border-cream/10 pt-4">
-                      <div className="barcode h-10 w-full opacity-50" />
+                      <div className="qr-code mx-auto h-12 w-12 opacity-50" />
                       <div className="mt-1 flex justify-between font-mono-label text-ash">
                         <span>Fezzy - Presale list</span>
                         <span>84,219 subscribers</span>
@@ -562,7 +560,7 @@ const HeadlinerTicket = ({
             </div>
           ))}
         </div>
-        <div className="mt-5 barcode h-9 opacity-45" />
+        <div className="mt-5 qr-code mx-auto h-10 w-10 opacity-45" />
       </div>
     </div>
   </div>
