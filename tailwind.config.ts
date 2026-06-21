@@ -12,8 +12,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['Jost', 'Montserrat', 'ui-sans-serif', 'sans-serif'],
-        sans: ['Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Anton', '"Arial Narrow"', 'ui-sans-serif', 'sans-serif'],
+        sans: ['Inter', 'Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
         script: ['"Great Vibes"', '"Brittany Signature"', 'cursive'],
       },
       colors: {
@@ -65,6 +66,23 @@ export default {
           deep: "hsl(var(--acacia-deep))",
         },
         terracotta: "hsl(var(--terracotta))",
+        "ink-soft": "#050505",
+        "ink-card": "#0a0a0a",
+        "cream-dim": "#d9cdaf",
+        sand: "#b8a888",
+        fezzy: {
+          DEFAULT: "#00b060",
+          bright: "#14d97a",
+          deep: "#008c4c",
+          glow: "#2bff9a",
+        },
+        ember: {
+          DEFAULT: "#ff4d1a",
+          deep: "#d83a0d",
+        },
+        lime: "#d4ff3a",
+        maroon: "#7a1f1f",
+        ash: "#5a544a",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -75,6 +93,9 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      maxWidth: {
+        "1440": "1440px",
       },
       borderRadius: {
         lg: "var(--radius)",

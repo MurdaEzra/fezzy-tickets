@@ -276,12 +276,12 @@ const SuperAdminDashboard = () => {
   const totalBuyerFees = orders.reduce((s, o) => s + (o.buyer_fee_kes ?? 0), 0);
 
   if (authLoading || authorized === null) {
-    return <div className="grid min-h-screen place-items-center bg-[#06070a]"><Loader2 className="h-6 w-6 animate-spin text-[#10ff8a]" /></div>;
+    return <div className="grid min-h-screen place-items-center bg-black"><Loader2 className="h-6 w-6 animate-spin text-[#10ff8a]" /></div>;
   }
 
   if (!authorized) {
     return (
-      <div className="tm-page min-h-screen bg-[#06070a] text-white">
+      <div className="tm-page min-h-screen bg-black text-white">
         <main className="container-px mx-auto max-w-md py-24 text-center">
           <Shield className="mx-auto h-12 w-12 text-[#8a8fa3]" />
           <h1 className="display mt-4 text-3xl text-white">Access denied</h1>
@@ -305,7 +305,7 @@ const SuperAdminDashboard = () => {
   const statusLabel = (status: string) => status === "pending_approval" ? "Pending approval" : status;
 
   return (
-    <div className="tm-page min-h-screen bg-[#06070a] text-white">
+    <div className="tm-page min-h-screen bg-black text-white">
       <div className="flex">
         <aside className={`${mobileMenu ? "fixed inset-y-0 left-0 z-50 w-72 translate-x-0" : "hidden md:flex md:w-72 md:translate-x-0"} flex-col border-r border-border bg-card transition-transform md:sticky md:top-0 md:h-screen`}>
           <div className="flex h-20 items-center justify-between gap-3 border-b border-border px-5">
@@ -998,5 +998,4 @@ const Stat = ({ icon: Icon, label, value }: { icon: typeof Shield; label: string
 );
 
 export default SuperAdminDashboard;
-
 

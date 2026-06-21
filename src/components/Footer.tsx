@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Music2, Ticket, Wallet } from "lucide-react";
-import { FEZZY_LOGO_URL } from "@/lib/brand";
+import { Headphones, Lock, RefreshCcw, ShieldCheck } from "lucide-react";
 
-const cols = [
+const columns = [
   {
     title: "Discover",
     links: [
@@ -36,43 +35,76 @@ const cols = [
   },
 ];
 
+const trustItems = [
+  [ShieldCheck, "100% Verified", "Authentic tickets, every time"],
+  [RefreshCcw, "Easy refunds", "Clear event policies"],
+  [Headphones, "24/7 Support", "Swahili and English"],
+  [Lock, "Secure payments", "M-Pesa, Visa, Mastercard"],
+];
+
+const marqueeItems = ["Live moments", "Unforgettable nights", "M-Pesa ready", "NBO - MBA - KIS - NAK - ELD", "Tickets in 30s", "FEZZY - KE"];
+
 const Footer = () => {
   return (
-    <footer className="border-t border-[#1f2230] bg-[#0c0d12]">
-      <div className="mx-auto max-w-[1400px] px-5 pb-10 pt-16 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-12">
-          <div className="lg:col-span-4">
-            <Link to="/" className="mb-5 flex items-center gap-2">
-              <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl">
-                <img src={FEZZY_LOGO_URL} alt="Fezzy Tickets" className="h-8 w-auto object-contain" />
-              </span>
+    <footer className="border-t border-cream/10 bg-ink">
+      <div className="border-b border-cream/10">
+        <div className="mx-auto max-w-1440 px-5 py-10 lg:px-8">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+            {trustItems.map(([Icon, title, body]) => {
+              const TrustIcon = Icon as typeof ShieldCheck;
+              return (
+                <div key={title as string} className="flex items-start gap-3">
+                  <TrustIcon className="mt-1 h-5 w-5 shrink-0 text-fezzy" />
+                  <div>
+                    <div className="font-display text-lg leading-none text-cream">{title as string}</div>
+                    <div className="mt-1 font-mono-label text-cream-dim">{body as string}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden whitespace-nowrap border-b border-cream/10 py-6">
+        <div className="inline-flex animate-marquee-slow font-display text-5xl text-cream lg:text-7xl">
+          {[...marqueeItems, ...marqueeItems].map((item, index) => (
+            <span key={`${item}-${index}`} className="inline-flex items-center">
+              <span className="px-6">{item}</span>
+              <span className="ticker-dot" />
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-1440 px-5 py-16 lg:px-8">
+        <div className="grid grid-cols-12 gap-8 lg:gap-12">
+          <div className="col-span-12 lg:col-span-5">
+            <Link to="/" className="mb-4 flex items-baseline gap-2">
+              <img src="/uploads/fezzy-logo.png" alt="FEZZY" className="h-12 w-auto lg:h-16" />
+              <span className="font-mono-label text-fezzy">.KE</span>
             </Link>
-            <p className="max-w-sm leading-relaxed text-[#8a8fa3]">
-              Kenya's ticketing platform for concerts, festivals, matches, theatre and unforgettable weekends.
+            <p className="max-w-md text-sm leading-relaxed text-cream-dim">
+              Kenya's ticketing platform for concerts, festivals, matches, theatre and unforgettable weekends. Verified tickets, secure
+              checkout, local support - built in Nairobi for the moments that matter.
             </p>
-            <div className="mt-5 flex items-center gap-3">
-              {[Instagram, Music2, Facebook].map((Icon, index) => (
-                <a
-                  key={index}
-                  href="https://instagram.com/fezzytickets"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Fezzy social link"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-[#2a2e3f] text-[#8a8fa3] transition hover:border-[#10ff8a] hover:text-[#10ff8a]"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
+
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              {["M-Pesa", "Visa", "Mastercard"].map((payment) => (
+                <span key={payment} className="border border-cream/20 px-3 py-1.5 font-mono-label text-cream-dim">
+                  {payment}
+                </span>
               ))}
             </div>
           </div>
 
-          {cols.map((col) => (
-            <div key={col.title} className="lg:col-span-2">
-              <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#8a8fa3]">{col.title}</p>
-              <ul className="space-y-3 text-sm">
-                {col.links.map(([label, to]) => (
+          {columns.map((column) => (
+            <div key={column.title} className="col-span-6 lg:col-span-2">
+              <div className="mb-4 font-mono-label text-fezzy">{column.title}</div>
+              <ul className="space-y-2.5">
+                {column.links.map(([label, to]) => (
                   <li key={label}>
-                    <Link to={to} className="text-[#cfd2dc] transition hover:text-[#10ff8a]">
+                    <Link to={to} className="editorial-link text-sm text-cream-dim transition-colors hover:text-cream">
                       {label}
                     </Link>
                   </li>
@@ -81,27 +113,30 @@ const Footer = () => {
             </div>
           ))}
 
-          <div className="lg:col-span-2">
-            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#8a8fa3]">Payments</p>
-            <div className="space-y-2 text-sm text-[#cfd2dc]">
-              <span className="flex items-center gap-2 rounded border border-[#2a2e3f] px-3 py-2">
-                <Wallet className="h-4 w-4 text-[#10ff8a]" /> M-Pesa
-              </span>
-              <span className="flex items-center gap-2 rounded border border-[#2a2e3f] px-3 py-2">
-                <Ticket className="h-4 w-4 text-[#10ff8a]" /> Visa
-              </span>
-              <span className="flex items-center gap-2 rounded border border-[#2a2e3f] px-3 py-2">
-                <Ticket className="h-4 w-4 text-[#10ff8a]" /> Mastercard
-              </span>
+          <div className="col-span-12 lg:col-span-1">
+            <div className="mb-4 font-mono-label text-fezzy">Contact</div>
+            <a href="mailto:hello@fezzy.co.ke" className="break-all text-xs font-mono-label text-cream-dim transition-colors hover:text-fezzy">
+              hello@fezzy.co.ke
+            </a>
+            <div className="mt-3 text-[10px] font-mono-label text-ash">
+              Nairobi - Kenya
+              <br />
+              +254 700 000 000
             </div>
           </div>
         </div>
 
-        <div className="my-10 h-px bg-gradient-to-r from-transparent via-[#2a2e3f] to-transparent" />
-
-        <div className="flex flex-col items-center justify-between gap-5 text-xs text-[#8a8fa3] md:flex-row">
-          <p>© {new Date().getFullYear()} Fezzy Tickets Ltd - Nairobi, Kenya</p>
-          <p>Verified tickets - Secure checkout - Local support</p>
+        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-cream/10 pt-6 md:flex-row md:items-center">
+          <div className="text-[10px] font-mono-label text-ash">
+            (c) {new Date().getFullYear()} Fezzy Tickets Ltd - Nairobi, Kenya - All rights reserved
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-[10px] font-mono-label text-ash">
+            <span>Verified tickets</span>
+            <span className="ticker-dot bg-ash" />
+            <span>Secure checkout</span>
+            <span className="ticker-dot bg-ash" />
+            <span>Local support</span>
+          </div>
         </div>
       </div>
     </footer>
