@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Loader2, Shield, Users, Calendar, Ticket, ExternalLink, ClipboardCheck, ScrollText,
@@ -92,6 +92,9 @@ const SuperAdminDashboard = () => {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<null | boolean>(null);
   const [view, setView] = useState<"overview" | "homepage" | "approvals" | "events" | "orders" | "organizers" | "logs">("overview");
+  const [homepageSubView, setHomepageSubView] = useState<"general" | "trending" | "calendar" | "artists" | "venues">("general");
+  const [homepageMenuOpen, setHomepageMenuOpen] = useState(false);
+  const homepageMenuRef = useRef<HTMLDivElement>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -109,6 +112,9 @@ const SuperAdminDashboard = () => {
   const [iconicVenues, setIconicVenues] = useState<IconicVenue[]>([]);
   const [uploadingArtistIndex, setUploadingArtistIndex] = useState<number | null>(null);
   const [uploadingVenueIndex, setUploadingVenueIndex] = useState<number | null>(null);
+  const [logTimeRange, setLogTimeRange] = useState<"15m" | "30m" | "24h" | "3d" | "custom">("24h");
+  const [logCustomDate, setLogCustomDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   const uploadImage = async (file: File, folder: "artists" | "venues") => {
     if (!user) return null;
@@ -120,12 +126,49 @@ const SuperAdminDashboard = () => {
     return data.publicUrl;
   };
 
+  const filterLogs = (logList: LogRow[]) => {
+    const now = new Date();
+    return logList.filter(log => {
+      const logDate = new Date(log.created_at);
+      switch(logTimeRange) {
+        case "15m":
+          return now.getTime() - logDate.getTime() <= 15 * 60 * 1000;
+        case "30m":
+          return now.getTime() - logDate.getTime() <= 30 * 60 * 1000;
+        case "24h":
+          return now.getTime() - logDate.getTime() <= 24 * 60 * 60 * 1000;
+        case "3d":
+          return now.getTime() - logDate.getTime() <= 3 * 24 * 60 * 60 * 1000;
+        case "custom":
+          const customDate = new Date(logCustomDate);
+          const logDay = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+          const customDay = new Date(customDate.getFullYear(), customDate.getMonth(), customDate.getDate());
+          return logDay.getTime() === customDay.getTime();
+        default:
+          return true;
+      }
+    });
+  };
+
   // Event detail panel state
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
   const [selectedEventTiers, setSelectedEventTiers] = useState<TierRow[]>([]);
   const [selectedEventOrganizer, setSelectedEventOrganizer] = useState<OrganizerRow | null>(null);
   const [loadingEventDetail, setLoadingEventDetail] = useState(false);
   const [approvingEvent, setApprovingEvent] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (homepageMenuRef.current && !homepageMenuRef.current.contains(event.target as Node)) {
+        setHomepageMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [homepageMenuOpen]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -365,29 +408,82 @@ const SuperAdminDashboard = () => {
               ["orders", ReceiptText, "Orders", null],
               ["organizers", Building2, "Organizers", null],
               ["logs", FileText, "Logs", errorCount],
-            ] as const).map(([key, Icon, label, count]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setView(key);
-                  setMobileMenu(false);
-                  if (key !== "events") closeEventDetail();
-                }}
-                className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all ${view === key ? "bg-gradient-acacia text-primary-foreground shadow-acacia" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  }`}
-              >
-                <span className="flex items-center gap-3">
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </span>
-                {!!count && count > 0 && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] ${view === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/15 text-primary"}`}>
-                    {count}
+            ] as const).map(([key, Icon, label, count]) => {
+              if (key === "homepage") {
+                return (
+                  <div key={key}>
+                    <button
+                      onClick={() => {
+                        setView(key);
+                        setHomepageMenuOpen(!homepageMenuOpen);
+                        setMobileMenu(false);
+                        if (key !== "events") closeEventDetail();
+                      }}
+                      className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all ${view === key ? "bg-gradient-acacia text-primary-foreground shadow-acacia" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        }`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </span>
+                      {view === key && (
+                        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${homepageMenuOpen ? "rotate-90" : ""}`} />
+                      )}
+                    </button>
+                    {view === "homepage" && homepageMenuOpen && (
+                      <div className="ml-4 mt-1 space-y-1 border-l border-border pl-2">
+                        {[
+                          { id: "general", label: "General", icon: Megaphone },
+                          { id: "trending", label: "Trending", icon: Ticket },
+                          { id: "calendar", label: "Calendar", icon: Calendar },
+                          { id: "artists", label: "Artists", icon: Users },
+                          { id: "venues", label: "Venues", icon: Building2 },
+                        ].map((item) => {
+                          const SubIcon = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => setHomepageSubView(item.id as any)}
+                              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                                homepageSubView === item.id
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              }`}
+                            >
+                              <SubIcon className="h-3.5 w-3.5" />
+                              {item.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setView(key);
+                    setMobileMenu(false);
+                    if (key !== "events") closeEventDetail();
+                  }}
+                  className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all ${view === key ? "bg-gradient-acacia text-primary-foreground shadow-acacia" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className="h-4 w-4" />
+                    {label}
                   </span>
-                )}
-                {view === key && <ChevronRight className="h-3.5 w-3.5" />}
-              </button>
-            ))}
+                  {!!count && count > 0 && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${view === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/15 text-primary"}`}>
+                      {count}
+                    </span>
+                  )}
+                  {view === key && <ChevronRight className="h-3.5 w-3.5" />}
+                </button>
+              );
+            })}
           </nav>
 
           <div className="border-t border-border p-3">
@@ -492,39 +588,40 @@ const SuperAdminDashboard = () => {
 
                   {view === "homepage" && (
                     <div className="space-y-6">
-                      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-                        <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Live bar</p>
-                              <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Announcement messages</h2>
-                              <p className="mt-2 text-sm text-muted-foreground">
-                                Add one message per line. These messages appear in the moving live bar above the navbar.
-                              </p>
-                            </div>
-                            <Megaphone className="h-6 w-6 text-primary" />
-                          </div>
-                          <textarea
-                            value={liveBarText}
-                            onChange={(event) => setLiveBarText(event.target.value)}
-                            rows={7}
-                            className="mt-6 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground outline-none transition focus:border-primary"
-                            placeholder="Write each live bar message on a new line"
-                          />
-                          <div className="mt-5 rounded-2xl border border-border bg-background p-4">
-                            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Preview</p>
-                            <div className="no-scrollbar flex gap-8 overflow-hidden text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                              {liveBarText.split("\n").filter(Boolean).map((item, index) => (
-                                <span key={`${item}-${index}`} className="flex shrink-0 items-center gap-2">
-                                  <Megaphone className="h-3.5 w-3.5 text-primary" />
-                                  {item}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
 
-                        <div className="space-y-6">
+                      {homepageSubView === "general" && (
+                        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+                          <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Live bar</p>
+                                <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Announcement messages</h2>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                  Add one message per line. These messages appear in the moving live bar above the navbar.
+                                </p>
+                              </div>
+                              <Megaphone className="h-6 w-6 text-primary" />
+                            </div>
+                            <textarea
+                              value={liveBarText}
+                              onChange={(event) => setLiveBarText(event.target.value)}
+                              rows={7}
+                              className="mt-6 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground outline-none transition focus:border-primary"
+                              placeholder="Write each live bar message on a new line"
+                            />
+                            <div className="mt-5 rounded-2xl border border-border bg-background p-4">
+                              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Preview</p>
+                              <div className="no-scrollbar flex gap-8 overflow-hidden text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                {liveBarText.split("\n").filter(Boolean).map((item, index) => (
+                                  <span key={`${item}-${index}`} className="flex shrink-0 items-center gap-2">
+                                    <Megaphone className="h-3.5 w-3.5 text-primary" />
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
                             <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Headliner</p>
                             <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Featured event</h2>
@@ -552,46 +649,48 @@ const SuperAdminDashboard = () => {
                               </p>
                             </div>
                           </div>
+                        </div>
+                      )}
 
-                          <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
-                            <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Trending events</p>
-                            <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Select trending events</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              Select events to show in the trending section.
-                            </p>
-                            <div className="mt-6 max-h-60 overflow-y-auto space-y-2">
-                              {events.map((event) => (
-                                <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={trendingEventIds.includes(event.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setTrendingEventIds([...trendingEventIds, event.id]);
-                                      } else {
-                                        setTrendingEventIds(trendingEventIds.filter(id => id !== event.id));
-                                      }
-                                    }}
-                                    className="h-4 w-4 rounded border-gray-300 text-[#10ff8a] focus:ring-[#10ff8a]"
-                                  />
-                                  <span className="text-sm">{event.title}</span>
-                                </label>
-                              ))}
-                            </div>
+                      {homepageSubView === "trending" && (
+                        <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Trending events</p>
+                          <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Select trending events</h2>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Select events to show in the trending section.
+                          </p>
+                          <div className="mt-6 max-h-96 overflow-y-auto space-y-2">
+                            {events.map((event) => (
+                              <label key={event.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={trendingEventIds.includes(event.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setTrendingEventIds([...trendingEventIds, event.id]);
+                                    } else {
+                                      setTrendingEventIds(trendingEventIds.filter(id => id !== event.id));
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300 text-[#10ff8a] focus:ring-[#10ff8a]"
+                                />
+                                <span className="text-sm font-medium">{event.title}</span>
+                              </label>
+                            ))}
                           </div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="grid gap-6 lg:grid-cols-3">
+                      {homepageSubView === "calendar" && (
                         <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
                           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Calendar</p>
                           <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Calendar events</h2>
                           <p className="mt-2 text-sm text-muted-foreground">
                             Select events for the weekend calendar.
                           </p>
-                          <div className="mt-6 max-h-60 overflow-y-auto space-y-2">
+                          <div className="mt-6 max-h-96 overflow-y-auto space-y-2">
                             {events.map((event) => (
-                              <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary cursor-pointer">
+                              <label key={event.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={calendarEventIds.includes(event.id)}
@@ -604,18 +703,20 @@ const SuperAdminDashboard = () => {
                                   }}
                                   className="h-4 w-4 rounded border-gray-300 text-[#10ff8a] focus:ring-[#10ff8a]"
                                 />
-                                <span className="text-sm">{event.title}</span>
+                                <span className="text-sm font-medium">{event.title}</span>
                               </label>
                             ))}
                           </div>
                         </div>
+                      )}
 
+                      {homepageSubView === "artists" && (
                         <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
                           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Artists</p>
                           <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Manage artists</h2>
                           <div className="mt-6 space-y-4">
                             {artists.map((artist, index) => (
-                              <div key={index} className="space-y-2 p-3 border border-border rounded-xl bg-background">
+                              <div key={index} className="space-y-3 p-4 border border-border rounded-xl bg-background">
                                 <input
                                   type="text"
                                   value={artist.name}
@@ -650,7 +751,7 @@ const SuperAdminDashboard = () => {
                                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
                                 />
                                 {artist.image && (
-                                  <div className="w-20 h-20 rounded-lg overflow-hidden">
+                                  <div className="w-24 h-24 rounded-lg overflow-hidden">
                                     <img src={artist.image} alt={artist.name} className="w-full h-full object-cover" />
                                   </div>
                                 )}
@@ -677,7 +778,7 @@ const SuperAdminDashboard = () => {
                                   size="sm"
                                   onClick={() => setArtists(artists.filter((_, i) => i !== index))}
                                 >
-                                  Remove
+                                  Remove artist
                                 </Button>
                               </div>
                             ))}
@@ -689,13 +790,15 @@ const SuperAdminDashboard = () => {
                             </Button>
                           </div>
                         </div>
+                      )}
 
+                      {homepageSubView === "venues" && (
                         <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
                           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary">Venues</p>
                           <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Iconic venues</h2>
                           <div className="mt-6 space-y-4">
                             {iconicVenues.map((venue, index) => (
-                              <div key={index} className="space-y-2 p-3 border border-border rounded-xl bg-background">
+                              <div key={index} className="space-y-3 p-4 border border-border rounded-xl bg-background">
                                 <input
                                   type="text"
                                   value={venue.name}
@@ -730,7 +833,7 @@ const SuperAdminDashboard = () => {
                                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
                                 />
                                 {venue.image && (
-                                  <div className="w-20 h-20 rounded-lg overflow-hidden">
+                                  <div className="w-24 h-24 rounded-lg overflow-hidden">
                                     <img src={venue.image} alt={venue.name} className="w-full h-full object-cover" />
                                   </div>
                                 )}
@@ -757,7 +860,7 @@ const SuperAdminDashboard = () => {
                                   size="sm"
                                   onClick={() => setIconicVenues(iconicVenues.filter((_, i) => i !== index))}
                                 >
-                                  Remove
+                                  Remove venue
                                 </Button>
                               </div>
                             ))}
@@ -769,7 +872,7 @@ const SuperAdminDashboard = () => {
                             </Button>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="flex justify-center">
                         <Button
@@ -1181,46 +1284,85 @@ const SuperAdminDashboard = () => {
                   )}
 
                   {view === "logs" && (
-                    <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
-                      <table className="w-full text-sm">
-                        <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-                          <tr>
-                            <th className="px-4 py-3 text-left">Time</th>
-                            <th className="px-4 py-3 text-left">Level</th>
-                            <th className="px-4 py-3 text-left">Action</th>
-                            <th className="px-4 py-3 text-left">Message</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {logs.map((log) => (
-                            <tr key={log.id} className="border-t border-border">
-                              <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleString()}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${log.level === "error" ? "bg-destructive/15 text-destructive" :
-                                    log.level === "warn" ? "bg-amber-100 text-amber-800" :
-                                      "bg-primary/15 text-primary"
-                                  }`}>
-                                  {log.level}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 font-mono text-xs">{log.action}</td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {log.message ?? "—"}
-                                {Object.keys(log.metadata ?? {}).length > 0 && (
-                                  <p className="mt-1 font-mono text-[10px] text-muted-foreground/80 truncate max-w-md">
-                                    {JSON.stringify(log.metadata)}
-                                  </p>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                          {logs.length === 0 && (
-                            <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No activity logged yet.</td></tr>
+                    <div className="space-y-6">
+                      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Time range</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(["15m", "30m", "24h", "3d", "custom"] as const).map((range) => (
+                              <button
+                                key={range}
+                                onClick={() => setLogTimeRange(range)}
+                                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition ${
+                                  logTimeRange === range
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                }`}
+                              >
+                                {range === "15m" ? "Last 15 mins" :
+                                 range === "30m" ? "Last 30 mins" :
+                                 range === "24h" ? "Last 24 hours" :
+                                 range === "3d" ? "Last 3 days" :
+                                 "Custom date"}
+                              </button>
+                            ))}
+                          </div>
+                          {logTimeRange === "custom" && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="date"
+                                value={logCustomDate}
+                                onChange={(e) => setLogCustomDate(e.target.value)}
+                                className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+                              />
+                            </div>
                           )}
-                        </tbody>
-                      </table>
+                        </div>
+                      </div>
+                      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft">
+                        <div className="space-y-1">
+                          {filterLogs(logs).map((log) => (
+                            <div
+                              key={log.id}
+                              onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                              className="border-b border-border p-4 cursor-pointer hover:bg-secondary/30 transition"
+                            >
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${log.level === "error" ? "bg-destructive/15 text-destructive" :
+                                      log.level === "warn" ? "bg-amber-100 text-amber-800" :
+                                        "bg-primary/15 text-primary"
+                                    }`}>
+                                    {log.level}
+                                  </span>
+                                  <span className="font-mono text-xs">{log.action}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(log.created_at).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-sm text-muted-foreground">{log.message ?? "—"}</p>
+                              {expandedLogId === log.id && (
+                                <div className="mt-4 p-4 rounded-xl border border-border bg-background">
+                                  {Object.keys(log.metadata ?? {}).length > 0 && (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Metadata</p>
+                                      <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap overflow-x-auto">
+                                        {JSON.stringify(log.metadata, null, 2)}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {filterLogs(logs).length === 0 && (
+                            <div className="p-8 text-center text-muted-foreground">No logs in this time range.</div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>

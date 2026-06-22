@@ -118,7 +118,7 @@ const Index = () => {
         <section className="relative overflow-hidden border-b border-cream/10 noise-overlay">
           <div className="absolute inset-0 z-0">
             <img
-              src={headliner?.cover_image_url || headliner?.poster_url || asset("sol-fest.jpg")}
+              src={headliner?.cover_image_url || headliner?.poster_url}
               alt=""
               aria-hidden="true"
               className="h-full w-full object-cover object-center"
@@ -148,7 +148,7 @@ const Index = () => {
 
                 <p className="mt-8 hidden max-w-xl text-base leading-relaxed text-cream-dim md:block lg:text-lg">
                   Kenya's home for live entertainment - concerts, derbies, festivals, theatre and the moments everyone will be talking about
-                  tomorrow. Pay with M-Pesa, card or wallet in under 30 seconds.
+                  tomorrow. Pay with M-Pesa, card or Airtel Money in under 30 seconds.
                 </p>
 
                 <div className="max-w-2xl md:mt-10">
