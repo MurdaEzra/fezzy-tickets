@@ -16,8 +16,12 @@ const Auth = () => {
   const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
   const redirect = params.get("redirect") || "/dashboard";
   const pendingOrgName = params.get("org")?.trim() || sessionStorage.getItem("pendingOrgName")?.trim() || "";
+  const inviteToken = sessionStorage.getItem("inviteToken");
+  const inviteEmail = sessionStorage.getItem("inviteEmail");
+  const isInviteSignup = !!inviteToken;
+
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail || "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("Kenya");
@@ -26,10 +30,10 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (mode === "signup" && !pendingOrgName) {
+    if (mode === "signup" && !pendingOrgName && !isInviteSignup) {
       navigate("/start-selling", { replace: true });
     }
-  }, [mode, pendingOrgName, navigate]);
+  }, [mode, pendingOrgName, isInviteSignup, navigate]);
 
   useEffect(() => {
     if (!user) return;
@@ -58,7 +62,7 @@ const Auth = () => {
   }, [pendingOrgName]);
 
   const switchMode = (m: "signin" | "signup") => {
-    if (m === "signup" && !pendingOrgName) {
+    if (m === "signup" && !pendingOrgName && !isInviteSignup) {
       navigate("/start-selling");
       return;
     }
@@ -75,6 +79,34 @@ const Auth = () => {
     }
     setLoading(true);
     try {
+      if (mode === "signup" && isInviteSignup) {
+        // Handle invite signup
+        const { data, error } = await supabase.functions.invoke("accept-invite-signup", {
+          body: {
+            email,
+            password,
+            fullName,
+            country,
+            marketingOptIn,
+            inviteToken,
+          },
+        });
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        // Now sign in the user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) throw signInError;
+
+        toast.success("Welcome! You are now an admin.");
+        return;
+      }
+
       if (mode === "signup") {
         const { data, error } = await supabase.functions.invoke("send-account-verification-email", {
           body: {
@@ -115,7 +147,7 @@ const Auth = () => {
   };
 
   const handleGoogle = async () => {
-    if (mode === "signup") {
+    if (mode === "signup" && !isInviteSignup) {
       toast.error("Organizer signup requires email", {
         description: "Complete the form above to apply as an organizer.",
       });
@@ -165,14 +197,16 @@ const Auth = () => {
           <div className="mx-auto w-full max-w-md">
             <div className="border border-cream/10 bg-ink-card p-7 md:p-9">
               <h2 className="font-display text-3xl text-cream">
-                {mode === "signin" ? "Organizer sign in" : "Apply as organizer"}
+                {mode === "signin" ? "Organizer sign in" : isInviteSignup ? "Join the team" : "Apply as organizer"}
               </h2>
               <p className="mt-1 text-sm text-cream-dim">
                 {mode === "signin"
                   ? "Sign in to your approved organizer account."
-                  : pendingOrgName
-                    ? `Submit your application for ${pendingOrgName}. Admin approval required.`
-                    : "Start at organization setup to apply."}
+                  : isInviteSignup
+                    ? "Create your account to join the team."
+                    : pendingOrgName
+                      ? `Submit your application for ${pendingOrgName}. Admin approval required.`
+                      : "Start at organization setup to apply."}
               </p>
 
               {mode === "signin" && (
@@ -208,7 +242,7 @@ const Auth = () => {
                 )}
                 <div>
                   <label className="mb-1.5 block font-mono-label text-cream-dim">Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" disabled={isInviteSignup && !!inviteEmail} />
                 </div>
                 <div>
                   <label className="mb-1.5 block font-mono-label text-cream-dim">Password</label>
@@ -247,7 +281,7 @@ const Auth = () => {
                 )}
                 <button type="submit" className="btn-ember w-full justify-center" disabled={loading || (mode === "signup" && !acceptedTerms)}>
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {mode === "signin" ? "Sign in" : "Submit application"}
+                  {mode === "signin" ? "Sign in" : isInviteSignup ? "Create account" : "Submit application"}
                 </button>
               </form>
 
@@ -259,7 +293,7 @@ const Auth = () => {
                   </>
                 ) : (
                   <>
-                    Already approved?{" "}
+                    Already have an account?{" "}
                     <button onClick={() => switchMode("signin")} className="font-semibold text-fezzy hover:text-lime">
                       Sign in
                     </button>

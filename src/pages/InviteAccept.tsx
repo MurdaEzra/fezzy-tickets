@@ -16,15 +16,36 @@ const InviteAccept = () => {
   const [status, setStatus] = useState<"checking" | "success" | "error">("checking");
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      navigate(`/auth?mode=signin&redirect=/invite/${token ?? ""}`, { replace: true });
-      return;
-    }
-
-    const acceptInvite = async () => {
+    const handleInvite = async () => {
       if (!token) {
         setStatus("error");
+        return;
+      }
+
+      const { data: invite, error: fetchError } = await supabase
+        .from("organizer_admin_invites")
+        .select("id, organizer_id, invited_email, expires_at, accepted_by_user_id")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (fetchError || !invite) {
+        setStatus("error");
+        return;
+      }
+
+      if (invite.accepted_by_user_id || new Date(invite.expires_at) < new Date()) {
+        setStatus("error");
+        return;
+      }
+
+      if (loading) return;
+
+      if (!user) {
+        sessionStorage.setItem("inviteToken", token);
+        if (invite.invited_email) {
+          sessionStorage.setItem("inviteEmail", invite.invited_email);
+        }
+        navigate(`/auth?mode=signup&redirect=/invite/${token}`, { replace: true });
         return;
       }
 
@@ -39,11 +60,13 @@ const InviteAccept = () => {
         return;
       }
 
+      sessionStorage.removeItem("inviteToken");
+      sessionStorage.removeItem("inviteEmail");
       setStatus("success");
       toast.success("You’re now an organizer admin");
     };
 
-    acceptInvite();
+    handleInvite();
   }, [loading, navigate, token, user]);
 
   return (
