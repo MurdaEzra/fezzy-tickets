@@ -246,7 +246,7 @@ const OrganizerDashboard = () => {
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-3">
+          <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
             {MENU.map((m) => (
               <button
                 key={m.id}

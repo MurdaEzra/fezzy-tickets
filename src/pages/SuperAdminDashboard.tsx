@@ -399,7 +399,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-3">
+          <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
             {([
               ["overview", LayoutDashboard, "Overview", null],
               ["homepage", Megaphone, "Homepage", null],
