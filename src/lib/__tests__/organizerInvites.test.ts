@@ -13,22 +13,16 @@ describe("createOrganizerAdminInvite", () => {
       _expires_in_hours: 168,
     });
   });
+});
 
-  it("upserts the organizer team member to avoid duplicate-key conflicts", async () => {
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    const from = vi.fn().mockReturnValue({ upsert });
+describe("acceptOrganizerAdminInvite", () => {
+  it("uses the accept organizer invite RPC instead of a direct table insert", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "org_123", error: null });
 
-    await acceptOrganizerAdminInvite({ from } as never, "org_123", "user_456", "inviter_789");
+    await acceptOrganizerAdminInvite({ rpc } as never, "invite_token_123");
 
-    expect(from).toHaveBeenCalledWith("organizer_team_members");
-    expect(upsert).toHaveBeenCalledWith(
-      {
-        organizer_id: "org_123",
-        user_id: "user_456",
-        role: "admin",
-        invited_by_user_id: "inviter_789",
-      },
-      { onConflict: "organizer_id,user_id" },
-    );
+    expect(rpc).toHaveBeenCalledWith("accept_organizer_admin_invite", {
+      _token: "invite_token_123",
+    });
   });
 });

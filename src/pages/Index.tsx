@@ -353,21 +353,6 @@ const Index = () => {
                     Organizer dashboard
                   </Link>
                 </div>
-                <div className="mt-10 grid gap-px bg-cream/10 sm:grid-cols-3">
-                  {[
-                    [Wallet, "M-Pesa payouts"],
-                    [Users, "Audience insights"],
-                    [Ticket, "Fast gate scans"],
-                  ].map(([Icon, label]) => {
-                    const ItemIcon = Icon as typeof Wallet;
-                    return (
-                      <div key={label as string} className="bg-ink p-5">
-                        <ItemIcon className="h-5 w-5 text-fezzy" />
-                        <p className="mt-4 font-mono-label text-cream-dim">{label as string}</p>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             </div>
             <div className="bg-ink p-8 lg:col-span-5 lg:p-10">
@@ -524,7 +509,6 @@ const Index = () => {
                       <div className="qr-code mx-auto h-12 w-12 opacity-50" />
                       <div className="mt-1 flex justify-between font-mono-label text-ash">
                         <span>Fezzy - Presale list</span>
-                        <span>84,219 subscribers</span>
                       </div>
                     </div>
                   </form>

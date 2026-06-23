@@ -28,27 +28,9 @@ const InviteAccept = () => {
         return;
       }
 
-      const { data: invite, error } = await supabase
-        .from("organizer_admin_invites")
-        .select("id, organizer_id, created_by_user_id, expires_at, accepted_by_user_id")
-        .eq("token", token)
-        .maybeSingle();
-
-      if (error || !invite) {
-        setStatus("error");
-        return;
-      }
-
-      if (invite.accepted_by_user_id || new Date(invite.expires_at) < new Date()) {
-        setStatus("error");
-        return;
-      }
-
       const { error: addErr } = await acceptOrganizerAdminInvite(
         supabase,
-        invite.organizer_id,
-        user.id,
-        invite.created_by_user_id,
+        token,
       );
 
       if (addErr) {
@@ -56,11 +38,6 @@ const InviteAccept = () => {
         toast.error("Could not join the organizer team", { description: addErr.message });
         return;
       }
-
-      await supabase
-        .from("organizer_admin_invites")
-        .update({ accepted_by_user_id: user.id, accepted_at: new Date().toISOString() })
-        .eq("id", invite.id);
 
       setStatus("success");
       toast.success("You’re now an organizer admin");

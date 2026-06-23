@@ -1,20 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function acceptOrganizerAdminInvite(
-  supabase: Pick<SupabaseClient, "from">,
-  organizerId: string,
-  userId: string,
-  invitedByUserId: string,
+  supabase: Pick<SupabaseClient, "rpc">,
+  token: string,
 ) {
-  return supabase.from("organizer_team_members").upsert(
-    {
-      organizer_id: organizerId,
-      user_id: userId,
-      role: "admin",
-      invited_by_user_id: invitedByUserId,
-    },
-    { onConflict: "organizer_id,user_id" },
-  );
+  return supabase.rpc("accept_organizer_admin_invite", {
+    _token: token,
+  });
 }
 
 export async function createOrganizerAdminInvite(
