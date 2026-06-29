@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
+import { toast } from "sonner";
 
 const StartSelling = () => {
   const navigate = useNavigate();
@@ -20,10 +21,30 @@ const StartSelling = () => {
     }
   }, [user, navigate]);
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const name = orgName.trim();
     if (!name) return;
+    
+    // Verify Turnstile token
+    const turnstileToken = document.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value;
+    if (!turnstileToken) {
+      toast.error("Please complete the security check");
+      return;
+    }
+
+    const verifyResponse = await fetch(import.meta.env.VITE_TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: turnstileToken }),
+    });
+    const verifyResult = await verifyResponse.json();
+
+    if (!verifyResult.success) {
+      toast.error("Security check failed, please try again");
+      return;
+    }
+
     sessionStorage.setItem("pendingOrgName", name);
     navigate(`/auth?mode=signup&redirect=/dashboard&org=${encodeURIComponent(name)}`);
   };
@@ -54,6 +75,11 @@ const StartSelling = () => {
                   className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash"
                 />
               </div>
+              <div 
+                className="cf-turnstile" 
+                data-sitekey="0x4AAAAAADsx12kgle0EfSNw"
+                data-action="turnstile-spin-v1"
+              ></div>
               <button type="submit" className="btn-ember w-full justify-center" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                 Continue to account

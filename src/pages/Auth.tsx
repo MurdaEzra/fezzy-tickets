@@ -79,6 +79,27 @@ const Auth = () => {
     }
     setLoading(true);
     try {
+      // Verify Turnstile token
+      const turnstileToken = document.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value;
+      if (!turnstileToken) {
+        toast.error("Please complete the security check");
+        setLoading(false);
+        return;
+      }
+
+      const verifyResponse = await fetch(import.meta.env.VITE_TURNSTILE_VERIFY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      const verifyResult = await verifyResponse.json();
+
+      if (!verifyResult.success) {
+        toast.error("Security check failed, please try again");
+        setLoading(false);
+        return;
+      }
+
       if (mode === "signup" && isInviteSignup) {
         // Handle invite signup
         const { data, error } = await supabase.functions.invoke("accept-invite-signup", {
@@ -279,6 +300,11 @@ const Auth = () => {
                     </label>
                   </>
                 )}
+                <div 
+                  className="cf-turnstile" 
+                  data-sitekey="0x4AAAAAADsx12kgle0EfSNw"
+                  data-action="turnstile-spin-v1"
+                ></div>
                 <button type="submit" className="btn-ember w-full justify-center" disabled={loading || (mode === "signup" && !acceptedTerms)}>
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   {mode === "signin" ? "Sign in" : isInviteSignup ? "Create account" : "Submit application"}

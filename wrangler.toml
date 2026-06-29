@@ -1,0 +1,4 @@
+name = "fezzy-turnstile-siteverify"
+main = "worker/index.js"
+compatibility_date = "2024-01-01"
+account_id = "ff7c56aafd505ecd1b544f135073cba2"
