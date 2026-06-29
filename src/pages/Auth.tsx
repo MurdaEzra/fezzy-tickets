@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 const Auth = () => {
   const [params, setParams] = useSearchParams();
@@ -17,7 +18,6 @@ const Auth = () => {
   const redirect = params.get("redirect") || "/dashboard";
   const pendingOrgName = params.get("org")?.trim() || sessionStorage.getItem("pendingOrgName")?.trim() || "";
   const inviteToken = sessionStorage.getItem("inviteToken");
-  const inviteEmail = sessionStorage.getItem("inviteEmail");
   const isInviteSignup = !!inviteToken;
 
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
@@ -28,6 +28,7 @@ const Auth = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode === "signup" && !pendingOrgName && !isInviteSignup) {
@@ -80,7 +81,6 @@ const Auth = () => {
     setLoading(true);
     try {
       // Verify Turnstile token
-      const turnstileToken = document.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value;
       if (!turnstileToken) {
         toast.error("Please complete the security check");
         setLoading(false);
@@ -300,11 +300,11 @@ const Auth = () => {
                     </label>
                   </>
                 )}
-                <div 
-                  className="cf-turnstile" 
-                  data-sitekey="0x4AAAAAADsx12kgle0EfSNw"
-                  data-action="turnstile-spin-v1"
-                ></div>
+                <TurnstileWidget
+                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                  onVerify={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                />
                 <button type="submit" className="btn-ember w-full justify-center" disabled={loading || (mode === "signup" && !acceptedTerms)}>
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                   {mode === "signin" ? "Sign in" : isInviteSignup ? "Create account" : "Submit application"}

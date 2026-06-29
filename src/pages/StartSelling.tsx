@@ -6,11 +6,13 @@ import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 import { toast } from "sonner";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 const StartSelling = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [orgName, setOrgName] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -27,7 +29,6 @@ const StartSelling = () => {
     if (!name) return;
     
     // Verify Turnstile token
-    const turnstileToken = document.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value;
     if (!turnstileToken) {
       toast.error("Please complete the security check");
       return;
@@ -75,11 +76,11 @@ const StartSelling = () => {
                   className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash"
                 />
               </div>
-              <div 
-                className="cf-turnstile" 
-                data-sitekey="0x4AAAAAADsx12kgle0EfSNw"
-                data-action="turnstile-spin-v1"
-              ></div>
+              <TurnstileWidget
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                onVerify={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+              />
               <button type="submit" className="btn-ember w-full justify-center" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                 Continue to account
