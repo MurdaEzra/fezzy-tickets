@@ -70,18 +70,25 @@ export function parseMpesaCallback(payload) {
 export function createMpesaClient(config) {
   return {
     async getAccessToken() {
-      const response = await fetch(`${config.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${config.consumerKey}:${config.consumerSecret}`).toString("base64")}`,
-        },
-      });
+      console.log("[M-Pesa] Getting access token");
+      try {
+        const response = await fetch(`${config.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${config.consumerKey}:${config.consumerSecret}`).toString("base64")}`,
+          },
+        });
 
-      const json = await response.json();
-      if (!response.ok || !json?.access_token) {
-        throw new Error("Unable to authenticate with M-Pesa");
+        const json = await response.json();
+        console.log("[M-Pesa] Access token response:", json);
+        if (!response.ok || !json?.access_token) {
+          throw new Error("Unable to authenticate with M-Pesa");
+        }
+
+        return json.access_token;
+      } catch (err) {
+        console.error("[M-Pesa] Failed to get access token:", err);
+        throw err;
       }
-
-      return json.access_token;
     },
 
     async initiateStkPush({
@@ -91,36 +98,45 @@ export function createMpesaClient(config) {
       phone,
       transactionDesc,
     }) {
-      const accessToken = await this.getAccessToken();
-      const payload = buildStkPushPayload({
-        accountReference,
-        amountKes,
-        callbackUrl,
-        config,
-        phone,
-        transactionDesc,
-      });
+      console.log("[M-Pesa] Initiating STK push with params:", { accountReference, amountKes, callbackUrl, phone, transactionDesc });
+      try {
+        const accessToken = await this.getAccessToken();
+        console.log("[M-Pesa] Got access token");
+        const payload = buildStkPushPayload({
+          accountReference,
+          amountKes,
+          callbackUrl,
+          config,
+          phone,
+          transactionDesc,
+        });
+        console.log("[M-Pesa] STK push payload:", payload);
 
-      const response = await fetch(`${config.baseUrl}/mpesa/stkpush/v1/processrequest`, {
-        body: JSON.stringify(payload),
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-      });
+        const response = await fetch(`${config.baseUrl}/mpesa/stkpush/v1/processrequest`, {
+          body: JSON.stringify(payload),
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        });
 
-      const json = await response.json();
-      if (!response.ok) {
-        throw new Error("Unable to start M-Pesa payment");
+        const json = await response.json();
+        console.log("[M-Pesa] STK push response:", json, "status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Unable to start M-Pesa payment: ${json.errorMessage || json.ResponseDescription || 'Unknown error'}`);
+        }
+
+        return {
+          checkoutRequestId: json.CheckoutRequestID ?? null,
+          customerMessage: json.CustomerMessage ?? "Check your phone to authorize the M-Pesa payment.",
+          merchantRequestId: json.MerchantRequestID ?? null,
+          raw: json,
+        };
+      } catch (err) {
+        console.error("[M-Pesa] STK push failed:", err);
+        throw err;
       }
-
-      return {
-        checkoutRequestId: json.CheckoutRequestID ?? null,
-        customerMessage: json.CustomerMessage ?? "Check your phone to authorize the M-Pesa payment.",
-        merchantRequestId: json.MerchantRequestID ?? null,
-        raw: json,
-      };
     },
   };
 }
