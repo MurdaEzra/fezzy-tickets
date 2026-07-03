@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: fezzy-payment-backend
+    runtime: node
+    repo: https://github.com/MurdaEzra/fezzy-tickets # Update this to your repo URL
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: ALLOWED_BROWSER_ORIGINS
+        value: http://localhost:8080,https://fezzytickets.com
+      - key: PORT
+        value: 10000
+      - key: RENDER_API_BASE_URL
+        fromService:
+          name: fezzy-payment-backend
+          type: web
+          property: host
+      - fromSecret: SUPABASE_URL
+      - fromSecret: SUPABASE_SERVICE_ROLE_KEY
+      - fromSecret: MPESA_SHORT_CODE
+      - fromSecret: MPESA_PASSKEY
+      - fromSecret: MPESA_CONSUMER_KEY
+      - fromSecret: MPESA_CONSUMER_SECRET
+      - fromSecret: MPESA_CALLBACK_URL
+      - fromSecret: PAYSTACK_API_KEY
+      - fromSecret: PAYSTACK_API_SECRET
+      - fromSecret: PAYSTACK_API_BASE_URL
+      

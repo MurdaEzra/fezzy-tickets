@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/~oauth/initiate", "destination": "/api/oauth/initiate" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "https://your-render-service.onrender.com/api/$1" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
