@@ -36,34 +36,42 @@ export default function TurnstileWidget({
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const onVerifyRef = useRef(onVerify);
+  const onExpireRef = useRef(onExpire);
+  const onErrorRef = useRef(onError);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    onVerifyRef.current = onVerify;
+    onExpireRef.current = onExpire;
+    onErrorRef.current = onError;
+  }, [onVerify, onExpire, onError]);
 
   const renderWidget = useCallback(() => {
-    if (!scriptLoaded || !containerRef.current || !window.turnstile) return;
-    if (widgetIdRef.current) {
-      // Reset existing widget instead of rendering new one
-      window.turnstile.reset(widgetIdRef.current);
+    if (!siteKey) {
+      setHasError(true);
       return;
     }
+    if (!scriptLoaded || !containerRef.current || !window.turnstile || widgetIdRef.current) return;
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       action,
       callback: (token) => {
         setHasError(false);
-        onVerify?.(token);
+        onVerifyRef.current?.(token);
       },
       "expired-callback": () => {
-        onExpire?.();
+        onExpireRef.current?.();
       },
       "error-callback": (errorCode) => {
         setHasError(true);
-        onError?.(errorCode);
+        onErrorRef.current?.(errorCode);
       },
     });
-  }, [scriptLoaded, siteKey, action, onVerify, onExpire, onError]);
+  }, [scriptLoaded, siteKey, action]);
 
   useEffect(() => {
     // Check immediately if Turnstile is already available
@@ -103,7 +111,7 @@ export default function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, []);
+  }, [siteKey, action]);
 
   return (
     <div>
