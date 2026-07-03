@@ -2,7 +2,8 @@ import { PublicHttpError } from "../http/errors.js";
 
 function throwIfError(error, message) {
   if (error) {
-    throw new Error(message);
+    console.error("[Supabase Error]", error);
+    throw new Error(`${message}: ${error.message || JSON.stringify(error)}`);
   }
 }
 
