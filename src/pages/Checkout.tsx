@@ -194,35 +194,8 @@ const Checkout = () => {
     if (paymentMethod === "card") {
       await handleCardPayment(normalized);
     } else {
-      // For M-Pesa: create checkout session first to get merchant reference
-      setProcessing(true);
       setMpesaPhone(normalized[0]?.phone || "");
-      try {
-        const checkoutRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slug,
-            tierId: tier!.id,
-            email: normalized[0].email,
-            name: normalized[0].name,
-            phone: normalized[0].phone,
-            quantity: qty,
-          }),
-        });
-
-        const checkoutData = await checkoutRes.json();
-        if (!checkoutData?.publicToken || !checkoutData?.merchantReference) throw new Error("Failed to create checkout session");
-
-        setMpesaCheckoutToken(checkoutData.publicToken);
-        setMpesaMerchantRef(checkoutData.merchantReference);
-        setProcessing(false);
-        setMpesaModalOpen(true);
-      } catch (err) {
-        const message = (err as Error).message;
-        toast.error("Failed to start checkout", { description: message });
-        setProcessing(false);
-      }
+      setMpesaModalOpen(true);
     }
   };
 
@@ -275,14 +248,38 @@ const Checkout = () => {
   };
 
   const handleMpesaStkPush = async () => {
-    if (!mpesaPhone || !mpesaCheckoutToken) {
-      toast.error("Missing payment details");
+    if (!mpesaPhone) {
+      toast.error("Enter your M-Pesa phone number");
       return;
     }
     setProcessing(true);
     try {
-      // Initiate STK push using existing checkout token
-      const stkRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions/${mpesaCheckoutToken}/pay/mpesa`, {
+      // First, create checkout session
+      const normalized = holders.map((h) => ({
+        name: h.name.trim(),
+        email: h.email.trim(),
+        phone: h.phone.trim(),
+      }));
+      
+      // Create checkout session via server
+      const checkoutRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          tierId: tier!.id,
+          email: normalized[0].email,
+          name: normalized[0].name,
+          phone: mpesaPhone,
+          quantity: qty,
+        }),
+      });
+
+      const checkoutData = await checkoutRes.json();
+      if (!checkoutData?.publicToken) throw new Error("Failed to create checkout session");
+
+      // Initiate STK push
+      const stkRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions/${checkoutData.publicToken}/pay/mpesa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: mpesaPhone }),
@@ -291,6 +288,8 @@ const Checkout = () => {
       const stkData = await stkRes.json();
       if (stkData?.error) throw new Error(stkData.error.message);
 
+      setMpesaCheckoutToken(checkoutData.publicToken);
+      setMpesaMerchantRef(stkData?.orderReference || "");
       setMpesaStep("stk");
       setProcessing(false);
     } catch (err) {
