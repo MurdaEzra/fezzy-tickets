@@ -23,15 +23,18 @@ const LppPortal = () => {
   const [awaitingPayment, setAwaitingPayment] = useState(false);
 
   const loadPlan = async (ref: string) => {
+    // Normalize ref by removing any non-alphanumeric characters
+    const normalizedRef = ref.toUpperCase().replace(/[^A-Z0-9]/g, '');
     setLoading(true);
     try {
-      const res = await lppGetPlan(ref);
+      const res = await lppGetPlan(normalizedRef);
       setPlan(res.plan);
       setInstallments(res.installments);
       setEvent(res.event);
       setTier(res.tier);
-      setRefNo(ref);
-      setParams({ ref });
+      setRefNo(normalizedRef);
+      setRefInput(normalizedRef);
+      setParams({ ref: normalizedRef });
     } catch (err) {
       toast.error("Plan not found", { description: (err as Error).message });
       setPlan(null);
@@ -67,6 +70,7 @@ const LppPortal = () => {
       if (attempts > 40) {
         clearInterval(timer);
         setAwaitingPayment(false);
+        toast.error("Payment confirmation timed out. Please check your M-Pesa messages or try again later.");
       }
     }, 3000);
     return () => clearInterval(timer);
@@ -112,7 +116,7 @@ const LppPortal = () => {
                 <input
                   value={refInput}
                   onChange={(e) => setRefInput(e.target.value.toUpperCase())}
-                  placeholder="FZ-XXXX-XXXX"
+                  placeholder="FZXXXXXXXX"
                   className="flex-1 border border-cream/15 bg-ink-soft px-4 py-3 font-mono text-lg tracking-widest text-cream outline-none focus:border-fezzy placeholder:text-ash"
                 />
                 <button

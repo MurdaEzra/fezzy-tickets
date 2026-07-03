@@ -78,7 +78,7 @@ describe("payment service", () => {
 
     expect(attempt.provider).toBe("mpesa_daraja");
     expect(attempt.method).toBe("mpesa");
-    expect(attempt.merchant_reference).toMatch(/^fz_/);
+    expect(attempt.merchant_reference).toMatch(/^FZ[A-Z2-9]{8}$/i);
     expect(attempt.status).toBe("created");
   });
 

@@ -6,11 +6,11 @@ function randomHex(size = 16) {
 }
 
 function generateFzRef() {
-  // Format FZ-XXXX-XXXX — friendly, uppercase, no ambiguous chars
+  // Format FZXXXXXXXX — friendly, uppercase, no ambiguous chars
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const seg = (n) =>
     Array.from({ length: n }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
-  return `FZ-${seg(4)}-${seg(4)}`;
+  return `FZ${seg(4)}${seg(4)}`;
 }
 
 function addMinutes(iso, minutes) {

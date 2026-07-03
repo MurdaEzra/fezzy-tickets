@@ -123,6 +123,42 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [evt, tier?.id, qty, promoApplied]);
 
+  // Poll for payment status when in STK push or paybill step
+  useEffect(() => {
+    if ((mpesaStep !== "stk" && mpesaStep !== "paybill") || !mpesaCheckoutToken) return;
+
+    let attempts = 0;
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions/${mpesaCheckoutToken}/status`);
+      const data = await res.json();
+
+      if (data.status === "paid") {
+        clearInterval(pollInterval);
+        setMpesaStep("confirm");
+        setProcessing(false);
+        await logActivity("checkout.completed", {
+          message: `M-Pesa payment completed for ${evt?.title}`,
+          metadata: { eventId: evt?.id, quantity: qty },
+          userId: user?.id,
+        });
+      } else if (data.paymentStatus === "failed") {
+        clearInterval(pollInterval);
+        toast.error("Payment failed. Please try again.", { 
+          description: data.paymentErrorMessage || "Your payment was not completed." 
+        });
+        setProcessing(false);
+        setMpesaStep("phone");
+      } else if (attempts > 60) {
+        clearInterval(pollInterval);
+        toast.error("Payment confirmation timed out. Please check your M-Pesa messages or try again later.");
+        setProcessing(false);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [mpesaStep, mpesaCheckoutToken, evt, qty, user]);
+
   const applyPromo = async () => {
     if (!promoCode.trim() || !dbEvent?.id) return;
     setPromoLoading(true);
@@ -299,8 +335,46 @@ const Checkout = () => {
     }
   };
 
-  const handlePaybillOption = () => {
-    setMpesaStep("paybill");
+  const handlePaybillOption = async () => {
+    if (!mpesaPhone) {
+      toast.error("Enter your M-Pesa phone number");
+      return;
+    }
+    setProcessing(true);
+    try {
+      // First, create checkout session
+      const normalized = holders.map((h) => ({
+        name: h.name.trim(),
+        email: h.email.trim(),
+        phone: h.phone.trim(),
+      }));
+      
+      // Create checkout session via server
+      const checkoutRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          tierId: tier!.id,
+          email: normalized[0].email,
+          name: normalized[0].name,
+          phone: mpesaPhone,
+          quantity: qty,
+        }),
+      });
+
+      const checkoutData = await checkoutRes.json();
+      if (!checkoutData?.publicToken) throw new Error("Failed to create checkout session");
+
+      setMpesaCheckoutToken(checkoutData.publicToken);
+      setMpesaMerchantRef(checkoutData?.merchantReference || "");
+      setMpesaStep("paybill");
+      setProcessing(false);
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error("Failed to prepare payment", { description: message });
+      setProcessing(false);
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -323,9 +397,17 @@ const Checkout = () => {
             metadata: { eventId: evt?.id, quantity: qty },
             userId: user?.id,
           });
+        } else if (data.paymentStatus === "failed") {
+          clearInterval(pollInterval);
+          toast.error("Payment failed. Please try again.", { 
+            description: data.paymentErrorMessage || "Your payment was not completed." 
+          });
+          setProcessing(false);
+          // Go back to phone input step to allow retry
+          setMpesaStep("phone");
         } else if (attempts > 60) {
           clearInterval(pollInterval);
-          toast.error("Payment confirmation timed out. Please check your M-Pesa messages and try again later.");
+          toast.error("Payment confirmation timed out. Please check your M-Pesa messages or try again later.");
           setProcessing(false);
         }
       }, 3000);
@@ -639,61 +721,70 @@ const Checkout = () => {
                 {/* Paybill Step */}
                 {mpesaStep === "paybill" && (
                   <div className="space-y-4 py-4">
-                    <div className="space-y-3 rounded-xl bg-ink-soft p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-cream-dim text-sm">Paybill Number</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-cream">123456</span>
-                          <button
-                            onClick={() => copyToClipboard("123456")}
-                            className="text-cream-dim hover:text-cream"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </button>
+                    {processing ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="mx-auto h-12 w-12 animate-spin text-fezzy" />
+                        <p className="mt-4 text-cream">Preparing payment...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-3 rounded-xl bg-ink-soft p-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-cream-dim text-sm">Paybill Number</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-cream">123456</span>
+                              <button
+                                onClick={() => copyToClipboard("123456")}
+                                className="text-cream-dim hover:text-cream"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-cream-dim text-sm">Account Number</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-cream">{mpesaMerchantRef || "FEZZY"}</span>
+                              <button
+                                onClick={() => copyToClipboard(mpesaMerchantRef || "FEZZY")}
+                                className="text-cream-dim hover:text-cream"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-cream-dim text-sm">Amount</span>
+                            <span className="font-semibold text-cream">{calc ? formatPrice(calc.total) : "..."}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-cream-dim text-sm">Account Number</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-cream">{mpesaMerchantRef || "FEZZY"}</span>
-                          <button
-                            onClick={() => copyToClipboard(mpesaMerchantRef || "FEZZY")}
-                            className="text-cream-dim hover:text-cream"
+                        <ol className="list-decimal list-inside space-y-1 text-sm text-cream-dim">
+                          <li>Go to M-Pesa on your phone</li>
+                          <li>Select "Pay Bill"</li>
+                          <li>Enter Paybill 123456</li>
+                          <li>Enter {mpesaMerchantRef || "FEZZY"} as account number</li>
+                          <li>Enter {calc ? formatPrice(calc.total) : "..."} as amount</li>
+                          <li>Confirm with your PIN</li>
+                        </ol>
+                        <div className="flex gap-3">
+                          <Button
+                            variant="outline"
+                            className="flex-1 border-cream/15 text-cream hover:bg-ink-soft"
+                            onClick={() => setMpesaStep("phone")}
                           >
-                            <Copy className="h-4 w-4" />
-                          </button>
+                            Back
+                          </Button>
+                          <Button
+                            className="flex-1 bg-fezzy hover:bg-fezzy/90 text-ink"
+                            onClick={handleConfirmPayment}
+                            disabled={processing}
+                          >
+                            {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Confirm Payment
+                          </Button>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-cream-dim text-sm">Amount</span>
-                        <span className="font-semibold text-cream">{calc ? formatPrice(calc.total) : "..."}</span>
-                      </div>
-                    </div>
-                    <ol className="list-decimal list-inside space-y-1 text-sm text-cream-dim">
-                      <li>Go to M-Pesa on your phone</li>
-                      <li>Select "Pay Bill"</li>
-                      <li>Enter Paybill 123456</li>
-                      <li>Enter {mpesaMerchantRef || "FEZZY"} as account number</li>
-                      <li>Enter {calc ? formatPrice(calc.total) : "..."} as amount</li>
-                      <li>Confirm with your PIN</li>
-                    </ol>
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-cream/15 text-cream hover:bg-ink-soft"
-                        onClick={() => setMpesaStep("phone")}
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        className="flex-1 bg-fezzy hover:bg-fezzy/90 text-ink"
-                        onClick={handleConfirmPayment}
-                        disabled={processing}
-                      >
-                        {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Confirm Payment
-                      </Button>
-                    </div>
+                      </>
+                    )}
                   </div>
                 )}
 

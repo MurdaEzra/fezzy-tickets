@@ -7,6 +7,46 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function sendDepositReceiptEmail({ plan, installment, event, receipt }: { plan: any; installment: any; event: any; receipt: string | null }) {
+  const apiKey = Deno.env.get("BREVO_API_KEY");
+  if (!apiKey) return;
+
+  const html = `<div style="font-family:system-ui,-apple-system,sans-serif;background:#0b0b0d;color:#f6f2ea;padding:24px">
+    <div style="max-width:600px;margin:0 auto;background:#141418;border:1px solid #2a2a2f;padding:32px">
+      <p style="letter-spacing:.1em;text-transform:uppercase;font-size:11px;color:#ff6b3d;margin:0">Lipa Pole Pole</p>
+      <h1 style="font-size:28px;margin:8px 0 4px">Deposit received!</h1>
+      <p style="color:#a3a3a8;margin:0 0 24px">Your tickets are now reserved.</p>
+      
+      <div style="background:#0b0b0d;border:1px dashed #ff6b3d;padding:20px;margin-bottom:24px">
+        <p style="margin:0 0 8px;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#a3a3a8">Your Ref No.</p>
+        <p style="margin:0;font-family:monospace;font-size:24px;color:#ff6b3d;letter-spacing:.05em">${plan.ref_no}</p>
+      </div>
+      
+      <div style="background:#0b0b0d;padding:20px;border-radius:8px;margin-bottom:24px">
+        <p style="margin:0 0 12px;font-size:13px;color:#a3a3a8">Payment details</p>
+        <p style="margin:0 0 4px;color:#f6f2ea"><b>Event:</b> ${event?.title ?? "Your event"}</p>
+        <p style="margin:0 0 4px;color:#f6f2ea"><b>Amount paid:</b> KES ${installment.amount_kes.toLocaleString()}</p>
+        ${receipt ? `<p style="margin:0;color:#f6f2ea"><b>M-Pesa receipt:</b> ${receipt}</p>` : ""}
+      </div>
+
+      <p style="margin:0 0 8px;font-size:13px;color:#a3a3a8;line-height:1.6">
+        Your tickets are reserved. Complete the remaining installments at <b style="color:#f6f2ea">fezzytickets.com/lpp</b> using your ref no. <b style="color:#ff6b3d">${plan.ref_no}</b> to receive your tickets.
+      </p>
+    </div>
+  </div>`;
+
+  await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": apiKey },
+    body: JSON.stringify({
+      sender: { name: "Fezzy Lipa Pole Pole", email: "tickets@fezzy.app" },
+      to: [{ email: plan.guest_email, name: plan.guest_name }],
+      subject: `Deposit received — ${plan.ref_no}`,
+      htmlContent: html,
+    }),
+  }).catch(() => {});
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -62,6 +102,14 @@ Deno.serve(async (req) => {
       reserved_at: isDeposit && !plan.reserved_at ? new Date().toISOString() : plan.reserved_at,
       completed_at: newBalance === 0 ? new Date().toISOString() : null,
     }).eq("id", plan.id);
+
+    // Get event details for email
+    const { data: event } = await admin.from("events").select("title").eq("id", plan.event_id).maybeSingle();
+
+    // Send deposit receipt email if it's the first installment (deposit)
+    if (isDeposit) {
+      sendDepositReceiptEmail({ plan, installment: inst, event, receipt });
+    }
 
     // When fully paid → issue tickets
     if (newBalance === 0) {
