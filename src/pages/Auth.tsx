@@ -30,6 +30,7 @@ const Auth = () => {
   const redirect = params.get("redirect") || "/dashboard";
   const pendingOrgName = params.get("org")?.trim() || sessionStorage.getItem("pendingOrgName")?.trim() || "";
   const inviteToken = sessionStorage.getItem("inviteToken");
+  const inviteEmail = sessionStorage.getItem("inviteEmail") || "";
   const isInviteSignup = !!inviteToken;
 
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
