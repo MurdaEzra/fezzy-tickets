@@ -26,16 +26,27 @@ const Auth = () => {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const initialMode = params.get("mode") === "signup" ? "signup" : params.get("mode") === "forgot-password" ? "forgot-password" : "signin";
+  
+  // Check for recovery type in query params (from password reset link)
+  const isRecovery = params.get("type") === "recovery";
+  const initialMode = isRecovery 
+    ? "reset-password" 
+    : params.get("mode") === "signup" 
+      ? "signup" 
+      : params.get("mode") === "forgot-password" 
+        ? "forgot-password" 
+        : "signin";
+        
   const redirect = params.get("redirect") || "/dashboard";
   const pendingOrgName = params.get("org")?.trim() || sessionStorage.getItem("pendingOrgName")?.trim() || "";
   const inviteToken = sessionStorage.getItem("inviteToken");
   const inviteEmail = sessionStorage.getItem("inviteEmail") || "";
   const isInviteSignup = !!inviteToken;
 
-  const [mode, setMode] = useState<"signin" | "signup" | "forgot-password">(initialMode);
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot-password" | "reset-password">(initialMode);
   const [email, setEmail] = useState(inviteEmail || "");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // For reset password
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("Kenya");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -109,11 +120,38 @@ const Auth = () => {
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?mode=signin`,
+        redirectTo: `${window.location.origin}/auth?mode=reset-password`,
       });
       if (error) throw error;
       setResetEmailSent(true);
       toast.success("Password reset email sent! Check your inbox.");
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error("Something went wrong", { description: e.message ?? "Try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast.error("Passwords don't match!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Use Supabase's updateUser to set new password
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Password updated successfully!");
+      switchMode("signin");
     } catch (err) {
       const e = err as { message?: string };
       toast.error("Something went wrong", { description: e.message ?? "Try again." });
@@ -274,20 +312,24 @@ const Auth = () => {
                   ? "Organizer sign in"
                   : mode === "forgot-password"
                     ? "Reset your password"
-                    : isInviteSignup
-                      ? "Join the team"
-                      : "Apply as organizer"}
+                    : mode === "reset-password"
+                      ? "Set a new password"
+                      : isInviteSignup
+                        ? "Join the team"
+                        : "Apply as organizer"}
               </h2>
               <p className="mt-1 text-sm text-cream-dim">
                 {mode === "signin"
                   ? "Sign in to your approved organizer account."
                   : mode === "forgot-password"
                     ? "Enter your email and we'll send you a password reset link."
-                    : isInviteSignup
-                      ? "Create your account to join the team."
-                      : pendingOrgName
-                        ? `Submit your application for ${pendingOrgName}. Admin approval required.`
-                        : "Start at organization setup to apply."}
+                    : mode === "reset-password"
+                      ? "Enter your new password below."
+                      : isInviteSignup
+                        ? "Create your account to join the team."
+                        : pendingOrgName
+                          ? `Submit your application for ${pendingOrgName}. Admin approval required.`
+                          : "Start at organization setup to apply."}
               </p>
 
               {mode === "signin" && (
@@ -307,7 +349,7 @@ const Auth = () => {
                   <div className="h-px flex-1 bg-cream/10" /> or with email <div className="h-px flex-1 bg-cream/10" />
                 </div>
               )}
-              {mode === "forgot-password" && <div className="my-6" />}
+              {(mode === "forgot-password" || mode === "reset-password") && <div className="my-6" />}
 
               {resetEmailSent ? (
                 <div className="text-center py-6">
@@ -325,7 +367,16 @@ const Auth = () => {
                 </div>
               ) : (
                 <>
-                  <form onSubmit={mode === "forgot-password" ? handleForgotPassword : handleEmail} className="space-y-4">
+                  <form 
+                    onSubmit={
+                      mode === "forgot-password" 
+                        ? handleForgotPassword 
+                        : mode === "reset-password" 
+                          ? handleResetPassword 
+                          : handleEmail
+                    } 
+                    className="space-y-4"
+                  >
                     {mode === "signup" && (
                       <>
                         <div>
@@ -338,10 +389,12 @@ const Auth = () => {
                         </div>
                       </>
                     )}
-                    <div>
-                      <label className="mb-1.5 block font-mono-label text-cream-dim">Email</label>
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" disabled={isInviteSignup && !!inviteEmail} />
-                    </div>
+                    {mode !== "reset-password" && (
+                      <div>
+                        <label className="mb-1.5 block font-mono-label text-cream-dim">Email</label>
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" disabled={isInviteSignup && !!inviteEmail} />
+                      </div>
+                    )}
                     {mode !== "forgot-password" && (
                       <div>
                         <label className="mb-1.5 block font-mono-label text-cream-dim">Password</label>
@@ -349,6 +402,12 @@ const Auth = () => {
                         {mode === "signup" && (
                           <p className="mt-1 font-mono-label text-ash">Use 8+ characters and avoid common or previously used passwords.</p>
                         )}
+                      </div>
+                    )}
+                    {mode === "reset-password" && (
+                      <div>
+                        <label className="mb-1.5 block font-mono-label text-cream-dim">Confirm password</label>
+                        <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} placeholder="••••••••" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
                       </div>
                     )}
                     {mode === "signup" && (
@@ -379,14 +438,28 @@ const Auth = () => {
                         </label>
                       </>
                     )}
-                    <TurnstileWidget
-                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                      onVerify={(token) => setTurnstileToken(token)}
-                      onExpire={() => setTurnstileToken(null)}
-                    />
-                    <button type="submit" className="btn-ember w-full justify-center" disabled={loading || (mode === "signup" && !acceptedTerms)}>
+                    {mode !== "reset-password" && (
+                      <TurnstileWidget
+                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                        onVerify={(token) => setTurnstileToken(token)}
+                        onExpire={() => setTurnstileToken(null)}
+                      />
+                    )}
+                    <button 
+                      type="submit" 
+                      className="btn-ember w-full justify-center" 
+                      disabled={loading || (mode === "signup" && !acceptedTerms)}
+                    >
                       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {mode === "signin" ? "Sign in" : mode === "forgot-password" ? "Send reset link" : isInviteSignup ? "Create account" : "Submit application"}
+                      {mode === "signin" 
+                        ? "Sign in" 
+                        : mode === "forgot-password" 
+                          ? "Send reset link" 
+                          : mode === "reset-password" 
+                            ? "Update password" 
+                            : isInviteSignup 
+                              ? "Create account" 
+                              : "Submit application"}
                     </button>
                   </form>
 
@@ -401,7 +474,7 @@ const Auth = () => {
                         Want to sell tickets?{" "}
                         <Link to="/start-selling" className="font-semibold text-fezzy hover:text-lime">Apply as organizer</Link>
                       </>
-                    ) : mode === "forgot-password" ? (
+                    ) : mode === "forgot-password" || mode === "reset-password" ? (
                       <>
                         Remember your password?{" "}
                         <button onClick={() => switchMode("signin")} className="font-semibold text-fezzy hover:text-lime">
