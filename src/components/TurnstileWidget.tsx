@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -14,7 +14,9 @@ declare global {
         }
       ) => string;
       reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
     };
+    onloadTurnstileCallback?: () => void;
   }
 }
 
@@ -35,9 +37,29 @@ export default function TurnstileWidget({
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || !window.turnstile) return;
+    // Check if script is already loaded
+    if (window.turnstile) {
+      setScriptLoaded(true);
+      return;
+    }
+
+    // Set up callback for when script loads
+    window.onloadTurnstileCallback = () => {
+      setScriptLoaded(true);
+    };
+
+    // Clean up callback on unmount
+    return () => {
+      window.onloadTurnstileCallback = undefined;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!scriptLoaded || !containerRef.current || !window.turnstile) return;
+    if (widgetIdRef.current) return; // Prevent double rendering
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
@@ -55,10 +77,11 @@ export default function TurnstileWidget({
 
     return () => {
       if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.reset(widgetIdRef.current);
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
       }
     };
-  }, [siteKey, action, onVerify, onExpire, onError]);
+  }, [scriptLoaded, siteKey, action, onVerify, onExpire, onError]);
 
   return <div ref={containerRef} />;
 }
