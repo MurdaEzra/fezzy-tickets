@@ -256,7 +256,7 @@ const Checkout = () => {
       }));
       
       // Create checkout session via server
-      const checkoutRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/checkout/sessions`, {
+      const checkoutRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -273,7 +273,7 @@ const Checkout = () => {
       if (!checkoutData?.publicToken) throw new Error("Failed to create checkout session");
 
       // Initiate STK push
-      const stkRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/checkout/sessions/${checkoutData.publicToken}/pay/mpesa`, {
+      const stkRes = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions/${checkoutData.publicToken}/pay/mpesa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: mpesaPhone }),
@@ -305,7 +305,7 @@ const Checkout = () => {
       let attempts = 0;
       const pollInterval = setInterval(async () => {
         attempts++;
-        const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/checkout/sessions/${mpesaCheckoutToken}/status`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL || "https://fezzytickets.com"}/api/checkout/sessions/${mpesaCheckoutToken}/status`);
         const data = await res.json();
 
         if (data.status === "paid") {
