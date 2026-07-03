@@ -1,0 +1,13 @@
+project_id = "jgwsotitssqbiyruxpaw"
+
+[functions.lpp-mpesa-callback]
+verify_jwt = false
+
+[functions.lpp-get-plan]
+verify_jwt = false
+
+[functions.lpp-init-plan]
+verify_jwt = false
+
+[functions.lpp-pay-installment]
+verify_jwt = false

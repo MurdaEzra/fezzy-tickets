@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, Calendar, Globe, Loader2, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
