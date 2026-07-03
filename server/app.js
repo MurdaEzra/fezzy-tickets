@@ -46,7 +46,6 @@ function createRateLimiters(config) {
     checkoutPoll: createTokenBucketStore(config.rateLimits.checkoutPoll),
     passwordReset: createTokenBucketStore(config.rateLimits.passwordReset),
     paymentStart: createTokenBucketStore(config.rateLimits.paymentStart),
-    payoutRequest: createTokenBucketStore(config.rateLimits.payoutRequest),
   };
 }
 
