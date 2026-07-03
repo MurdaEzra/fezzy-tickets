@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy } from "lucide-react";

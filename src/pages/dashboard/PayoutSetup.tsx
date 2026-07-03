@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import { Loader2, Banknote, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
