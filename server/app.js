@@ -163,12 +163,28 @@ export function createApp(deps = {}) {
     }
 
     const session = await store.createCheckoutSession(sessionRecord);
+    
+    // Create a payment attempt immediately to get a merchant reference
+    const attempt = await store.createPaymentAttempt(createPaymentAttemptRecord({
+      checkoutSession: session,
+      method: PAYMENT_METHODS.MPESA, // Default to M-Pesa since we need a ref number
+      nowIso: new Date().toISOString(),
+      provider: PAYMENT_PROVIDERS.MPESA_DARAJA,
+      redirectSecret: config.redirectStateSecret,
+    }));
+    
+    // Update checkout session status to payment pending
+    await store.updateCheckoutSession(session.id, {
+      status: CHECKOUT_STATUSES.PAYMENT_PENDING,
+    });
+
     sendJson(res, 201, {
       allowedMethods: session.allowed_methods,
       amountKes: session.amount_kes,
       expiresAt: session.expires_at,
       publicToken: session.public_token,
       status: session.status,
+      merchantReference: attempt.merchant_reference,
     }, corsHeaders);
   });
 
@@ -193,13 +209,19 @@ export function createApp(deps = {}) {
 
     ensureMethodAllowed(session, PAYMENT_METHODS.MPESA);
 
-    const attempt = await store.createPaymentAttempt(createPaymentAttemptRecord({
-      checkoutSession: session,
-      method: PAYMENT_METHODS.MPESA,
-      nowIso: new Date().toISOString(),
-      provider: PAYMENT_PROVIDERS.MPESA_DARAJA,
-      redirectSecret: config.redirectStateSecret,
-    }));
+    // Get existing payment attempt (we created one in checkout session endpoint)
+    let attempt = await store.getLatestPaymentAttempt(session.id);
+
+    // If no attempt exists, create one (fallback)
+    if (!attempt) {
+      attempt = await store.createPaymentAttempt(createPaymentAttemptRecord({
+        checkoutSession: session,
+        method: PAYMENT_METHODS.MPESA,
+        nowIso: new Date().toISOString(),
+        provider: PAYMENT_PROVIDERS.MPESA_DARAJA,
+        redirectSecret: config.redirectStateSecret,
+      }));
+    }
 
     let started;
     try {
@@ -227,6 +249,7 @@ export function createApp(deps = {}) {
     sendJson(res, 202, {
       checkoutToken: session.public_token,
       customerMessage: started.customerMessage,
+      merchantReference: attempt.merchant_reference,
       status: CHECKOUT_STATUSES.PAYMENT_PENDING,
     }, corsHeaders);
   });
