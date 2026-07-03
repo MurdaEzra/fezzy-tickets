@@ -23,11 +23,9 @@ export type Database = {
           created_at: string
           description: string | null
           ends_at: string | null
-          event_dates: Json
           fee_waived: boolean
           id: string
           is_stream: boolean
-          lineup: Json
           latitude: number | null
           longitude: number | null
           organizer_id: string
@@ -51,11 +49,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
-          event_dates?: Json
           fee_waived?: boolean
           id?: string
           is_stream?: boolean
-          lineup?: Json
           latitude?: number | null
           longitude?: number | null
           organizer_id: string
@@ -79,11 +75,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
-          event_dates?: Json
           fee_waived?: boolean
           id?: string
           is_stream?: boolean
-          lineup?: Json
           latitude?: number | null
           longitude?: number | null
           organizer_id?: string
@@ -99,47 +93,6 @@ export type Database = {
           venue_address?: string | null
           venue_name?: string | null
         }
-      }
-      promo_codes: {
-        Row: {
-          id: string
-          event_id: string
-          organizer_id: string
-          code: string
-          discount_percent: number
-          max_uses: number | null
-          used_count: number
-          starts_at: string | null
-          ends_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          event_id: string
-          organizer_id: string
-          code: string
-          discount_percent: number
-          max_uses?: number | null
-          used_count?: number
-          starts_at?: string | null
-          ends_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          event_id?: string
-          organizer_id?: string
-          code?: string
-          discount_percent?: number
-          max_uses?: number | null
-          used_count?: number
-          starts_at?: string | null
-          ends_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
         Relationships: [
           {
             foreignKeyName: "events_organizer_id_fkey"
@@ -152,7 +105,6 @@ export type Database = {
       }
       orders: {
         Row: {
-          buyer_fee_kes: number
           created_at: string
           event_id: string
           fee_waived: boolean
@@ -164,16 +116,13 @@ export type Database = {
           organizer_fee_kes: number
           payment_method: string
           payment_ref: string | null
-          platform_fee_kes: number
           status: Database["public"]["Enums"]["order_status"]
           subtotal_kes: number
-          ticket_holders: unknown | null
           total_kes: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
-          buyer_fee_kes?: number
           created_at?: string
           event_id: string
           fee_waived?: boolean
@@ -185,16 +134,13 @@ export type Database = {
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
-          platform_fee_kes?: number
           status?: Database["public"]["Enums"]["order_status"]
           subtotal_kes?: number
-          ticket_holders?: unknown | null
           total_kes?: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
-          buyer_fee_kes?: number
           created_at?: string
           event_id?: string
           fee_waived?: boolean
@@ -206,10 +152,8 @@ export type Database = {
           organizer_fee_kes?: number
           payment_method?: string
           payment_ref?: string | null
-          platform_fee_kes?: number
           status?: Database["public"]["Enums"]["order_status"]
           subtotal_kes?: number
-          ticket_holders?: unknown | null
           total_kes?: number
           updated_at?: string
           user_id?: string | null
@@ -274,51 +218,6 @@ export type Database = {
           },
         ]
       }
-      organizer_approval_requests: {
-        Row: {
-          application_details: Json
-          country: string
-          created_at: string
-          email: string
-          full_name: string | null
-          id: string
-          marketing_opt_in: boolean
-          org_name: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: Database["public"]["Enums"]["organizer_approval_status"]
-          user_id: string
-        }
-        Insert: {
-          application_details?: Json
-          country?: string
-          created_at?: string
-          email: string
-          full_name?: string | null
-          id?: string
-          marketing_opt_in?: boolean
-          org_name: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["organizer_approval_status"]
-          user_id: string
-        }
-        Update: {
-          application_details?: Json
-          country?: string
-          created_at?: string
-          email?: string
-          full_name?: string | null
-          id?: string
-          marketing_opt_in?: boolean
-          org_name?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["organizer_approval_status"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       organizer_profiles: {
         Row: {
           bio: string | null
@@ -338,7 +237,6 @@ export type Database = {
           paystack_account_number: string | null
           paystack_bank_code: string | null
           paystack_subaccount_code: string | null
-          till_number: string | null
           updated_at: string
           user_id: string
           website: string | null
@@ -361,7 +259,6 @@ export type Database = {
           paystack_account_number?: string | null
           paystack_bank_code?: string | null
           paystack_subaccount_code?: string | null
-          till_number?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
@@ -384,7 +281,6 @@ export type Database = {
           paystack_account_number?: string | null
           paystack_bank_code?: string | null
           paystack_subaccount_code?: string | null
-          till_number?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
@@ -428,36 +324,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      platform_logs: {
-        Row: {
-          action: string
-          created_at: string
-          id: string
-          level: Database["public"]["Enums"]["log_level"]
-          message: string | null
-          metadata: Record<string, unknown>
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          id?: string
-          level?: Database["public"]["Enums"]["log_level"]
-          message?: string | null
-          metadata?: Record<string, unknown>
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          id?: string
-          level?: Database["public"]["Enums"]["log_level"]
-          message?: string | null
-          metadata?: Record<string, unknown>
-          user_id?: string | null
-        }
-        Relationships: []
       }
       payments: {
         Row: {
@@ -554,7 +420,6 @@ export type Database = {
           quantity: number
           sold: number
           sort_order: number
-          valid_dates: Json
         }
         Insert: {
           created_at?: string
@@ -566,7 +431,6 @@ export type Database = {
           quantity?: number
           sold?: number
           sort_order?: number
-          valid_dates?: Json
         }
         Update: {
           created_at?: string
@@ -578,7 +442,6 @@ export type Database = {
           quantity?: number
           sold?: number
           sort_order?: number
-          valid_dates?: Json
         }
         Relationships: [
           {
@@ -597,7 +460,6 @@ export type Database = {
           event_id: string
           holder_email: string
           holder_name: string
-          holder_phone: string | null
           id: string
           order_id: string
           qr_token: string
@@ -610,7 +472,6 @@ export type Database = {
           event_id: string
           holder_email: string
           holder_name: string
-          holder_phone: string | null
           id?: string
           order_id: string
           qr_token?: string
@@ -708,9 +569,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "organizer" | "attendee" | "super_admin"
-      organizer_approval_status: "pending" | "approved" | "rejected"
-      log_level: "info" | "warn" | "error"
-      event_status: "draft" | "pending_approval" | "published" | "cancelled" | "completed"
+      event_status: "draft" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
       ticket_status: "valid" | "used" | "refunded" | "cancelled"
     }
@@ -841,9 +700,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "organizer", "attendee", "super_admin"],
-      organizer_approval_status: ["pending", "approved", "rejected"],
-      log_level: ["info", "warn", "error"],
-      event_status: ["draft", "pending_approval", "published", "cancelled", "completed"],
+      event_status: ["draft", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
       ticket_status: ["valid", "used", "refunded", "cancelled"],
     },
