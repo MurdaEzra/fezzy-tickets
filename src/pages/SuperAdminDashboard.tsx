@@ -79,6 +79,7 @@ interface LogRow {
 
 interface ApprovalRow {
   id: string;
+  application_details: Record<string, unknown> | null;
   org_name: string;
   full_name: string | null;
   email: string;
@@ -189,7 +190,7 @@ const SuperAdminDashboard = () => {
         supabase.from("events").select("id, title, tagline, description, category, status, slug, starts_at, ends_at, venue_name, venue_address, city, country, cover_image_url, poster_url, is_stream, stream_url, organizer_id, created_at").order("created_at", { ascending: false }).limit(100),
         supabase.from("orders").select("id, total_kes, buyer_fee_kes, platform_fee_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
         supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code").order("created_at", { ascending: false }),
-        supabase.from("organizer_approval_requests").select("id, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
+        supabase.from("organizer_approval_requests").select("id, application_details, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
         supabase.from("platform_logs").select("id, level, action, message, metadata, created_at").order("created_at", { ascending: false }).limit(200),
         fetchHomepageSettings(),
       ]);
@@ -370,6 +371,19 @@ const SuperAdminDashboard = () => {
     }
   };
   const statusLabel = (status: string) => status === "pending_approval" ? "Pending approval" : status;
+  const approvalSummary = (details: ApprovalRow["application_details"]) => {
+    if (!details) return [];
+
+    return [
+      ["Type", details.orgType],
+      ["Category", details.eventCategory],
+      ["Frequency", details.eventFrequency],
+      ["Audience", details.audienceSize],
+      ["First event", details.firstEventPlan],
+      ["Website", details.website],
+      ["Phone", details.contactPhone],
+    ].filter(([, value]) => typeof value === "string" && value.trim()) as [string, string][];
+  };
 
   return (
     <div className="tm-page min-h-screen bg-black text-white">
@@ -894,54 +908,72 @@ const SuperAdminDashboard = () => {
                           <tr>
                             <th className="px-4 py-3 text-left">Organization</th>
                             <th className="px-4 py-3 text-left">Applicant</th>
+                            <th className="px-4 py-3 text-left">Setup details</th>
                             <th className="px-4 py-3 text-left">Email</th>
                             <th className="px-4 py-3 text-left">Status</th>
                             <th className="px-4 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {approvals.map((a) => (
-                            <tr key={a.id} className="border-t border-border">
-                              <td className="px-4 py-3 font-semibold">{a.org_name}</td>
-                              <td className="px-4 py-3">{a.full_name ?? "—"}</td>
-                              <td className="px-4 py-3 text-muted-foreground">{a.email}</td>
-                              <td className="px-4 py-3">
-                                <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${a.status === "pending" ? "bg-amber-100 text-amber-800" :
-                                    a.status === "approved" ? "bg-primary/15 text-primary" :
-                                      "bg-destructive/15 text-destructive"
-                                  }`}>
-                                  {a.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                {a.status === "pending" ? (
-                                  <div className="inline-flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="acacia"
-                                      disabled={reviewingId === a.id}
-                                      onClick={() => reviewApproval(a.id, "approve")}
-                                    >
-                                      {reviewingId === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardCheck className="h-3 w-3" />}
-                                      Approve
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={reviewingId === a.id}
-                                      onClick={() => reviewApproval(a.id, "reject")}
-                                    >
-                                      Reject
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Reviewed</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {approvals.map((a) => {
+                            const details = approvalSummary(a.application_details);
+
+                            return (
+                              <tr key={a.id} className="border-t border-border">
+                                <td className="px-4 py-3 font-semibold">{a.org_name}</td>
+                                <td className="px-4 py-3">{a.full_name ?? "—"}</td>
+                                <td className="px-4 py-3">
+                                  {details.length > 0 ? (
+                                    <div className="flex max-w-xs flex-wrap gap-1.5">
+                                      {details.slice(0, 5).map(([label, value]) => (
+                                        <span key={label} className="rounded-full bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+                                          <span className="text-foreground">{label}:</span> {value}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Not provided</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">{a.email}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${a.status === "pending" ? "bg-amber-100 text-amber-800" :
+                                      a.status === "approved" ? "bg-primary/15 text-primary" :
+                                        "bg-destructive/15 text-destructive"
+                                    }`}>
+                                    {a.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  {a.status === "pending" ? (
+                                    <div className="inline-flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="acacia"
+                                        disabled={reviewingId === a.id}
+                                        onClick={() => reviewApproval(a.id, "approve")}
+                                      >
+                                        {reviewingId === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardCheck className="h-3 w-3" />}
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={reviewingId === a.id}
+                                        onClick={() => reviewApproval(a.id, "reject")}
+                                      >
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Reviewed</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                           {approvals.length === 0 && (
-                            <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No organizer applications yet.</td></tr>
+                            <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No organizer applications yet.</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -1387,4 +1419,3 @@ const Stat = ({ icon: Icon, label, value }: { icon: typeof Shield; label: string
 );
 
 export default SuperAdminDashboard;
-

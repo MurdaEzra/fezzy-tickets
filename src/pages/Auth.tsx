@@ -10,6 +10,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
 import TurnstileWidget from "@/components/TurnstileWidget";
 
+const readPendingOrganizerApplication = () => {
+  const raw = sessionStorage.getItem("pendingOrganizerApplication");
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
 const Auth = () => {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -137,6 +149,7 @@ const Auth = () => {
             country,
             marketingOptIn,
             orgName: pendingOrgName,
+            applicationDetails: readPendingOrganizerApplication(),
           },
         });
 
@@ -144,6 +157,7 @@ const Auth = () => {
         if (data?.error) throw new Error(data.error);
 
         sessionStorage.removeItem("pendingOrgName");
+        sessionStorage.removeItem("pendingOrganizerApplication");
         await logActivity("organizer.application.submitted", { message: pendingOrgName, metadata: { email } });
         toast.success("Application submitted! We'll email you once approved.");
         navigate("/application-pending?submitted=1");

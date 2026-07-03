@@ -276,6 +276,7 @@ export type Database = {
       }
       organizer_approval_requests: {
         Row: {
+          application_details: Json
           country: string
           created_at: string
           email: string
@@ -289,6 +290,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          application_details?: Json
           country?: string
           created_at?: string
           email: string
@@ -302,6 +304,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          application_details?: Json
           country?: string
           created_at?: string
           email?: string
