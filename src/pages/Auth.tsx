@@ -26,14 +26,14 @@ const Auth = () => {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const initialMode = params.get("mode") === "signup" ? "signup" : "signin";
+  const initialMode = params.get("mode") === "signup" ? "signup" : params.get("mode") === "forgot-password" ? "forgot-password" : "signin";
   const redirect = params.get("redirect") || "/dashboard";
   const pendingOrgName = params.get("org")?.trim() || sessionStorage.getItem("pendingOrgName")?.trim() || "";
   const inviteToken = sessionStorage.getItem("inviteToken");
   const inviteEmail = sessionStorage.getItem("inviteEmail") || "";
   const isInviteSignup = !!inviteToken;
 
-  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot-password">(initialMode);
   const [email, setEmail] = useState(inviteEmail || "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -42,6 +42,7 @@ const Auth = () => {
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   useEffect(() => {
     if (mode === "signup" && !pendingOrgName && !isInviteSignup) {
@@ -75,14 +76,50 @@ const Auth = () => {
     if (pendingOrgName) sessionStorage.setItem("pendingOrgName", pendingOrgName);
   }, [pendingOrgName]);
 
-  const switchMode = (m: "signin" | "signup") => {
+  const switchMode = (m: "signin" | "signup" | "forgot-password") => {
     if (m === "signup" && !pendingOrgName && !isInviteSignup) {
       navigate("/start-selling");
       return;
     }
     setMode(m);
+    setResetEmailSent(false);
     params.set("mode", m);
     setParams(params, { replace: true });
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (!turnstileToken) {
+        toast.error("Please complete the security check");
+        setLoading(false);
+        return;
+      }
+      const verifyResponse = await fetch(import.meta.env.VITE_TURNSTILE_VERIFY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      const verifyResult = await verifyResponse.json();
+      if (!verifyResult.success) {
+        toast.error("Security check failed, please try again");
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=signin`,
+      });
+      if (error) throw error;
+      setResetEmailSent(true);
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error("Something went wrong", { description: e.message ?? "Try again." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -233,16 +270,24 @@ const Auth = () => {
           <div className="mx-auto w-full max-w-md">
             <div className="border border-cream/10 bg-ink-card p-7 md:p-9">
               <h2 className="font-display text-3xl text-cream">
-                {mode === "signin" ? "Organizer sign in" : isInviteSignup ? "Join the team" : "Apply as organizer"}
+                {mode === "signin"
+                  ? "Organizer sign in"
+                  : mode === "forgot-password"
+                    ? "Reset your password"
+                    : isInviteSignup
+                      ? "Join the team"
+                      : "Apply as organizer"}
               </h2>
               <p className="mt-1 text-sm text-cream-dim">
                 {mode === "signin"
                   ? "Sign in to your approved organizer account."
-                  : isInviteSignup
-                    ? "Create your account to join the team."
-                    : pendingOrgName
-                      ? `Submit your application for ${pendingOrgName}. Admin approval required.`
-                      : "Start at organization setup to apply."}
+                  : mode === "forgot-password"
+                    ? "Enter your email and we'll send you a password reset link."
+                    : isInviteSignup
+                      ? "Create your account to join the team."
+                      : pendingOrgName
+                        ? `Submit your application for ${pendingOrgName}. Admin approval required.`
+                        : "Start at organization setup to apply."}
               </p>
 
               {mode === "signin" && (
@@ -262,85 +307,118 @@ const Auth = () => {
                   <div className="h-px flex-1 bg-cream/10" /> or with email <div className="h-px flex-1 bg-cream/10" />
                 </div>
               )}
+              {mode === "forgot-password" && <div className="my-6" />}
 
-              <form onSubmit={handleEmail} className="space-y-4">
-                {mode === "signup" && (
-                  <>
-                    <div>
-                      <label className="mb-1.5 block font-mono-label text-cream-dim">Full name</label>
-                      <input value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="Wanjiku Mwangi" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block font-mono-label text-cream-dim">Country</label>
-                      <input value={country} onChange={(e) => setCountry(e.target.value)} required className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
-                    </div>
-                  </>
-                )}
-                <div>
-                  <label className="mb-1.5 block font-mono-label text-cream-dim">Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" disabled={isInviteSignup && !!inviteEmail} />
+              {resetEmailSent ? (
+                <div className="text-center py-6">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-fezzy/15 text-fezzy">✉️</div>
+                  <p className="text-cream">Password reset email sent!</p>
+                  <p className="mt-2 text-sm text-cream-dim">
+                    Check your inbox for a link to reset your password.
+                  </p>
+                  <button
+                    onClick={() => switchMode("signin")}
+                    className="btn-outline-editorial mt-6 w-full justify-center"
+                  >
+                    Back to sign in
+                  </button>
                 </div>
-                <div>
-                  <label className="mb-1.5 block font-mono-label text-cream-dim">Password</label>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="••••••••" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
-                  {mode === "signup" && (
-                    <p className="mt-1 font-mono-label text-ash">Use 8+ characters and avoid common or previously used passwords.</p>
-                  )}
-                </div>
-                {mode === "signup" && (
-                  <>
-                    <label className="flex items-start gap-2 text-xs text-cream-dim">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-4 w-4 accent-fezzy"
-                        checked={acceptedTerms}
-                        onChange={(e) => setAcceptedTerms(e.target.checked)}
-                        required
-                      />
-                      <span>
-                        I agree to the{" "}
-                        <Link to="/terms" target="_blank" className="font-semibold text-fezzy hover:text-lime">Terms and Conditions</Link>
-                        {" "}and{" "}
-                        <Link to="/privacy" target="_blank" className="font-semibold text-fezzy hover:text-lime">Privacy Policy</Link>.
-                      </span>
-                    </label>
-                    <label className="flex items-start gap-2 text-xs text-cream-dim">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-4 w-4 accent-fezzy"
-                        checked={marketingOptIn}
-                        onChange={(e) => setMarketingOptIn(e.target.checked)}
-                      />
-                      <span>Send me occasional updates about new features (optional).</span>
-                    </label>
-                  </>
-                )}
-                <TurnstileWidget
-                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                  onVerify={(token) => setTurnstileToken(token)}
-                  onExpire={() => setTurnstileToken(null)}
-                />
-                <button type="submit" className="btn-ember w-full justify-center" disabled={loading || (mode === "signup" && !acceptedTerms)}>
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {mode === "signin" ? "Sign in" : isInviteSignup ? "Create account" : "Submit application"}
-                </button>
-              </form>
-
-              <p className="mt-6 text-center text-sm text-cream-dim">
-                {mode === "signin" ? (
-                  <>
-                    Want to sell tickets?{" "}
-                    <Link to="/start-selling" className="font-semibold text-fezzy hover:text-lime">Apply as organizer</Link>
-                  </>
-                ) : (
-                  <>
-                    Already have an account?{" "}
-                    <button onClick={() => switchMode("signin")} className="font-semibold text-fezzy hover:text-lime">
-                      Sign in
+              ) : (
+                <>
+                  <form onSubmit={mode === "forgot-password" ? handleForgotPassword : handleEmail} className="space-y-4">
+                    {mode === "signup" && (
+                      <>
+                        <div>
+                          <label className="mb-1.5 block font-mono-label text-cream-dim">Full name</label>
+                          <input value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="Wanjiku Mwangi" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block font-mono-label text-cream-dim">Country</label>
+                          <input value={country} onChange={(e) => setCountry(e.target.value)} required className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <label className="mb-1.5 block font-mono-label text-cream-dim">Email</label>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" disabled={isInviteSignup && !!inviteEmail} />
+                    </div>
+                    {mode !== "forgot-password" && (
+                      <div>
+                        <label className="mb-1.5 block font-mono-label text-cream-dim">Password</label>
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="••••••••" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
+                        {mode === "signup" && (
+                          <p className="mt-1 font-mono-label text-ash">Use 8+ characters and avoid common or previously used passwords.</p>
+                        )}
+                      </div>
+                    )}
+                    {mode === "signup" && (
+                      <>
+                        <label className="flex items-start gap-2 text-xs text-cream-dim">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4 accent-fezzy"
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            required
+                          />
+                          <span>
+                            I agree to the{" "}
+                            <Link to="/terms" target="_blank" className="font-semibold text-fezzy hover:text-lime">Terms and Conditions</Link>
+                            {" "}and{" "}
+                            <Link to="/privacy" target="_blank" className="font-semibold text-fezzy hover:text-lime">Privacy Policy</Link>.
+                          </span>
+                        </label>
+                        <label className="flex items-start gap-2 text-xs text-cream-dim">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4 accent-fezzy"
+                            checked={marketingOptIn}
+                            onChange={(e) => setMarketingOptIn(e.target.checked)}
+                          />
+                          <span>Send me occasional updates about new features (optional).</span>
+                        </label>
+                      </>
+                    )}
+                    <TurnstileWidget
+                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                      onVerify={(token) => setTurnstileToken(token)}
+                      onExpire={() => setTurnstileToken(null)}
+                    />
+                    <button type="submit" className="btn-ember w-full justify-center" disabled={loading || (mode === "signup" && !acceptedTerms)}>
+                      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {mode === "signin" ? "Sign in" : mode === "forgot-password" ? "Send reset link" : isInviteSignup ? "Create account" : "Submit application"}
                     </button>
-                  </>
-                )}
-              </p>
+                  </form>
+
+                  <p className="mt-6 text-center text-sm text-cream-dim">
+                    {mode === "signin" ? (
+                      <>
+                        Forgot your password?{" "}
+                        <button onClick={() => switchMode("forgot-password")} className="font-semibold text-fezzy hover:text-lime">
+                          Reset password
+                        </button>
+                        <br />
+                        Want to sell tickets?{" "}
+                        <Link to="/start-selling" className="font-semibold text-fezzy hover:text-lime">Apply as organizer</Link>
+                      </>
+                    ) : mode === "forgot-password" ? (
+                      <>
+                        Remember your password?{" "}
+                        <button onClick={() => switchMode("signin")} className="font-semibold text-fezzy hover:text-lime">
+                          Sign in
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        Already have an account?{" "}
+                        <button onClick={() => switchMode("signin")} className="font-semibold text-fezzy hover:text-lime">
+                          Sign in
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </section>

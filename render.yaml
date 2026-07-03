@@ -15,7 +15,7 @@ services:
         value: 10000
       - key: RENDER_API_BASE_URL
         fromService:
-          name: fezzy-payment-backend
+          name: fezzy-tickets
           type: web
           property: host
       - fromSecret: SUPABASE_URL
@@ -28,4 +28,4 @@ services:
       - fromSecret: PAYSTACK_API_KEY
       - fromSecret: PAYSTACK_API_SECRET
       - fromSecret: PAYSTACK_API_BASE_URL
-      
+
