@@ -137,14 +137,122 @@ Deno.serve(async (req) => {
         recipientEmail: request.email,
         subject: "Update on your Fezzy Tickets organizer application",
         htmlContent: `
-          <div style="font-family: Arial, sans-serif; color: #14213d; line-height: 1.5;">
-            <h2 style="margin-bottom: 8px;">Organizer application update</h2>
-            <p>Hi ${request.full_name || "there"},</p>
-            <p>Thank you for applying to sell tickets on Fezzy Tickets for <strong>${request.org_name}</strong>.</p>
-            <p>Unfortunately, we are unable to approve your application at this time. If you believe this is a mistake, please reply to this email or contact support.</p>
-            <p style="margin-top: 24px; font-size: 12px; color: #60708a;">Fezzy Tickets</p>
-          </div>
-        `,
+    <!DOCTYPE html>
+    <html>
+    <body style="margin:0; padding:0; background-color:#f4f5f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:18px; overflow:hidden; box-shadow:0 10px 34px rgba(10,10,10,0.08);">
+
+            <tr>
+              <td align="center" style="padding:38px 40px 20px 40px; background-color:#ffffff;">
+                <img src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1777102601/Untitled_design_8_-Photoroom_jkvjqm.png" width="180" alt="Fezzy Tickets" style="display:block; width:180px; height:auto;">
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:18px;">
+                  <tr><td style="width:56px; height:5px; background-color:#0a0a0a; border-radius:3px; font-size:0; line-height:0;">&nbsp;</td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding:22px 40px 0 40px; font-family: Arial, 'Helvetica Neue', sans-serif;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background-color:#f1f2f0; border:1px solid #e0e2df; border-radius:100px; padding:8px 18px;">
+                      <span style="color:#4a4e4a; font-size:11px; font-weight:bold; letter-spacing:2px; text-transform:uppercase;">&#9679;&nbsp; Application Update</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding:22px 32px 0 32px; font-family: Arial, 'Helvetica Neue', sans-serif;">
+                <h1 style="margin:0; color:#0a0a0a; font-size:26px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase; line-height:1.3;">
+                  Not Approved At This Time
+                </h1>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 44px 0 44px; font-family: Arial, 'Helvetica Neue', sans-serif; color:#3c4046; font-size:15px; line-height:1.7;">
+                <p style="margin:0 0 16px 0;">Hi ${escapeHtml(request.full_name || "there")},</p>
+                <p style="margin:0 0 16px 0;">
+                  Thanks for applying to sell tickets on <strong style="color:#0a0a0a;">Fezzy Tickets</strong> for
+                  <strong style="color:#0a0a0a;">${escapeHtml(request.org_name)}</strong>. After reviewing your organizer details, we're
+                  not able to approve this application at this time.
+                </p>
+                <p style="margin:0 0 16px 0;">
+                  This isn't necessarily final — if you think this decision was made in error, or your circumstances
+                  change, you're welcome to reach back out.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:14px 32px 0 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0a; border-radius:14px;">
+                  <tr>
+                    <td style="padding:24px 26px 20px 26px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="font-family: Arial, 'Helvetica Neue', sans-serif; color:#1BC46B; font-size:11px; font-weight:bold; letter-spacing:2px; text-transform:uppercase;">
+                            Think this is a mistake?
+                          </td>
+                          <td align="right" style="font-family: Arial, 'Helvetica Neue', sans-serif; color:#5c615f; font-size:11px; font-weight:bold; letter-spacing:1.5px; text-transform:uppercase;">
+                            Fezzy&nbsp;&bull;&nbsp;Ticket
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin:16px 0 20px 0; font-family:Arial, 'Helvetica Neue', sans-serif; color:#eef0ee; font-size:14px; line-height:1.6;">
+                        Reply directly to this email or reach out to our support team, and we'll take another look at
+                        your application.
+                      </p>
+
+                      <table role="presentation" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="background-color:#1BC46B; border-radius:100px;">
+                            <a href="mailto:support@fezzytickets.com" style="display:inline-block; padding:12px 24px; font-family:Arial, 'Helvetica Neue', sans-serif; color:#0a0a0a; font-size:13px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase; text-decoration:none;">Contact Support</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:0 26px;">
+                      <div style="border-top:2px dashed #33372f; line-height:0; font-size:0;">&nbsp;</div>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:14px 26px 20px 26px; font-family:Arial, 'Helvetica Neue', sans-serif; color:#8b918c; font-size:11.5px; letter-spacing:0.5px;">
+                      No further action is required if you don't wish to appeal this decision.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:30px 44px 40px 44px; font-family: Arial, 'Helvetica Neue', sans-serif;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr><td style="border-top:1px solid #eceeec; line-height:0; font-size:0;">&nbsp;</td></tr>
+                </table>
+                <p style="margin:22px 0 4px 0; color:#0a0a0a; font-size:13px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">Fezzy Tickets</p>
+                <p style="margin:0 0 12px 0; color:#9aa0a6; font-size:12px; line-height:1.6;">This is an automated message regarding your organizer application. If you didn't request this, you can safely ignore it.</p>
+                <p style="margin:0; color:#b7bcc0; font-size:11px; line-height:1.6;">Along Karen Rd, Langata<br>P.O. BOX 00502-00502, Karen<br>Nairobi, Kenya</p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+    </body>
+    </html>
+  `,
       });
 
       return new Response(JSON.stringify({ ok: true, status: "rejected" }), {
