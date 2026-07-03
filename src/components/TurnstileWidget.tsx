@@ -16,7 +16,6 @@ declare global {
       reset: (widgetId?: string) => void;
       remove: (widgetId?: string) => void;
     };
-    onloadTurnstileCallback?: () => void;
   }
 }
 
@@ -38,22 +37,32 @@ export default function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Check if script is already loaded
+    // Check immediately if Turnstile is already available
     if (window.turnstile) {
       setScriptLoaded(true);
       return;
     }
 
-    // Set up callback for when script loads
-    window.onloadTurnstileCallback = () => {
-      setScriptLoaded(true);
-    };
+    // Poll for Turnstile availability
+    pollIntervalRef.current = setInterval(() => {
+      if (window.turnstile) {
+        setScriptLoaded(true);
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+      }
+    }, 100); // Check every 100ms
 
-    // Clean up callback on unmount
+    // Clean up poll interval
     return () => {
-      window.onloadTurnstileCallback = undefined;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
   }, []);
 
