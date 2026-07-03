@@ -42,12 +42,22 @@ export default function TurnstileWidget({
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scriptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const challengeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     onVerifyRef.current = onVerify;
     onExpireRef.current = onExpire;
     onErrorRef.current = onError;
   }, [onVerify, onExpire, onError]);
+
+  const clearChallengeTimeout = useCallback(() => {
+    if (challengeTimeoutRef.current) {
+      clearTimeout(challengeTimeoutRef.current);
+      challengeTimeoutRef.current = null;
+    }
+  }, []);
 
   const renderWidget = useCallback(() => {
     if (!siteKey) {
@@ -56,22 +66,47 @@ export default function TurnstileWidget({
     }
     if (!scriptLoaded || !containerRef.current || !window.turnstile || widgetIdRef.current) return;
 
+    clearChallengeTimeout();
+    challengeTimeoutRef.current = setTimeout(() => {
+      setHasError(true);
+      onExpireRef.current?.();
+      onErrorRef.current?.("challenge-timeout");
+    }, 30000);
+
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       action,
       callback: (token) => {
+        clearChallengeTimeout();
         setHasError(false);
         onVerifyRef.current?.(token);
       },
       "expired-callback": () => {
+        clearChallengeTimeout();
         onExpireRef.current?.();
       },
       "error-callback": (errorCode) => {
+        clearChallengeTimeout();
         setHasError(true);
+        onExpireRef.current?.();
         onErrorRef.current?.(errorCode);
       },
     });
-  }, [scriptLoaded, siteKey, action]);
+  }, [scriptLoaded, siteKey, action, clearChallengeTimeout]);
+
+  const handleRetry = () => {
+    clearChallengeTimeout();
+    onExpireRef.current?.();
+    setHasError(false);
+
+    if (widgetIdRef.current && window.turnstile) {
+      window.turnstile.remove(widgetIdRef.current);
+      widgetIdRef.current = null;
+    }
+
+    setScriptLoaded(Boolean(window.turnstile));
+    setRetryCount((count) => count + 1);
+  };
 
   useEffect(() => {
     // Check immediately if Turnstile is already available
@@ -88,8 +123,23 @@ export default function TurnstileWidget({
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
         }
+        if (scriptTimeoutRef.current) {
+          clearTimeout(scriptTimeoutRef.current);
+          scriptTimeoutRef.current = null;
+        }
       }
     }, 100); // Check every 100ms
+
+    scriptTimeoutRef.current = setTimeout(() => {
+      if (!window.turnstile) {
+        setHasError(true);
+        onErrorRef.current?.("script-load-timeout");
+      }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    }, 10000);
 
     // Clean up poll interval
     return () => {
@@ -97,28 +147,40 @@ export default function TurnstileWidget({
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+      if (scriptTimeoutRef.current) {
+        clearTimeout(scriptTimeoutRef.current);
+        scriptTimeoutRef.current = null;
+      }
     };
   }, []);
 
   useEffect(() => {
     renderWidget();
-  }, [renderWidget]);
+  }, [renderWidget, retryCount]);
 
   useEffect(() => {
     return () => {
+      clearChallengeTimeout();
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey, action]);
+  }, [siteKey, action, clearChallengeTimeout]);
 
   return (
     <div>
       <div ref={containerRef} />
       {hasError && (
         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          Unable to load security check. Please check your internet connection and try again.
+          <p>Unable to load security check. Please check your internet connection and try again.</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="mt-2 font-semibold underline underline-offset-2"
+          >
+            Retry security check
+          </button>
         </div>
       )}
     </div>
