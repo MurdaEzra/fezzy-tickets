@@ -27,7 +27,7 @@ export const PAYMENT_METHODS = {
 
 export const PAYMENT_PROVIDERS = {
   MPESA_DARAJA: "mpesa_daraja",
-  FLUTTERWAVE: "flutterwave",
+  PAYSTACK: "paystack",
 };
 
 export function providerForMethod(method) {
@@ -35,5 +35,5 @@ export function providerForMethod(method) {
     return PAYMENT_PROVIDERS.MPESA_DARAJA;
   }
 
-  return PAYMENT_PROVIDERS.FLUTTERWAVE;
+  return PAYMENT_PROVIDERS.PAYSTACK;
 }

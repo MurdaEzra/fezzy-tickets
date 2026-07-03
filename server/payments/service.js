@@ -95,7 +95,7 @@ export function createPaymentAttemptRecord({
   redirectSecret,
 }) {
   const id = randomHex(16);
-  const redirect_state = provider === "flutterwave"
+  const redirect_state = provider === "paystack"
     ? signRedirectState({
       attemptId: id,
       checkoutToken: checkoutSession.public_token,
@@ -113,7 +113,7 @@ export function createPaymentAttemptRecord({
     merchant_reference: generateFzRef(),
     method,
     provider,
-    redirect_nonce: provider === "flutterwave" ? randomHex(8) : null,
+    redirect_nonce: provider === "paystack" ? randomHex(8) : null,
     redirect_state,
     status: "created",
     updated_at: nowIso,

@@ -1,25 +1,16 @@
 import { PublicHttpError, isPublicHttpError } from "./http/errors.js";
-import { readJsonBody, readRawBody, getBearerToken, getClientIp, getRequestOrigin } from "./http/request.js";
-import { sendEmpty, sendJson, sendRedirect } from "./http/response.js";
+import { readJsonBody, getBearerToken, getClientIp, getRequestOrigin } from "./http/request.js";
+import { sendEmpty, sendJson } from "./http/response.js";
 import { createRouter } from "./http/router.js";
 import { loadConfig } from "./config.js";
 import { createBrowserCorsHeaders, assertAllowedBrowserOrigin } from "./security/cors.js";
 import { createTokenBucketStore } from "./security/rate-limit.js";
 import { createAdminClient, getUserFromAccessToken } from "./supabase/admin.js";
 import { createPaymentStore } from "./payments/store.js";
-import { createFlutterwaveClient, buildFlutterwaveCheckoutPayload, isValidFlutterwaveSignature } from "./payments/providers/flutterwave.js";
 import { createMpesaClient, normalizeKenyaPhoneNumber, parseMpesaCallback } from "./payments/providers/mpesa.js";
 import { SAFE_PUBLIC_MESSAGES } from "./payments/messages.js";
-import { CHECKOUT_STATUSES, PAYMENT_ATTEMPT_STATUSES, PAYMENT_METHODS, PAYMENT_PROVIDERS, providerForMethod } from "./payments/constants.js";
+import { CHECKOUT_STATUSES, PAYMENT_ATTEMPT_STATUSES, PAYMENT_METHODS, PAYMENT_PROVIDERS } from "./payments/constants.js";
 import { createCheckoutSessionRecord, createPaymentAttemptRecord } from "./payments/service.js";
-import { verifyRedirectState } from "./payments/redirect-state.js";
-import { constantTimeHexEqual } from "./security/signing.js";
-import { createPayheroClient } from "./payouts/payhero.js";
-import {
-  calculateAvailablePayoutAmount,
-  createPayoutRequestRecord,
-  parsePayheroWithdrawalCallback,
-} from "./payouts/service.js";
 
 function requireString(value, code, message) {
   if (typeof value !== "string" || value.trim() === "") {
@@ -96,14 +87,7 @@ async function requireAuthenticatedUser(admin, req) {
   return user;
 }
 
-function requirePositiveAmount(value, code, message) {
-  const amount = Number(value);
-  if (!Number.isInteger(amount) || amount < 1) {
-    throw new PublicHttpError(400, code, message);
-  }
 
-  return amount;
-}
 
 export function createApp(deps = {}) {
   const config = deps.config ?? loadConfig();
@@ -112,8 +96,6 @@ export function createApp(deps = {}) {
     ticketDeliverySecret: config.ticketDeliverySecret,
   });
   const mpesa = deps.mpesa ?? createMpesaClient(config.mpesa);
-  const flutterwave = deps.flutterwave ?? createFlutterwaveClient(config.flutterwave);
-  const payhero = deps.payhero ?? createPayheroClient(config.payhero);
   const logger = deps.logger ?? console;
   const rateLimiters = deps.rateLimiters ?? createRateLimiters(config);
 
@@ -254,68 +236,6 @@ export function createApp(deps = {}) {
     }, corsHeaders);
   });
 
-  router.post("/api/checkout/sessions/:token/pay/flutterwave", async ({ params, req, res }) => {
-    const corsHeaders = getBrowserHeaders(req, config);
-    const { json } = await readJsonBody(req);
-    const method = requireString(json.method, "method_required", SAFE_PUBLIC_MESSAGES.paymentMethodUnavailable);
-    const ip = getClientIp(req);
-
-    enforceRateLimit(rateLimiters.paymentStart, `payment:${ip}:${method}:${params.token}`);
-
-    const session = await store.getCheckoutSessionByToken(params.token);
-    if (!session) {
-      throw new PublicHttpError(404, "checkout_not_found", "This checkout session is not available.");
-    }
-
-    ensureMethodAllowed(session, method);
-
-    const attempt = await store.createPaymentAttempt(createPaymentAttemptRecord({
-      checkoutSession: session,
-      method,
-      nowIso: new Date().toISOString(),
-      provider: PAYMENT_PROVIDERS.FLUTTERWAVE,
-      redirectSecret: config.redirectStateSecret,
-    }));
-
-    const redirectUrl = new URL("/api/payments/return/flutterwave", config.renderApiBaseUrl);
-    redirectUrl.searchParams.set("state", attempt.redirect_state);
-
-    const hostedPayload = buildFlutterwaveCheckoutPayload({
-      amountKes: session.amount_kes,
-      checkoutToken: session.public_token,
-      customer: {
-        email: session.guest_email,
-        name: session.guest_name,
-        phone: session.guest_phone,
-      },
-      method,
-      publicKey: config.flutterwave.publicKey,
-      redirectUrl: redirectUrl.toString(),
-      txRef: attempt.merchant_reference,
-    });
-
-    let started;
-    try {
-      started = await flutterwave.createHostedCheckout(hostedPayload);
-    } catch {
-      throw new PublicHttpError(502, "payment_start_failed", SAFE_PUBLIC_MESSAGES.paymentStartFailed);
-    }
-
-    await store.updatePaymentAttempt(attempt.id, {
-      provider_payload_last: started.raw,
-      provider_reference: started.providerReference,
-      status: PAYMENT_ATTEMPT_STATUSES.PENDING_USER_ACTION,
-    });
-    await store.updateCheckoutSession(session.id, {
-      status: CHECKOUT_STATUSES.PAYMENT_PENDING,
-    });
-
-    sendJson(res, 200, {
-      checkoutToken: session.public_token,
-      checkoutUrl: started.checkoutUrl,
-    }, corsHeaders);
-  });
-
   router.get("/api/checkout/sessions/:token/status", async ({ params, req, res }) => {
     const corsHeaders = getBrowserHeaders(req, config);
     const ip = getClientIp(req);
@@ -358,250 +278,8 @@ export function createApp(deps = {}) {
     sendJson(res, 202, { message: SAFE_PUBLIC_MESSAGES.resetRequested }, corsHeaders);
   });
 
-  router.get("/api/payouts/payhero/options", async ({ req, res }) => {
-    const corsHeaders = getBrowserHeaders(req, config);
-    sendJson(res, 200, {
-      banks: payhero.getBankOptions(),
-      bankWithdrawalsEnabled: payhero.isConfiguredFor("bank"),
-      mobileWithdrawalsEnabled: payhero.isConfiguredFor("mpesa"),
-    }, corsHeaders);
-  });
-
-  router.post("/api/payouts/request", async ({ req, res }) => {
-    const corsHeaders = getBrowserHeaders(req, config);
-    const { json } = await readJsonBody(req);
-    const user = await requireAuthenticatedUser(admin, req);
-    const amountKes = requirePositiveAmount(json.amountKes, "amount_invalid", "Enter a valid payout amount.");
-    const ip = getClientIp(req);
-
-    enforceRateLimit(rateLimiters.payoutRequest, `payout:${ip}:${user.id}`);
-
-    const organizerProfile = await store.getOrganizerProfileByUserId(user.id);
-    if (!organizerProfile) {
-      throw new PublicHttpError(404, "organizer_not_found", "Organizer profile not found.");
-    }
-
-    const payoutMethod = organizerProfile.payout_method === "bank" ? "bank" : "mpesa";
-    if (!payhero.isConfiguredFor(payoutMethod)) {
-      throw new PublicHttpError(503, "payouts_unavailable", SAFE_PUBLIC_MESSAGES.payoutsUnavailable);
-    }
-
-    const [paidOrders, existingPayoutRequests] = await Promise.all([
-      store.listPaidOrdersForOrganizer(organizerProfile.id),
-      store.listPayoutRequestsForOrganizer(organizerProfile.id),
-    ]);
-    const availableAmount = calculateAvailablePayoutAmount({
-      orders: paidOrders,
-      payoutRequests: existingPayoutRequests,
-    });
-
-    if (amountKes > availableAmount) {
-      throw new PublicHttpError(409, "payout_amount_exceeds_available", SAFE_PUBLIC_MESSAGES.payoutAmountTooHigh);
-    }
-
-    let payoutRecord;
-    try {
-      payoutRecord = createPayoutRequestRecord({
-        amountKes,
-        method: payoutMethod,
-        organizerProfile,
-        requestedByUserId: user.id,
-      });
-    } catch {
-      throw new PublicHttpError(409, "payout_destination_incomplete", SAFE_PUBLIC_MESSAGES.payoutDestinationIncomplete);
-    }
-
-    const createdRequest = await store.createPayoutRequest(payoutRecord);
-
-    try {
-      const started = await payhero.createWithdrawal({
-        amountKes,
-        bankAccountName: createdRequest.destination_bank_account_name,
-        bankAccountNumber: createdRequest.destination_bank_account_number,
-        bankCode: createdRequest.destination_bank_network_code,
-        externalReference: createdRequest.external_reference,
-        method: payoutMethod,
-        phoneNumber: createdRequest.destination_phone,
-      });
-
-      const queued = await store.updatePayoutRequest(createdRequest.id, {
-        provider_checkout_request_id: started.checkoutRequestId,
-        provider_payload_last: started.raw,
-        provider_reference: started.merchantReference ?? started.conversationId,
-        status: started.status === "QUEUED" ? "queued" : "processing",
-      });
-
-      sendJson(res, 202, {
-        availableAmountKes: Math.max(0, availableAmount - amountKes),
-        payoutRequest: queued,
-      }, corsHeaders);
-      return;
-    } catch (error) {
-      logger.error("[payhero:payout-request]", error);
-      await store.updatePayoutRequest(createdRequest.id, {
-        failure_reason_safe: SAFE_PUBLIC_MESSAGES.payoutRequestFailed,
-        provider_payload_last: { error: "request_failed" },
-        status: "failed",
-      });
-      throw new PublicHttpError(502, "payout_request_failed", SAFE_PUBLIC_MESSAGES.payoutRequestFailed);
-    }
-  });
-
-  router.get("/api/payments/return/flutterwave", async ({ req, res, url }) => {
-    const state = requireString(url.searchParams.get("state"), "state_required", SAFE_PUBLIC_MESSAGES.paymentVerificationFailed);
-    const txRef = requireString(url.searchParams.get("tx_ref"), "tx_ref_required", SAFE_PUBLIC_MESSAGES.paymentVerificationFailed);
-    const transactionId = url.searchParams.get("transaction_id");
-    const status = url.searchParams.get("status");
-    const signedState = verifyRedirectState({
-      secret: config.redirectStateSecret,
-      token: state,
-    });
-
-    const [attempt, session] = await Promise.all([
-      store.getPaymentAttemptById(signedState.attemptId),
-      store.getCheckoutSessionByToken(signedState.checkoutToken),
-    ]);
-
-    if (!attempt || !session || attempt.checkout_session_id !== session.id || attempt.merchant_reference !== txRef) {
-      throw new PublicHttpError(400, "invalid_return", SAFE_PUBLIC_MESSAGES.paymentVerificationFailed);
-    }
-
-    await store.updatePaymentAttempt(attempt.id, {
-      failure_code: status && status !== "successful" ? `flutterwave_${status}` : null,
-      failure_reason_safe: status && status !== "successful" ? SAFE_PUBLIC_MESSAGES.paymentVerificationFailed : null,
-      provider_transaction_id: transactionId ?? attempt.provider_transaction_id,
-      status: status === "successful" ? PAYMENT_ATTEMPT_STATUSES.PROCESSING : PAYMENT_ATTEMPT_STATUSES.FAILED,
-    });
-    await store.updateCheckoutSession(session.id, {
-      status: status === "successful" ? CHECKOUT_STATUSES.VERIFYING : CHECKOUT_STATUSES.FAILED,
-    });
-
-    const redirectUrl = new URL(`/events/${session.events.slug}/checkout`, config.publicWebBaseUrl);
-    redirectUrl.searchParams.set("session", session.public_token);
-    redirectUrl.searchParams.set("verify", "1");
-    sendRedirect(res, redirectUrl.toString());
-  });
-
-  router.post("/api/webhooks/flutterwave", async ({ req, res }) => {
-    const rawBody = await readRawBody(req);
-    const signature = req.headers["flutterwave-signature"] ?? req.headers["verif-hash"];
-    const signatureValue = Array.isArray(signature) ? signature[0] : signature;
-    const validSignature =
-      isValidFlutterwaveSignature({
-        rawBody,
-        signature: signatureValue,
-        secretHash: config.flutterwave.secretHash,
-      }) ||
-      constantTimeHexEqual(signatureValue ?? "", config.flutterwave.secretHash);
-    const payload = rawBody ? JSON.parse(rawBody) : {};
-    const txRef = payload?.data?.tx_ref ?? null;
-    const transactionId = payload?.data?.id ?? null;
-
-    await store.recordWebhookEvent({
-      dedupe_key: `flutterwave:${payload?.id ?? payload?.data?.id ?? txRef ?? Date.now()}`,
-      delivery_id: payload?.webhook_id ?? null,
-      event_type: payload?.event ?? payload?.type ?? null,
-      payload,
-      processed: false,
-      provider: PAYMENT_PROVIDERS.FLUTTERWAVE,
-      provider_event_id: payload?.id ?? String(transactionId ?? ""),
-      signature_valid: validSignature,
-    });
-
-    if (!validSignature) {
-      sendJson(res, 401, { error: "invalid_signature" });
-      return;
-    }
-
-    if (!txRef || !transactionId) {
-      sendJson(res, 200, { received: true });
-      return;
-    }
-
-    const attempt = await store.findAttemptByMerchantReference(txRef);
-    if (!attempt) {
-      sendJson(res, 200, { received: true });
-      return;
-    }
-
-    const verified = await flutterwave.verifyTransaction(transactionId);
-    const success =
-      verified.status === "successful" &&
-      verified.amountKes === attempt.amount_kes &&
-      verified.currency === attempt.currency &&
-      verified.txRef === attempt.merchant_reference;
-
-    await store.updatePaymentAttempt(attempt.id, {
-      failure_code: success ? null : "flutterwave_verification_failed",
-      failure_reason_safe: success ? null : SAFE_PUBLIC_MESSAGES.paymentVerificationFailed,
-      provider_payload_last: verified.raw,
-      provider_transaction_id: String(transactionId),
-      status: success ? PAYMENT_ATTEMPT_STATUSES.SUCCEEDED : PAYMENT_ATTEMPT_STATUSES.FAILED,
-    });
-    await store.updateCheckoutSession(attempt.checkout_session_id, {
-      status: success ? CHECKOUT_STATUSES.VERIFYING : CHECKOUT_STATUSES.FAILED,
-    });
-
-    if (success) {
-      await finalizeSuccessfulPayment({ attempt, store });
-    }
-
-    sendJson(res, 200, { received: true });
-  });
-
-  router.post("/api/webhooks/payhero", async ({ req, res }) => {
-    const { rawBody, json } = await readJsonBody(req);
-    const payload = json;
-    const callback = parsePayheroWithdrawalCallback(payload);
-
-    await store.recordWebhookEvent({
-      dedupe_key: `payhero:${callback.externalReference ?? callback.merchantRequestId ?? Date.now()}:${callback.resultCode}`,
-      delivery_id: callback.checkoutRequestId ?? callback.merchantRequestId,
-      event_type: "withdrawal_callback",
-      payload: rawBody ? JSON.parse(rawBody) : payload,
-      processed: false,
-      provider: "payhero",
-      provider_event_id: callback.transactionId ?? callback.externalReference ?? "",
-      signature_valid: true,
-    });
-
-    if (!callback.externalReference) {
-      sendJson(res, 200, { received: true });
-      return;
-    }
-
-    const payoutRequest = await store.findPayoutRequestByExternalReference(callback.externalReference);
-    if (!payoutRequest) {
-      sendJson(res, 200, { received: true });
-      return;
-    }
-
-    let verifiedStatus = null;
-    try {
-      const verified = await payhero.getTransactionStatus(payoutRequest.external_reference);
-      verifiedStatus = verified.success ? "paid" : verified.status === "FAILED" ? "failed" : "processing";
-      await store.updatePayoutRequest(payoutRequest.id, {
-        failure_reason_safe: verified.success ? null : verifiedStatus === "failed" ? SAFE_PUBLIC_MESSAGES.payoutRequestFailed : null,
-        processed_at: verified.success || verifiedStatus === "failed" ? new Date().toISOString() : null,
-        provider_payload_last: verified.raw,
-        provider_transaction_id: callback.transactionId ?? payoutRequest.provider_transaction_id,
-        status: verifiedStatus,
-      });
-    } catch (error) {
-      logger.error("[payhero:status-check]", error);
-      await store.updatePayoutRequest(payoutRequest.id, {
-        failure_reason_safe: callback.resultCode === 0 ? null : SAFE_PUBLIC_MESSAGES.payoutRequestFailed,
-        provider_payload_last: payload,
-        provider_transaction_id: callback.transactionId ?? payoutRequest.provider_transaction_id,
-        status: callback.resultCode === 0 ? "processing" : "failed",
-      });
-    }
-
-    sendJson(res, 200, { received: true });
-  });
-
   router.post("/api/webhooks/mpesa", async ({ req, res }) => {
-    const { rawBody, json } = await readJsonBody(req);
+    const { json } = await readJsonBody(req);
     const payload = json;
     const callback = parseMpesaCallback(payload);
 
@@ -609,7 +287,7 @@ export function createApp(deps = {}) {
       dedupe_key: `mpesa:${callback.checkoutRequestId ?? callback.merchantRequestId ?? Date.now()}:${callback.resultCode}`,
       delivery_id: callback.checkoutRequestId,
       event_type: "stk_callback",
-      payload: rawBody ? JSON.parse(rawBody) : payload,
+      payload,
       processed: false,
       provider: PAYMENT_PROVIDERS.MPESA_DARAJA,
       provider_event_id: callback.checkoutRequestId,
