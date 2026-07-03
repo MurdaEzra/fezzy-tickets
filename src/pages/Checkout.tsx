@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CreditCard, Loader2, Smartphone, Wallet } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +19,8 @@ type TicketHolder = {
   email: string;
   phone: string;
 };
+
+type MpesaStep = "phone" | "stk" | "paybill" | "confirm";
 
 const emptyHolder = (): TicketHolder => ({ name: "", email: "", phone: "" });
 
@@ -32,13 +37,18 @@ const Checkout = () => {
   const qty = Math.max(1, Number(params.get("qty") ?? 1));
 
   const [holders, setHolders] = useState<TicketHolder[]>(Array.from({ length: qty }, emptyHolder));
-  const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "apple_pay">("mpesa");
+  const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card">("mpesa");
   const [processing, setProcessing] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState<{ id: string; discountPercent: number } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
+  const [mpesaModalOpen, setMpesaModalOpen] = useState(false);
+  const [mpesaStep, setMpesaStep] = useState<MpesaStep>("phone");
+  const [mpesaPhone, setMpesaPhone] = useState("");
+  const [mpesaMerchantRef, setMpesaMerchantRef] = useState("");
+  const [mpesaCheckoutToken, setMpesaCheckoutToken] = useState("");
 
   const evt = useMemo(() => {
     if (!dbEvent) return null;
@@ -153,8 +163,7 @@ const Checkout = () => {
     setHolders((prev) => prev.map((h, i) => (i === index ? { ...h, [field]: value } : h)));
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const startPayment = async () => {
     if (!evt || !tier?.id) return;
     if (salesClosed) {
       toast.error("Ticket sales are closed for this event.");
@@ -175,25 +184,30 @@ const Checkout = () => {
       toast.error("Enter each ticket holder's name and email.");
       return;
     }
-    if (paymentMethod === "mpesa" && !normalized[0]?.phone) {
-      toast.error("Enter a phone number for the first ticket holder (used for M-Pesa).");
-      return;
-    }
 
+    if (paymentMethod === "card") {
+      await handleCardPayment(normalized);
+    } else {
+      setMpesaPhone(normalized[0]?.phone || "");
+      setMpesaModalOpen(true);
+    }
+  };
+
+  const handleCardPayment = async (normalized: TicketHolder[]) => {
     setProcessing(true);
     try {
       const callbackUrl = `${window.location.origin}/payment/callback`;
       const { data, error } = await supabase.functions.invoke("paystack-init-transaction", {
         body: {
-          eventId: evt.id,
-          tierId: tier.id,
+          eventId: evt!.id,
+          tierId: tier!.id,
           quantity: qty,
           name: normalized[0].name,
           email: normalized[0].email,
           phone: normalized[0].phone,
           holders: normalized,
           callbackUrl,
-          method: paymentMethod,
+          method: "card",
           marketingOptIn,
           promoCodeId: promoApplied?.id,
         },
@@ -203,7 +217,7 @@ const Checkout = () => {
         await logActivity("checkout.failed", {
           level: "error",
           message: err,
-          metadata: { eventId: evt.id, tierId: tier.id, quantity: qty },
+          metadata: { eventId: evt!.id, tierId: tier!.id, quantity: qty },
           userId: user?.id,
         });
         toast.error("Payment failed", { description: err });
@@ -212,8 +226,8 @@ const Checkout = () => {
       }
 
       await logActivity("checkout.initiated", {
-        message: `Checkout for ${evt.title}`,
-        metadata: { eventId: evt.id, quantity: qty, paymentMethod },
+        message: `Checkout for ${evt!.title}`,
+        metadata: { eventId: evt!.id, quantity: qty, paymentMethod: "card" },
         userId: user?.id,
       });
 
@@ -225,6 +239,100 @@ const Checkout = () => {
       toast.error("Payment failed", { description: message });
       setProcessing(false);
     }
+  };
+
+  const handleMpesaStkPush = async () => {
+    if (!mpesaPhone) {
+      toast.error("Enter your M-Pesa phone number");
+      return;
+    }
+    setProcessing(true);
+    try {
+      // First, create checkout session
+      const normalized = holders.map((h) => ({
+        name: h.name.trim(),
+        email: h.email.trim(),
+        phone: h.phone.trim(),
+      }));
+      
+      // Create checkout session via server
+      const checkoutRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/checkout/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          tierId: tier!.id,
+          email: normalized[0].email,
+          name: normalized[0].name,
+          phone: mpesaPhone,
+          quantity: qty,
+        }),
+      });
+
+      const checkoutData = await checkoutRes.json();
+      if (!checkoutData?.publicToken) throw new Error("Failed to create checkout session");
+
+      // Initiate STK push
+      const stkRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/checkout/sessions/${checkoutData.publicToken}/pay/mpesa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: mpesaPhone }),
+      });
+
+      const stkData = await stkRes.json();
+      if (stkData?.error) throw new Error(stkData.error.message);
+
+      setMpesaCheckoutToken(checkoutData.publicToken);
+      setMpesaMerchantRef(stkData?.orderReference || "");
+      setMpesaStep("stk");
+      setProcessing(false);
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error("Failed to initiate payment", { description: message });
+      setProcessing(false);
+    }
+  };
+
+  const handlePaybillOption = () => {
+    setMpesaStep("paybill");
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!mpesaCheckoutToken) return;
+    setProcessing(true);
+    try {
+      // Poll for payment status
+      let attempts = 0;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/checkout/sessions/${mpesaCheckoutToken}/status`);
+        const data = await res.json();
+
+        if (data.status === "paid") {
+          clearInterval(pollInterval);
+          setMpesaStep("confirm");
+          setProcessing(false);
+          await logActivity("checkout.completed", {
+            message: `M-Pesa payment completed for ${evt?.title}`,
+            metadata: { eventId: evt?.id, quantity: qty },
+            userId: user?.id,
+          });
+        } else if (attempts > 60) {
+          clearInterval(pollInterval);
+          toast.error("Payment confirmation timed out. Please check your M-Pesa messages and try again later.");
+          setProcessing(false);
+        }
+      }, 3000);
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error("Failed to confirm payment", { description: message });
+      setProcessing(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
   };
 
   if (loading) {
@@ -317,11 +425,12 @@ const Checkout = () => {
 
               <div className="border border-cream/10 bg-ink-card p-6 md:p-8">
                 <h2 className="font-display text-xl text-cream">Choose how to pay</h2>
-                <p className="mt-1 text-sm text-cream-dim">Select your preferred checkout method and continue to Paystack to complete payment.</p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <p className="mt-1 text-sm text-cream-dim">
+                  {paymentMethod === "card" ? "Complete payment via Paystack" : "Pay with M-Pesa"}
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <PayBadge icon={Smartphone} label="M-Pesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
                   <PayBadge icon={CreditCard} label="Card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
-                  <PayBadge icon={Wallet} label="Apple" selected={paymentMethod === "apple_pay"} onSelect={() => setPaymentMethod("apple_pay")} />
                 </div>
               </div>
 
@@ -352,15 +461,184 @@ const Checkout = () => {
                 </label>
               </div>
 
-              <button type="submit" className="btn-ember w-full justify-center" disabled={processing || !calc || !agreedTerms || salesClosed}>
+              <button
+                type="button"
+                onClick={startPayment}
+                className="btn-ember w-full justify-center"
+                disabled={processing || !calc || !agreedTerms || salesClosed}
+              >
                 {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {salesClosed
                   ? "Ticket sales closed"
                   : processing
-                    ? "Redirecting to Paystack…"
-                    : `Pay ${calc ? formatPrice(calc.total) : "..."} with ${paymentMethod === "mpesa" ? "M-Pesa" : paymentMethod === "apple_pay" ? "Apple Pay" : "Card"}`}
+                    ? "Processing…"
+                    : `Pay ${calc ? formatPrice(calc.total) : "..."} with ${paymentMethod === "mpesa" ? "M-Pesa" : "Card"}`}
               </button>
             </form>
+
+            {/* M-Pesa Payment Modal */}
+            <Dialog open={mpesaModalOpen} onOpenChange={setMpesaModalOpen}>
+              <DialogContent className="bg-ink-card border-cream/10 text-cream max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-xl">Pay with M-Pesa</DialogTitle>
+                  <DialogDescription className="text-cream-dim">
+                    Complete your payment for {evt?.title}
+                  </DialogDescription>
+                </DialogHeader>
+
+                {/* Phone Input Step */}
+                {mpesaStep === "phone" && (
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <label className="mb-2 block text-sm text-cream-dim">Phone Number</label>
+                      <Input
+                        type="tel"
+                        placeholder="0712 345 678"
+                        value={mpesaPhone}
+                        onChange={(e) => setMpesaPhone(e.target.value)}
+                        className="border-cream/15 bg-ink-soft text-cream placeholder:text-ash"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-cream/15 text-cream hover:bg-ink-soft"
+                        onClick={() => setMpesaModalOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="flex-1 bg-fezzy hover:bg-fezzy/90 text-ink"
+                        onClick={handleMpesaStkPush}
+                        disabled={processing}
+                      >
+                        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send STK Push"}
+                      </Button>
+                    </div>
+                    <p className="text-center text-sm text-cream-dim">
+                      <button
+                        type="button"
+                        onClick={handlePaybillOption}
+                        className="text-fezzy hover:underline"
+                      >
+                        Can't use STK push? Pay via Paybill
+                      </button>
+                    </p>
+                  </div>
+                )}
+
+                {/* STK Push Step */}
+                {mpesaStep === "stk" && (
+                  <div className="space-y-4 py-4 text-center">
+                    <Loader2 className="mx-auto h-12 w-12 animate-spin text-fezzy" />
+                    <div>
+                      <p className="font-semibold text-cream">Check your phone</p>
+                      <p className="text-sm text-cream-dim">
+                        Accept the M-Pesa payment request on {mpesaPhone}
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-cream/15 text-cream hover:bg-ink-soft"
+                        onClick={() => setMpesaStep("phone")}
+                      >
+                        Try again
+                      </Button>
+                      <Button
+                        className="flex-1 bg-ember hover:bg-ember/90 text-ink"
+                        onClick={handlePaybillOption}
+                      >
+                        Pay via Paybill
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Paybill Step */}
+                {mpesaStep === "paybill" && (
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-3 rounded-xl bg-ink-soft p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-cream-dim text-sm">Paybill Number</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-cream">123456</span>
+                          <button
+                            onClick={() => copyToClipboard("123456")}
+                            className="text-cream-dim hover:text-cream"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-cream-dim text-sm">Account Number</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-cream">{mpesaMerchantRef || "FEZZY"}</span>
+                          <button
+                            onClick={() => copyToClipboard(mpesaMerchantRef || "FEZZY")}
+                            className="text-cream-dim hover:text-cream"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-cream-dim text-sm">Amount</span>
+                        <span className="font-semibold text-cream">{calc ? formatPrice(calc.total) : "..."}</span>
+                      </div>
+                    </div>
+                    <ol className="list-decimal list-inside space-y-1 text-sm text-cream-dim">
+                      <li>Go to M-Pesa on your phone</li>
+                      <li>Select "Pay Bill"</li>
+                      <li>Enter Paybill 123456</li>
+                      <li>Enter {mpesaMerchantRef || "FEZZY"} as account number</li>
+                      <li>Enter {calc ? formatPrice(calc.total) : "..."} as amount</li>
+                      <li>Confirm with your PIN</li>
+                    </ol>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-cream/15 text-cream hover:bg-ink-soft"
+                        onClick={() => setMpesaStep("phone")}
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        className="flex-1 bg-fezzy hover:bg-fezzy/90 text-ink"
+                        onClick={handleConfirmPayment}
+                        disabled={processing}
+                      >
+                        {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Confirm Payment
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Confirmation Step */}
+                {mpesaStep === "confirm" && (
+                  <div className="space-y-4 py-4 text-center">
+                    <CheckCircle2 className="mx-auto h-12 w-12 text-lime" />
+                    <div>
+                      <p className="font-semibold text-cream">Payment Complete!</p>
+                      <p className="text-sm text-cream-dim">
+                        Your tickets have been emailed to you
+                      </p>
+                    </div>
+                    <Button
+                      className="w-full bg-fezzy hover:bg-fezzy/90 text-ink"
+                      onClick={() => {
+                        setMpesaModalOpen(false);
+                        navigate("/events");
+                      }}
+                    >
+                      Browse Events
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             <aside className="lg:sticky lg:top-24 lg:self-start">
               <div className="border border-cream/10 bg-ink-card p-6">
