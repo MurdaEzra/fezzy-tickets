@@ -19,7 +19,7 @@ const navItems = [
   { to: "/events", label: "Events" },
   { to: "/events#venues", label: "Venues" },
   { to: "/events", label: "Artists" },
-  { to: "/events", label: "Weekend" },
+  { to: "/lpp", label: "LPP" },
   { to: "/start-selling", label: "Sell" },
 ];
 
