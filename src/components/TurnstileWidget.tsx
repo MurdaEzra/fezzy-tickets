@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 declare global {
   interface Window {
@@ -39,6 +39,29 @@ export default function TurnstileWidget({
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const renderWidget = useCallback(() => {
+    if (!scriptLoaded || !containerRef.current || !window.turnstile) return;
+    if (widgetIdRef.current) {
+      // Reset existing widget instead of rendering new one
+      window.turnstile.reset(widgetIdRef.current);
+      return;
+    }
+
+    widgetIdRef.current = window.turnstile.render(containerRef.current, {
+      sitekey: siteKey,
+      action,
+      callback: (token) => {
+        onVerify?.(token);
+      },
+      "expired-callback": () => {
+        onExpire?.();
+      },
+      "error-callback": () => {
+        onError?.();
+      },
+    });
+  }, [scriptLoaded, siteKey, action, onVerify, onExpire, onError]);
+
   useEffect(() => {
     // Check immediately if Turnstile is already available
     if (window.turnstile) {
@@ -67,30 +90,17 @@ export default function TurnstileWidget({
   }, []);
 
   useEffect(() => {
-    if (!scriptLoaded || !containerRef.current || !window.turnstile) return;
-    if (widgetIdRef.current) return; // Prevent double rendering
+    renderWidget();
+  }, [renderWidget]);
 
-    widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey: siteKey,
-      action,
-      callback: (token) => {
-        onVerify?.(token);
-      },
-      "expired-callback": () => {
-        onExpire?.();
-      },
-      "error-callback": () => {
-        onError?.();
-      },
-    });
-
+  useEffect(() => {
     return () => {
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
-  }, [scriptLoaded, siteKey, action, onVerify, onExpire, onError]);
+  }, []);
 
   return <div ref={containerRef} />;
 }
