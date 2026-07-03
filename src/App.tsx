@@ -27,6 +27,7 @@ import ShareRedirect from "./pages/ShareRedirect.tsx";
 import InviteAccept from "./pages/InviteAccept.tsx";
 import ApplicationPending from "./pages/ApplicationPending.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
+import LppPortal from "./pages/LppPortal.tsx";
 
 const ErrorLogging = () => {
   const { user } = useAuth();
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/events/:slug/checkout" element={<Checkout />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/start-selling" element={<StartSelling />} />
+            <Route path="/lpp" element={<LppPortal />} />
             <Route path="/application-pending" element={<ApplicationPending />} />
             <Route path="/account" element={<Navigate to="/events" replace />} />
             <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
