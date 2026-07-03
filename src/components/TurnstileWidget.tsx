@@ -10,7 +10,7 @@ declare global {
           action?: string;
           callback?: (token: string) => void;
           "expired-callback"?: () => void;
-          "error-callback"?: () => void;
+          "error-callback"?: (errorCode?: string) => void;
         }
       ) => string;
       reset: (widgetId?: string) => void;
@@ -24,7 +24,7 @@ interface TurnstileWidgetProps {
   action?: string;
   onVerify?: (token: string) => void;
   onExpire?: () => void;
-  onError?: () => void;
+  onError?: (errorCode?: string) => void;
 }
 
 export default function TurnstileWidget({
@@ -37,6 +37,7 @@ export default function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const renderWidget = useCallback(() => {
@@ -51,13 +52,15 @@ export default function TurnstileWidget({
       sitekey: siteKey,
       action,
       callback: (token) => {
+        setHasError(false);
         onVerify?.(token);
       },
       "expired-callback": () => {
         onExpire?.();
       },
-      "error-callback": () => {
-        onError?.();
+      "error-callback": (errorCode) => {
+        setHasError(true);
+        onError?.(errorCode);
       },
     });
   }, [scriptLoaded, siteKey, action, onVerify, onExpire, onError]);
@@ -102,5 +105,14 @@ export default function TurnstileWidget({
     };
   }, []);
 
-  return <div ref={containerRef} />;
+  return (
+    <div>
+      <div ref={containerRef} />
+      {hasError && (
+        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          Unable to load security check. Please check your internet connection and try again.
+        </div>
+      )}
+    </div>
+  );
 }
