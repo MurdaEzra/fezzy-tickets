@@ -370,7 +370,7 @@ const Checkout = () => {
           </h1>
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
-            <form onSubmit={submit} className="space-y-8">
+            <form className="space-y-8">
               <div className="border border-cream/10 bg-ink-card p-6 md:p-8">
                 <h2 className="font-display text-xl text-cream">
                   {qty > 1 ? "Ticket holder details" : "Where should we send your ticket?"}
