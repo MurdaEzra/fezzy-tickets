@@ -5,6 +5,14 @@ function randomHex(size = 16) {
   return randomBytes(size).toString("hex");
 }
 
+function generateFzRef() {
+  // Format FZ-XXXX-XXXX — friendly, uppercase, no ambiguous chars
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const seg = (n) =>
+    Array.from({ length: n }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+  return `FZ-${seg(4)}-${seg(4)}`;
+}
+
 function addMinutes(iso, minutes) {
   const at = new Date(iso);
   at.setMinutes(at.getMinutes() + minutes);
@@ -102,7 +110,7 @@ export function createPaymentAttemptRecord({
     currency: checkoutSession.currency,
     id,
     idempotency_key: randomHex(12),
-    merchant_reference: `fz_${randomHex(8)}`,
+    merchant_reference: generateFzRef(),
     method,
     provider,
     redirect_nonce: provider === "flutterwave" ? randomHex(8) : null,

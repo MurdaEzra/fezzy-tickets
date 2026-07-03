@@ -17,11 +17,11 @@ function json(data: unknown, status = 200) {
 }
 
 function generateRefNo() {
-  // Format LPP-XXXX-XXXX — friendly, uppercase, no ambiguous chars
+  // Format FZ-XXXX-XXXX — friendly, uppercase, no ambiguous chars
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const seg = (n: number) =>
     Array.from({ length: n }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
-  return `LPP-${seg(4)}-${seg(4)}`;
+  return `FZ-${seg(4)}-${seg(4)}`;
 }
 
 function normalizeKenyanPhone(raw: string): string {

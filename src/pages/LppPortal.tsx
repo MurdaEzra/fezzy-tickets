@@ -112,7 +112,7 @@ const LppPortal = () => {
                 <input
                   value={refInput}
                   onChange={(e) => setRefInput(e.target.value.toUpperCase())}
-                  placeholder="LPP-XXXX-XXXX"
+                  placeholder="FZ-XXXX-XXXX"
                   className="flex-1 border border-cream/15 bg-ink-soft px-4 py-3 font-mono text-lg tracking-widest text-cream outline-none focus:border-fezzy placeholder:text-ash"
                 />
                 <button
