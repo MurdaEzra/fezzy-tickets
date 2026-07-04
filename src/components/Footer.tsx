@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Headphones, Lock, RefreshCcw, ShieldCheck } from "lucide-react";
+import { PaymentLogos } from "@/components/PaymentLogos";
 
 const columns = [
   {
