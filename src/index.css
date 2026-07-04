@@ -116,7 +116,7 @@
     @apply text-[11px] uppercase tracking-[0.24em] text-muted-foreground font-semibold;
   }
   .container-px {
-    @apply px-6 md:px-10 lg:px-16;
+    @apply px-4 sm:px-6 md:px-10 lg:px-16;
   }
   .grain::before {
     content: "";
