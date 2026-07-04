@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy, WalletCards, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, X, CheckCircle2, Copy, WalletCards, ShieldCheck } from "lucide-react";
 import { lppInitPlan } from "@/lib/lpp";
-import { PaymentLogos } from "@/components/PaymentLogos";
+import { PaymentLogos, MpesaBadge, VisaBadge, PaystackBadge } from "@/components/PaymentLogos";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -523,8 +523,8 @@ const Checkout = () => {
                   <PaymentLogos tone="dark" label={false} />
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <PayBadge icon={Smartphone} label="M-Pesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
-                  <PayBadge icon={CreditCard} label="Card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
+                  <PayBadge logo={MpesaBadge} label="M-Pesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
+                  <PayBadge logo={VisaBadge} label="Card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
                   {lppEnabled && (
                     <PayBadge icon={WalletCards} label="Lipa Pole Pole" selected={paymentMethod === "lpp"} onSelect={() => setPaymentMethod("lpp")} />
                   )}
@@ -913,10 +913,14 @@ const Checkout = () => {
   );
 };
 
-const PayBadge = ({ icon: Icon, label, selected, onSelect }: { icon: typeof CreditCard; label: string; selected?: boolean; onSelect?: () => void }) => (
+const PayBadge = ({ icon: Icon, logo: Logo, label, selected, onSelect }: { icon?: any; logo?: any; label: string; selected?: boolean; onSelect?: () => void }) => (
   <button type="button" onClick={onSelect} className={`flex items-center gap-2 border p-3 text-sm transition ${selected ? "border-fezzy bg-fezzy/10" : "border-cream/15 bg-ink hover:border-fezzy/60"}`}>
     <span className={`grid h-8 w-8 place-items-center ${selected ? "bg-fezzy text-ink" : "bg-cream/10 text-cream"}`}>
-      <Icon className="h-4 w-4" />
+      {Logo ? (
+        <Logo className="h-6 w-auto" />
+      ) : Icon ? (
+        <Icon className="h-4 w-4" />
+      ) : null}
     </span>
     <span className="font-semibold text-cream">{label}</span>
   </button>
