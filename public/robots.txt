@@ -1,0 +1,6 @@
+# FEZZY Tickets
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://fezzytickets.com/sitemap.xml
