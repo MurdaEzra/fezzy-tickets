@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, Menu, Moon, Search, Shield, Sun, Ticket, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Moon, Search, Shield, Sun, Ticket, X, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useCookieConsent } from "@/hooks/useCookieConsent";
 import { useHomepageSettings } from "@/hooks/useEvents";
 import { defaultLiveBarItems } from "@/lib/homepageSettings";
 import { getOrganizerAccessStatus } from "@/lib/organizerAccess";
@@ -29,6 +30,7 @@ const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const { user, signOut } = useAuth();
+  const { resetConsent } = useCookieConsent();
   const { data: homepageSettings } = useHomepageSettings();
   const navigate = useNavigate();
   const liveBarItems = homepageSettings?.live_bar_items?.length ? homepageSettings.live_bar_items : defaultLiveBarItems;
@@ -150,6 +152,9 @@ const Navbar = () => {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => resetConsent()}>
+                      <Settings className="mr-2 h-4 w-4" /> Cookie settings
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => signOut().then(() => navigate("/"))}>
                       <LogOut className="mr-2 h-4 w-4" /> Sign out
                     </DropdownMenuItem>
@@ -205,6 +210,15 @@ const Navbar = () => {
                         Dashboard
                       </button>
                     )}
+                    <button
+                      className="text-left font-mono-label text-cream-dim hover:text-cream"
+                      onClick={() => {
+                        resetConsent();
+                        setOpen(false);
+                      }}
+                    >
+                      Cookie settings
+                    </button>
                     <button
                       className="text-left font-mono-label text-cream-dim hover:text-cream"
                       onClick={() => {

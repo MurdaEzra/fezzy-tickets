@@ -5,8 +5,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { CookieConsentProvider } from "@/hooks/useCookieConsent";
 import { installGlobalErrorLogging } from "@/lib/activityLog";
 import { queryClient } from "@/lib/queryClient";
+import { CookieConsent } from "@/components/CookieConsent";
 import Index from "./pages/Index.tsx";
 import Events from "./pages/Events.tsx";
 import EventDetail from "./pages/EventDetail.tsx";
@@ -42,35 +44,38 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <ErrorLogging />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/events/:slug" element={<EventDetail />} />
-            <Route path="/events/:slug/checkout" element={<Checkout />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/start-selling" element={<StartSelling />} />
-            <Route path="/lpp" element={<LppPortal />} />
-            <Route path="/application-pending" element={<ApplicationPending />} />
-            <Route path="/account" element={<Navigate to="/events" replace />} />
-            <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
-            <Route path="/dashboard" element={<OrganizerDashboard />} />
-            <Route path="/dashboard/events/:id" element={<EventEditor />} />
-            <Route path="/admin" element={<SuperAdminDashboard />} />
-            <Route path="/scan" element={<Scan />} />
-            <Route path="/streams" element={<Streams />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/help" element={<Help />} />
-            <Route path="/payment/callback" element={<PaymentCallback />} />
-            <Route path="/invite/:token" element={<InviteAccept />} />
-            <Route path="/o/:handle/:slug" element={<ShareRedirect />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
+      <CookieConsentProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <ErrorLogging />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/events/:slug" element={<EventDetail />} />
+              <Route path="/events/:slug/checkout" element={<Checkout />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/start-selling" element={<StartSelling />} />
+              <Route path="/lpp" element={<LppPortal />} />
+              <Route path="/application-pending" element={<ApplicationPending />} />
+              <Route path="/account" element={<Navigate to="/events" replace />} />
+              <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
+              <Route path="/dashboard" element={<OrganizerDashboard />} />
+              <Route path="/dashboard/events/:id" element={<EventEditor />} />
+              <Route path="/admin" element={<SuperAdminDashboard />} />
+              <Route path="/scan" element={<Scan />} />
+              <Route path="/streams" element={<Streams />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/payment/callback" element={<PaymentCallback />} />
+              <Route path="/invite/:token" element={<InviteAccept />} />
+              <Route path="/o/:handle/:slug" element={<ShareRedirect />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <CookieConsent />
+          </AuthProvider>
+        </BrowserRouter>
+      </CookieConsentProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
