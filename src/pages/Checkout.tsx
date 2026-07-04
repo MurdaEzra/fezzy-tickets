@@ -1,8 +1,9 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy, WalletCards } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy, WalletCards, ShieldCheck } from "lucide-react";
 import { lppInitPlan } from "@/lib/lpp";
+import { PaymentLogos } from "@/components/PaymentLogos";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
