@@ -529,10 +529,7 @@ const Checkout = () => {
                     <PayBadge icon={WalletCards} label="Lipa Pole Pole" selected={paymentMethod === "lpp"} onSelect={() => setPaymentMethod("lpp")} />
                   )}
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-[11px] font-mono-label text-cream-dim">
-                  <ShieldCheck className="h-3.5 w-3.5 text-fezzy" />
-                  Secured by Paystack &amp; Safaricom Daraja · PCI-DSS
-                </div>
+                
 
 
                 {paymentMethod === "lpp" && lppEnabled && (

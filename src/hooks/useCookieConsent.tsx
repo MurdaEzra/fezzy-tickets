@@ -19,6 +19,8 @@ const CONSENT_KEY = "fezzy_cookie_consent";
 interface CookieConsentContextType {
   consent: CookieConsentCategories;
   hasConsented: boolean;
+  showManage: boolean;
+  setShowManage: (show: boolean) => void;
   acceptAll: () => void;
   rejectNonNecessary: () => void;
   updateConsent: (categories: Partial<CookieConsentCategories>) => void;
@@ -30,6 +32,7 @@ const CookieConsentContext = createContext<CookieConsentContextType | undefined>
 export const CookieConsentProvider = ({ children }: { children: React.ReactNode }) => {
   const [consent, setConsent] = useState<CookieConsentCategories>(DEFAULT_CONSENT);
   const [hasConsented, setHasConsented] = useState<boolean>(false);
+  const [showManage, setShowManage] = useState<boolean>(false);
 
   // Load consent from storage on mount
   useEffect(() => {
@@ -55,10 +58,12 @@ export const CookieConsentProvider = ({ children }: { children: React.ReactNode 
 
   const acceptAll = () => {
     saveConsent({ necessary: true, analytics: true, marketing: true });
+    setShowManage(false);
   };
 
   const rejectNonNecessary = () => {
     saveConsent(DEFAULT_CONSENT);
+    setShowManage(false);
   };
 
   const updateConsent = (categories: Partial<CookieConsentCategories>) => {
@@ -69,11 +74,12 @@ export const CookieConsentProvider = ({ children }: { children: React.ReactNode 
     localStorage.removeItem(CONSENT_KEY);
     setConsent(DEFAULT_CONSENT);
     setHasConsented(false);
+    setShowManage(true);
   };
 
   return (
     <CookieConsentContext.Provider
-      value={{ consent, hasConsented, acceptAll, rejectNonNecessary, updateConsent, resetConsent }}
+      value={{ consent, hasConsented, showManage, setShowManage, acceptAll, rejectNonNecessary, updateConsent, resetConsent }}
     >
       {children}
     </CookieConsentContext.Provider>
