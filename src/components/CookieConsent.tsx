@@ -55,7 +55,7 @@ export const CookieConsent = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1">
               <p className="text-sm text-gray-700">
-                Before you continue to FEZZY
+                Before you continue to Fezzy Tickets
               </p>
               <p className="text-sm text-gray-600 mt-1">
                 We use cookies and other technologies to improve your experience on our site, analyze traffic, and personalize content and advertising. 
