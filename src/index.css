@@ -274,11 +274,40 @@
   --input: 0 0% 14%;
   --ring: 150 100% 53%;
   background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(16,255,138,.10), transparent 60%),
-    radial-gradient(900px 500px at -10% 20%, rgba(0,217,115,.07), transparent 60%),
-    #000;
+    radial-gradient(1200px 600px at 85% -10%, rgba(16,255,138,.14), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(0,217,115,.08), transparent 60%),
+    radial-gradient(700px 500px at 50% 120%, rgba(212,162,76,.06), transparent 60%),
+    linear-gradient(180deg, #050505 0%, #000 100%);
   color: hsl(var(--foreground));
+  position: relative;
 }
+
+.tm-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 90%);
+  z-index: 0;
+}
+
+.tm-page > * { position: relative; z-index: 1; }
+
+.tm-page .rounded-3xl,
+.tm-page .rounded-2xl {
+  box-shadow: 0 30px 80px -40px rgba(16,255,138,0.18), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.tm-page .bg-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005)) hsl(var(--card));
+  backdrop-filter: blur(6px);
+}
+
 
 .tm-page table {
   color: hsl(var(--foreground));
