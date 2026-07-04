@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Headphones, Lock, RefreshCcw, ShieldCheck } from "lucide-react";
+import { PaymentLogos } from "@/components/PaymentLogos";
 
 const columns = [
   {
@@ -70,12 +71,8 @@ const Footer = () => {
               checkout, local support - built in Nairobi for the moments that matter.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
-              {["M-Pesa", "Visa", "Airtel Money"].map((payment) => (
-                <span key={payment} className="border border-cream/20 px-3 py-1.5 font-mono-label text-cream-dim">
-                  {payment}
-                </span>
-              ))}
+            <div className="mt-6">
+              <PaymentLogos tone="dark" label="Accepted payment methods" />
             </div>
           </div>
 

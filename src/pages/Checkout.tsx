@@ -1,8 +1,9 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy, WalletCards } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Smartphone, X, CheckCircle2, Copy, WalletCards, ShieldCheck } from "lucide-react";
 import { lppInitPlan } from "@/lib/lpp";
+import { PaymentLogos } from "@/components/PaymentLogos";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -512,10 +513,15 @@ const Checkout = () => {
               </div>
 
               <div className="border border-cream/10 bg-ink-card p-6 md:p-8">
-                <h2 className="font-display text-xl text-cream">Choose how to pay</h2>
-                <p className="mt-1 text-sm text-cream-dim">
-                  {paymentMethod === "card" ? "Complete payment via Paystack" : "Pay with M-Pesa"}
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-display text-xl text-cream">Choose how to pay</h2>
+                    <p className="mt-1 text-sm text-cream-dim">
+                      {paymentMethod === "card" ? "Complete payment via Paystack" : "Pay with M-Pesa"}
+                    </p>
+                  </div>
+                  <PaymentLogos tone="dark" label={false} />
+                </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <PayBadge icon={Smartphone} label="M-Pesa" selected={paymentMethod === "mpesa"} onSelect={() => setPaymentMethod("mpesa")} />
                   <PayBadge icon={CreditCard} label="Card" selected={paymentMethod === "card"} onSelect={() => setPaymentMethod("card")} />
@@ -523,6 +529,11 @@ const Checkout = () => {
                     <PayBadge icon={WalletCards} label="Lipa Pole Pole" selected={paymentMethod === "lpp"} onSelect={() => setPaymentMethod("lpp")} />
                   )}
                 </div>
+                <div className="mt-4 flex items-center gap-2 text-[11px] font-mono-label text-cream-dim">
+                  <ShieldCheck className="h-3.5 w-3.5 text-fezzy" />
+                  Secured by Paystack &amp; Safaricom Daraja · PCI-DSS
+                </div>
+
 
                 {paymentMethod === "lpp" && lppEnabled && (
                   <div className="mt-6 space-y-3 border-t border-cream/10 pt-6">

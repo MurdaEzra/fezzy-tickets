@@ -21,7 +21,7 @@ const HeroSlideshow = () => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [emblaRef, embla] = useEmblaCarousel(
     { loop: true, align: "start" },
-    [Autoplay({ delay: 4500, stopOnInteraction: false })],
+    [Autoplay({ delay: 4500, stopOnInteraction: false }) as any],
   );
   const [selected, setSelected] = useState(0);
 

@@ -496,8 +496,8 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
 </head>
 <body style="
   margin:0;padding:0;
-  background:#f1f5f9;
-  font-family:'Helvetica Neue',Arial,sans-serif;
+  background:#f4ede0;
+  font-family:'Helvetica Neue','Segoe UI',Arial,sans-serif;
   -webkit-font-smoothing:antialiased;
 ">
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -505,20 +505,48 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
       <td align="center" style="padding:40px 16px;">
         <table width="700" cellpadding="0" cellspacing="0" border="0" style="max-width:700px;width:100%;">
 
-          <!-- ── Header ── -->
+          <!-- ── Luxury Header — obsidian card, gold hairline, whisper serif ── -->
           <tr>
-            <td style="padding-bottom:28px;text-align:center;">
-              <img src="${LOGO_URL}"
-                   alt="Fezzy"
-                   width="120"
-                   style="max-width:120px;height:auto;display:block;margin:0 auto 16px;" />
-              <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#0f172a;">Your Tickets Are Here! 🎉</h1>
-              <p style="margin:0;font-size:14px;color:#64748b;">
-                Thanks for your purchase. Your booking reference is
-                <strong style="color:#0f172a;">${ref}</strong>.
-              </p>
+            <td style="padding-bottom:24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="
+                background:linear-gradient(135deg,#0b0b0d 0%,#171821 55%,#0b0b0d 100%);
+                border-radius:20px;
+                overflow:hidden;
+                box-shadow:0 30px 80px -30px rgba(0,0,0,0.55);
+              ">
+                <tr>
+                  <td style="height:2px;background:linear-gradient(90deg,transparent 0%,#d4a24c 20%,#f5d488 50%,#d4a24c 80%,transparent 100%);"></td>
+                </tr>
+                <tr>
+                  <td style="padding:34px 32px 30px;text-align:center;">
+                    <img src="${LOGO_URL}" alt="Fezzy" width="130"
+                         style="max-width:130px;height:auto;display:block;margin:0 auto 20px;filter:brightness(0) invert(1);" />
+                    <div style="font-size:10px;letter-spacing:0.42em;color:#d4a24c;text-transform:uppercase;margin-bottom:10px;">
+                      Admit One · Confirmed
+                    </div>
+                    <h1 style="margin:0 0 8px;font-family:'Playfair Display','Times New Roman',Georgia,serif;font-size:30px;font-weight:600;color:#f5e9cf;letter-spacing:0.5px;">
+                      Your tickets are ready.
+                    </h1>
+                    <p style="margin:0;font-size:13px;color:#a9a3a0;line-height:1.6;">
+                      A curated confirmation for <strong style="color:#f5e9cf;">${event.title}</strong>.<br>
+                      Booking reference <strong style="color:#d4a24c;letter-spacing:0.08em;">${ref}</strong>
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="height:1px;background:linear-gradient(90deg,transparent,#3a3226,transparent);"></td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 28px 22px;text-align:center;">
+                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #3a3226;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#d4a24c;text-transform:uppercase;">M-Pesa</span>
+                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #3a3226;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#d4a24c;text-transform:uppercase;">Visa</span>
+                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #3a3226;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#d4a24c;text-transform:uppercase;">Paystack Secured</span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+
 
           <!-- ── Tickets ── -->
           <tr>
