@@ -34,6 +34,7 @@ import Account from "./pages/Account.tsx";
 import ResaleMarketplace from "./pages/ResaleMarketplace.tsx";
 import VerifyResaleListing from "./pages/VerifyResaleListing.tsx";
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 const ErrorLogging = () => {
   const { user } = useAuth();
   useEffect(() => {
@@ -48,6 +49,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <Analytics />
+      <SpeedInsights />
       <CookieConsentProvider>
         <BrowserRouter>
           <AuthProvider>
