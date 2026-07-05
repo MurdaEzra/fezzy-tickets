@@ -1,6 +1,6 @@
 
 -- Add new enums
-CREATE TYPE ticket_resale_listing_status AS ENUM ('active', 'cancelled', 'completed');
+CREATE TYPE ticket_resale_listing_status AS ENUM ('pending', 'active', 'cancelled', 'completed');
 CREATE TYPE ticket_payout_status AS ENUM ('pending', 'processing', 'completed', 'failed');
 CREATE TYPE ticket_ownership_source AS ENUM ('initial_purchase', 'resale_purchase');
 
@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS ticket_resale_listings (
     ticket_id uuid NOT NULL UNIQUE REFERENCES tickets(id) ON DELETE CASCADE,
     seller_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     resale_price_kes integer NOT NULL,
-    status ticket_resale_listing_status NOT NULL DEFAULT 'active',
-    listed_at timestamptz NOT NULL DEFAULT now(),
+    status ticket_resale_listing_status NOT NULL DEFAULT 'pending',
+    verification_token text,
+    verification_expires_at timestamptz,
+    listed_at timestamptz,
     cancelled_at timestamptz,
     completed_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),

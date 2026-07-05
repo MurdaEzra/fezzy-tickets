@@ -32,6 +32,7 @@ import StartSelling from "./pages/StartSelling.tsx";
 import LppPortal from "./pages/LppPortal.tsx";
 import Account from "./pages/Account.tsx";
 import ResaleMarketplace from "./pages/ResaleMarketplace.tsx";
+import VerifyResaleListing from "./pages/VerifyResaleListing.tsx";
 
 const ErrorLogging = () => {
   const { user } = useAuth();
@@ -60,8 +61,9 @@ const App = () => (
               <Route path="/lpp" element={<LppPortal />} />
               <Route path="/application-pending" element={<ApplicationPending />} />
               <Route path="/account" element={<Account />} />
-              <Route path="/resale" element={<ResaleMarketplace />} />
-              <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
+            <Route path="/resale" element={<ResaleMarketplace />} />
+            <Route path="/verify-resale-listing" element={<VerifyResaleListing />} />
+            <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
               <Route path="/dashboard" element={<OrganizerDashboard />} />
               <Route path="/dashboard/events/:id" element={<EventEditor />} />
               <Route path="/admin" element={<SuperAdminDashboard />} />

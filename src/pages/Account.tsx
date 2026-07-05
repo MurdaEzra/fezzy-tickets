@@ -141,7 +141,7 @@ const Account = () => {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-list-ticket`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-initiate-listing`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -159,7 +159,7 @@ const Account = () => {
         throw new Error(result.error || "Failed to list ticket");
       }
 
-      toast.success("Your ticket has been listed for resale");
+      toast.success("Check your email to verify your listing!");
 
       setIsListingDialogOpen(false);
       fetchListings();
@@ -251,7 +251,8 @@ const Account = () => {
                   {tickets.map((ticket) => {
                     const event = ticket.events;
                     const tier = ticket.ticket_tiers;
-                    const isListed = listings.some(l => l.ticket_id === ticket.id && l.status === "active");
+                    const isListed = listings.some(l => l.ticket_id === ticket.id && (l.status === "active" || l.status === "pending"));
+                    const listingStatus = listings.find(l => l.ticket_id === ticket.id)?.status;
                     return (
                       <article key={ticket.id} className="flex bg-ink transition-colors hover:bg-ink-card">
                         <div className="relative w-32 flex-shrink-0 bg-ink-soft sm:w-44">
@@ -273,7 +274,7 @@ const Account = () => {
                             </div>
                             {isListed && (
                               <span className="flex items-center gap-1 text-xs text-amber-400">
-                                <Tag className="h-3 w-3" /> Listed
+                                <Tag className="h-3 w-3" /> {listingStatus === "pending" ? "Pending Verification" : "Listed"}
                               </span>
                             )}
                           </div>
@@ -341,8 +342,14 @@ const Account = () => {
                         <div className="flex-1 p-5">
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className={`font-mono-label ${listing.status === "active" ? "text-green-400" : listing.status === "completed" ? "text-blue-400" : "text-gray-400"}`}>
-                                {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
+                              <p className={`font-mono-label ${
+                                listing.status === "active" ? "text-green-400" :
+                                listing.status === "pending" ? "text-amber-400" :
+                                listing.status === "completed" ? "text-blue-400" : "text-gray-400"
+                              }`}>
+                                {listing.status === "pending" 
+                                  ? "Pending Verification" 
+                                  : listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
                               </p>
                               <h3 className="mt-1 font-display text-lg leading-tight text-cream">
                                 {event?.title ?? "Event unavailable"}
@@ -354,12 +361,17 @@ const Account = () => {
                             <p className="flex items-center gap-1.5">
                               <Tag className="h-3 w-3 text-fezzy" /> {tier?.name ?? "Ticket"}
                             </p>
+                            {listing.status === "pending" && listing.verification_expires_at && (
+                              <p className="text-amber-400">
+                                Verification link expires at {new Date(listing.verification_expires_at).toLocaleString()}
+                              </p>
+                            )}
                           </div>
                           <div className="mt-4 flex items-center justify-between border-t border-cream/10 pt-3">
                             <span className="font-display text-lg text-green-400">
-                              KES {listing.resale_price_kes.toLocaleString()}
+                              {formatPrice(listing.resale_price_kes)}
                             </span>
-                            {listing.status === "active" && (
+                            {(listing.status === "active" || listing.status === "pending") && (
                               <Button
                                 variant="destructive"
                                 size="sm"
