@@ -304,6 +304,17 @@ Deno.serve(async (req) => {
       Show the QR code at the gate.
       Screenshots are accepted.
     </p>
+    <div style="
+      border-top: 1px solid #ddd;
+      padding-top: 24px;
+      margin-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+    ">
+      <p style="margin: 4px 0;">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+      <p style="margin: 4px 0;">Phone: +254728135200</p>
+    </div>
   </div>
 </body>
 </html>

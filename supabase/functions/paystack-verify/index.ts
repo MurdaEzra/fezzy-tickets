@@ -601,6 +601,12 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
               <p style="margin:0;font-size:11px;color:#94a3b8;">
                 © ${new Date().getFullYear()} Fezzy Tickets &nbsp;·&nbsp; All rights reserved
               </p>
+              <p style="margin:16px 0 4px 0;font-size:11px;color:#94a3b8;">
+                Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya
+              </p>
+              <p style="margin:4px 0;font-size:11px;color:#94a3b8;">
+                Phone: +254728135200
+              </p>
             </td>
           </tr>
 

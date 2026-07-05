@@ -36,9 +36,13 @@ async function sendInstallmentReceiptEmail({ plan, installment, event, receipt, 
         ${receipt ? `<p style="margin:0;color:#f6f2ea"><b>M-Pesa receipt:</b> ${receipt}</p>` : ""}
       </div>
 
-      <p style="margin:0 0 8px;font-size:13px;color:#a3a3a8;line-height:1.6">
+      <p style="margin:0 0 8px;font-size:13px;color:#a3a3a8;line-height:1.6;">
         ${callout}
       </p>
+      <div style="border-top:1px solid #2a2a2f;padding-top:16px;margin-top:16px;">
+        <p style="margin:4px 0;font-size:12px;color:#a3a3a8;">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+        <p style="margin:4px 0;font-size:12px;color:#a3a3a8;">Phone: +254728135200</p>
+      </div>
     </div>
   </div>`;
 

@@ -95,19 +95,27 @@ async function sendBrevoEmail(
         ],
         subject: `Check-in Confirmed - ${eventTitle}`,
         htmlContent: `
-          <h2>Check-in Successful</h2>
+          <div style="font-family: Arial, sans-serif; color: #14213d; line-height: 1.5;">
+            <h2 style="margin-bottom: 8px;">Check-in Successful</h2>
 
-          <p>Hello ${name},</p>
+            <p>Hello ${name},</p>
 
-          <p>Your ticket has been successfully checked in.</p>
+            <p>Your ticket has been successfully checked in.</p>
 
-          <ul>
-            <li><strong>Event:</strong> ${eventTitle}</li>
-            <li><strong>Venue:</strong> ${venue ?? 'TBA'}</li>
-            <li><strong>Time:</strong> ${checkedInAt}</li>
-          </ul>
+            <ul>
+              <li><strong>Event:</strong> ${eventTitle}</li>
+              <li><strong>Venue:</strong> ${venue ?? 'TBA'}</li>
+              <li><strong>Time:</strong> ${checkedInAt}</li>
+            </ul>
 
-          <p>Enjoy the event.</p>
+            <p>Enjoy the event.</p>
+            
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee;">
+              <p style="margin: 4px 0; font-size: 12px; color: #60708a;">Fezzy Tickets</p>
+              <p style="margin: 4px 0; font-size: 12px; color: #60708a;">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+              <p style="margin: 4px 0; font-size: 12px; color: #60708a;">Phone: +254728135200</p>
+            </div>
+          </div>
         `,
       }),
     });

@@ -263,17 +263,16 @@ Deno.serve(async (req) => {
             </tr>
 
             <tr>
-              <td style="padding:30px 44px 40px 44px; font-family: Arial, 'Helvetica Neue', sans-serif;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                  <tr><td style="border-top:1px solid #eceeec; line-height:0; font-size:0;">&nbsp;</td></tr>
-                </table>
-                <p style="margin:22px 0 4px 0; color:#0a0a0a; font-size:13px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">Fezzy Tickets</p>
-                <p style="margin:22px 0 4px 0; color:#0a0a0a; font-size:13px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">Fezzy Tickets</p>
-                <p style="margin:0 0 12px 0; color:#9aa0a6; font-size:12px; line-height:1.6;">This is an automated message regarding your organizer application. If you didn't request this, you can safely ignore it.</p>
-                <p style="margin:0; color:#b7bcc0; font-size:11px; line-height:1.6;">Along Karen Rd, Langata<br>P.O. BOX 00502-00502, Karen<br>Nairobi, Kenya</p>
-                <p style="margin:0; color:#9aa0a6; font-size:12px; line-height:1.6;">This is an automated message regarding your organizer application. If you didn't request this, you can safely ignore it.</p>
-              </td>
-            </tr>
+            <td style="padding:30px 44px 40px 44px;font-family: Arial, 'Helvetica Neue', sans-serif;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="border-top:1px solid #eceeec;line-height:0;font-size:0;">&nbsp;</td></tr>
+              </table>
+              <p style="margin:22px 0 4px 0;color:#0a0a0a;font-size:13px;font-weight:900;letter-spacing:0.5px;text-transform:uppercase;">Fezzy Tickets</p>
+              <p style="margin:0 0 12px 0;color:#9aa0a6;font-size:12px;line-height:1.6;">This is an automated message regarding your organizer application. If you didn't request this, you can safely ignore it.</p>
+              <p style="margin:4px 0;color:#9aa0a6;font-size:12px;line-height:1.6;">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+              <p style="margin:4px 0;color:#9aa0a6;font-size:12px;line-height:1.6;">Phone: +254728135200</p>
+            </td>
+          </tr>
 
           </table>
         </td>

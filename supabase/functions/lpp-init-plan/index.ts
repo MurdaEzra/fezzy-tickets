@@ -128,6 +128,10 @@ async function sendScheduleEmail({ plan, installments }: { plan: any; installmen
         Pay every installment at <b style="color:#f6f2ea">fezzytickets.com/lpp</b> using your ref no. <b style="color:#ff6b3d">${plan.ref_no}</b>.
         Your ticket will be issued and emailed to you only after the full amount is cleared.
       </p>
+      <div style="border-top:1px solid #2a2a2f;padding-top:16px;margin-top:16px">
+        <p style="margin:4px 0;font-size:12px;color:#a3a3a8">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+        <p style="margin:4px 0;font-size:12px;color:#a3a3a8">Phone: +254728135200</p>
+      </div>
     </div>
   </div>`;
 
