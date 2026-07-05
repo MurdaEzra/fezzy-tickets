@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -40,12 +40,30 @@ const Index = () => {
   const [selectedCity, setSelectedCity] = useState("Nairobi");
   const [email, setEmail] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  
   const { data: events = [] } = useFeaturedEvents(12);
   const { data: homepageSettings } = useHomepageSettings();
   const headliner = pickHeadliner(events, homepageSettings?.headliner_event_id);
-  const headlinerTiers = headliner?.ticket_tiers ?? [];
-  const headlinerLowestPrice = headliner ? lowestTierPrice(headlinerTiers) : null;
-  const headlinerBuying = headlinerTiers.reduce((sum, tier) => sum + tier.sold, 0);
+  
+  // Create slideshow array: include headliner first, then first 2 featured events
+  const slideshowEvents = [
+    headliner,
+    ...events.slice(0, 2)
+  ].filter(Boolean);
+
+  const currentSlide = slideshowEvents[currentSlideIndex] || headliner;
+  const currentTiers = currentSlide?.ticket_tiers ?? [];
+  const currentLowestPrice = currentSlide ? lowestTierPrice(currentTiers) : null;
+  const currentBuying = currentTiers.reduce((sum, tier) => sum + tier.sold, 0);
+
+  // Auto slide every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlideIndex((prev) => (prev + 1) % slideshowEvents.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [slideshowEvents.length]);
 
   // Trending events: use homepage settings if available, else fallback to first events
   const trendingEventIds = homepageSettings?.trending_event_ids ?? [];
@@ -117,12 +135,17 @@ const Index = () => {
       <main>
         <section className="relative overflow-hidden border-b border-cream/10 noise-overlay">
           <div className="absolute inset-0 z-0">
-            <img
-              src={headliner?.cover_image_url || headliner?.poster_url}
-              alt=""
-              aria-hidden="true"
-              className="h-full w-full object-cover object-center"
-            />
+            {slideshowEvents.map((event, index) => (
+              <img
+                key={index}
+                src={event?.cover_image_url || event?.poster_url || eventImages[index % eventImages.length]}
+                alt=""
+                aria-hidden="true"
+                className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-1000 ${
+                  index === currentSlideIndex ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            ))}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.75)_50%,rgba(0,0,0,0.92)_100%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,176,96,0.18)_0%,transparent_60%)]" />
           </div>
@@ -170,16 +193,17 @@ const Index = () => {
 
               <div className="col-span-12 lg:col-span-4">
                 <HeadlinerTicket
-                  title={headliner?.title ?? "Sol Fest 2026 - The Finale"}
-                  image={headliner?.cover_image_url || headliner?.poster_url || asset("sol-fest.jpg")}
-                  date={headliner ? formatEventDate(headliner.starts_at) : "Sat - 06 Dec 2026"}
-                  venue={`${headliner?.venue_name ?? "Kasarani Stadium"}, ${headliner?.city ?? "Nairobi"}`}
-                  buying={headlinerBuying || 3420}
-                  price={headlinerLowestPrice === null ? "Sales soon" : formatPrice(headlinerLowestPrice)}
-                  to={headliner ? `/events/${headliner.slug}` : "/events"}
+                  key={currentSlideIndex}
+                  title={currentSlide?.title ?? "Sol Fest 2026 - The Finale"}
+                  image={currentSlide?.cover_image_url || currentSlide?.poster_url || asset("sol-fest.jpg")}
+                  date={currentSlide ? formatEventDate(currentSlide.starts_at) : "Sat - 06 Dec 2026"}
+                  venue={`${currentSlide?.venue_name ?? "Kasarani Stadium"}, ${currentSlide?.city ?? "Nairobi"}`}
+                  buying={currentBuying || 3420}
+                  price={currentLowestPrice === null ? "Sales soon" : formatPrice(currentLowestPrice)}
+                  to={currentSlide ? `/events/${currentSlide.slug}` : "/events"}
                   tiers={
-                    headlinerTiers.length
-                      ? headlinerTiers.slice(0, 3).map((tier, index) => ({
+                    currentTiers.length
+                      ? currentTiers.slice(0, 3).map((tier, index) => ({
                         name: tier.name,
                         price: formatPrice(tier.price_kes),
                         note: `${ticketsRemaining(tier)} left`,
