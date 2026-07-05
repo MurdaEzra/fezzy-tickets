@@ -240,7 +240,7 @@ const Index = () => {
       </div>
       <div className="grid gap-px bg-cream/10 lg:col-span-8">
         {displayedCalendarEvents.map((item, index) => (
-          <Link key={`${item.day}-${item.title}`} to={item.slug ? `/events/${item.slug}` : "/events"} className="group grid gap-5 bg-ink-soft p-5 transition-colors hover:bg-ink-card sm:grid-cols-[92px_auto_1fr_auto]">
+          <Link key={`${item.day}-${item.title}`} to={item.slug ? `/events/${item.slug}` : "/events"} className="group grid grid-cols-1 gap-4 bg-ink-soft p-5 transition-colors hover:bg-ink-card sm:grid-cols-[92px_auto_1fr_auto] sm:gap-5">
             <div className={`grid h-20 w-20 place-items-center text-center text-ink ${index === 0 ? "bg-fezzy" : "bg-cream"}`}>
               <div>
                 <div className="font-mono-label text-ink">{item.day}</div>

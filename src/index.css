@@ -86,8 +86,10 @@
   html {
     @apply scroll-smooth;
   }
+  html,
   body {
     @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
     font-family: 'Inter', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11";
   }
