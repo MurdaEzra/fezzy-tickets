@@ -24,6 +24,53 @@ interface Body {
   paymentMethod: string;
 }
 
+async function sendBrevoEmail({
+  recipientEmail,
+  subject,
+  htmlContent,
+}: {
+  recipientEmail: string;
+  subject: string;
+  htmlContent: string;
+}) {
+  const apiKey = Deno.env.get("BREVO_API_KEY");
+
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY not configured");
+  }
+
+  const response = await fetch(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: "Fezzy Tickets",
+          email: "tickets@fezzy.app",
+        },
+        to: [
+          {
+            email: recipientEmail,
+          },
+        ],
+        subject,
+        htmlContent,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  return await response.json();
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
@@ -93,6 +140,7 @@ Deno.serve(async (req) => {
       .select(`
         *,
         tickets(*,
+          orders(*),
           events(*),
           ticket_tiers(*)
         )
@@ -171,7 +219,7 @@ Deno.serve(async (req) => {
 
     // For this example, we'll simulate a successful payment.
     // In a real implementation, you would integrate with payment providers here.
-    await completeResalePurchase(supabase, transaction.id, listingId, user.id, listing.ticket_id, listing.seller_id, resalePriceKes, platformFeeKes, event);
+    await completeResalePurchase(supabase, transaction.id, listingId, user.id, listing.ticket_id, listing.seller_id, resalePriceKes, platformFeeKes, event, listing);
 
     return new Response(
       JSON.stringify({
@@ -210,7 +258,8 @@ async function completeResalePurchase(
   sellerId: string,
   resalePriceKes: number,
   platformFeeKes: number,
-  event: any
+  event: any,
+  listing: any
 ) {
   // Update transaction status
   await supabase
@@ -340,5 +389,73 @@ async function completeResalePurchase(
     } catch (emailError) {
       console.error("Failed to send ticket email:", emailError);
     }
+  }
+
+  // Send email to seller
+  const dateStr = new Date(event.starts_at).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const sellerEmailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Your Ticket Has Been Sold</title>
+</head>
+<body
+  style="
+    background:#FFF8EE;
+    padding:24px;
+    font-family:Arial,sans-serif;
+  "
+>
+  <div
+    style="
+      max-width:700px;
+      margin:auto;
+    "
+  >
+    <h1>Ticket Sold!</h1>
+    <p>Congratulations! Your ticket for <strong>${event.title}</strong> has been successfully sold.</p>
+    
+    <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(13,27,42,.18);border:1px solid #ebe2cf;margin-bottom:24px;padding:24px">
+      <p><strong>Event:</strong> ${event.title}</p>
+      <p><strong>Date:</strong> ${dateStr}</p>
+      <p><strong>Ticket Type:</strong> ${listing.tickets.ticket_tiers?.name ?? "General"}</p>
+      <p><strong>Resale Price:</strong> KES ${resalePriceKes.toLocaleString()}</p>
+      <p><strong>Transaction ID:</strong> ${transactionId}</p>
+    </div>
+
+    <p>Your payout is now in progress and will be processed soon.</p>
+    <div style="
+      border-top: 1px solid #ddd;
+      padding-top: 24px;
+      margin-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+    ">
+      <p style="margin: 4px 0;">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+      <p style="margin: 4px 0;">Phone: +254728135200</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+  try {
+    await sendBrevoEmail({
+      recipientEmail: listing.tickets.orders.guest_email,
+      subject: `Your Ticket for ${event.title} Has Been Sold`,
+      htmlContent: sellerEmailHtml,
+    });
+  } catch (emailError) {
+    console.error("[RESALE-PURCHASE SELLER EMAIL ERROR]", emailError);
   }
 }
