@@ -161,35 +161,9 @@ const Index = () => {
                         className="min-w-0 flex-1 bg-transparent text-sm text-cream outline-none placeholder:text-ash"
                       />
                     </label>
-                    <label className="flex items-center py-3 pl-4 pr-3 sm:border-r sm:border-cream/15">
-                      <MapPin className="mr-2 h-4 w-4 shrink-0 text-fezzy" />
-                      <select className="cursor-pointer bg-transparent pr-2 font-mono-label text-cream-dim outline-none">
-                        {["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret"].map((city) => (
-                          <option key={city} className="bg-ink" value={city}>
-                            {city.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                     <Link to="/events" className="btn-ember justify-center sm:px-6">
                       Find tickets
                     </Link>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span className="mr-1 font-mono-label text-ash">Browse:</span>
-                    {categories.slice(0, 8).map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => setActiveCategory(category)}
-                        className={`border px-3 py-1.5 font-mono-label transition-all ${activeCategory === category
-                            ? "border-cream bg-cream text-ink"
-                            : "border-cream/20 text-cream-dim hover:border-fezzy hover:text-fezzy"
-                          }`}
-                      >
-                        {category}
-                      </button>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -478,11 +452,11 @@ const Index = () => {
                         <div className="mb-1.5 block font-mono-label text-cream-dim">Your city</div>
                         <div className="grid grid-cols-5 gap-1">
                           {[
-                            ["Nairobi", "NAIR"],
-                            ["Mombasa", "MOMB"],
-                            ["Kisumu", "KISU"],
-                            ["Nakuru", "NAKU"],
-                            ["Eldoret", "ELDO"],
+                            ["Nairobi", "NBO"],
+                            ["Mombasa", "MSA"],
+                            ["Kisumu", "KIS"],
+                            ["Nakuru", "NAK"],
+                            ["Eldoret", "ELD"],
                           ].map(([city, label]) => (
                             <button
                               key={city}
