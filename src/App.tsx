@@ -30,6 +30,8 @@ import InviteAccept from "./pages/InviteAccept.tsx";
 import ApplicationPending from "./pages/ApplicationPending.tsx";
 import StartSelling from "./pages/StartSelling.tsx";
 import LppPortal from "./pages/LppPortal.tsx";
+import Account from "./pages/Account.tsx";
+import ResaleMarketplace from "./pages/ResaleMarketplace.tsx";
 
 const ErrorLogging = () => {
   const { user } = useAuth();
@@ -57,7 +59,8 @@ const App = () => (
               <Route path="/start-selling" element={<StartSelling />} />
               <Route path="/lpp" element={<LppPortal />} />
               <Route path="/application-pending" element={<ApplicationPending />} />
-              <Route path="/account" element={<Navigate to="/events" replace />} />
+              <Route path="/account" element={<Account />} />
+              <Route path="/resale" element={<ResaleMarketplace />} />
               <Route path="/organizer/:id" element={<OrganizerPublicPage />} />
               <Route path="/dashboard" element={<OrganizerDashboard />} />
               <Route path="/dashboard/events/:id" element={<EventEditor />} />

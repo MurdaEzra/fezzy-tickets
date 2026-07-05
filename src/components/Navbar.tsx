@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
   { to: "/events", label: "Events" },
+  { to: "/resale", label: "Resale" },
   { to: "/events#venues", label: "Venues" },
   { to: "/events", label: "Artists" },
   { to: "/lpp", label: "LPP" },
@@ -141,6 +142,9 @@ const Navbar = () => {
                   <DropdownMenuContent align="end" className="w-56">
                     <div className="truncate px-2 py-1.5 text-xs text-muted-foreground">{user.email}</div>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/account")}>
+                      <Ticket className="mr-2 h-4 w-4" /> My account
+                    </DropdownMenuItem>
                     {isOrganizer && (
                       <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                         <Ticket className="mr-2 h-4 w-4" /> Organizer dashboard
@@ -199,6 +203,13 @@ const Navbar = () => {
                 ))}
                 {user ? (
                   <>
+                    <Link
+                      to="/account"
+                      onClick={() => setOpen(false)}
+                      className="font-mono-label text-cream-dim hover:text-cream"
+                    >
+                      My account
+                    </Link>
                     {(isOrganizer || isAdmin) && (
                       <button
                         className="text-left font-mono-label text-cream-dim hover:text-cream"
