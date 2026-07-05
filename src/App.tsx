@@ -33,7 +33,7 @@ import LppPortal from "./pages/LppPortal.tsx";
 import Account from "./pages/Account.tsx";
 import ResaleMarketplace from "./pages/ResaleMarketplace.tsx";
 import VerifyResaleListing from "./pages/VerifyResaleListing.tsx";
-
+import { Analytics } from '@vercel/analytics/react';
 const ErrorLogging = () => {
   const { user } = useAuth();
   useEffect(() => {
@@ -47,6 +47,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <Analytics />
       <CookieConsentProvider>
         <BrowserRouter>
           <AuthProvider>
@@ -83,6 +84,7 @@ const App = () => (
       </CookieConsentProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  
 );
 
 export default App;
