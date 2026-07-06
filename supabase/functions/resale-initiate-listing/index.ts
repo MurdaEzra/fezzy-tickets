@@ -236,12 +236,17 @@ Deno.serve(async (req) => {
     }
 
     // Check if ticket is already listed
-    const { data: existingListing } = await supabase
+    const { data: existingListing, error: existingListingError } = await supabase
       .from("ticket_resale_listings")
       .select("*")
       .eq("ticket_id", ticketId)
       .neq("status", "cancelled")
-      .single();
+      .maybeSingle();
+
+    // Only error if it's not "PGRST116" (no rows found)
+    if (existingListingError && existingListingError.code !== "PGRST116") {
+      throw existingListingError;
+    }
 
     if (existingListing) {
       return new Response(
@@ -258,8 +263,8 @@ Deno.serve(async (req) => {
 
     // Check price limits
     const originalPrice = ticket.ticket_tiers.price_kes;
-    const minPrice = originalPrice * (event.min_resale_percentage / 100);
-    const maxPrice = originalPrice * (event.max_resale_percentage / 100);
+    const minPrice = originalPrice * ((event.min_resale_percentage ?? 80) / 100);
+    const maxPrice = originalPrice * ((event.max_resale_percentage ?? 120) / 100);
 
     if (resalePriceKes < minPrice || resalePriceKes > maxPrice) {
       return new Response(
@@ -396,9 +401,12 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("[RESALE-INITIATE-LISTING ERROR]", error);
-
+    const errorMessage =
+      typeof error === "object" && error !== null && "message" in error
+        ? error.message
+        : String(error);
     return new Response(
-      JSON.stringify({ error: String(error) }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: {

@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const ALLOWED_ORIGINS = [
   "https://fezzytickets.com",
   "http://localhost:8080",
+  "http://localhost:8083",
 ];
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
