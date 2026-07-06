@@ -56,6 +56,7 @@ const Account = () => {
   const [selectedTicket, setSelectedTicket] = useState<AccountTicket | null>(null);
   const [resalePrice, setResalePrice] = useState("");
   const [isListingDialogOpen, setIsListingDialogOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -138,6 +139,12 @@ const Account = () => {
 
   const submitListing = async () => {
     if (!selectedTicket || !resalePrice) return;
+    setIsListingDialogOpen(false);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const confirmListing = async () => {
+    if (!selectedTicket || !resalePrice) return;
 
     try {
       setIsSubmitting(true);
@@ -159,8 +166,9 @@ const Account = () => {
         throw new Error(result.error || "Failed to list ticket");
       }
 
-      toast.success("Check your email to verify your listing!");
+      toast.success("Your ticket is now listed for resale!");
 
+      setIsConfirmDialogOpen(false);
       setIsListingDialogOpen(false);
       fetchListings();
       fetchAccountTickets().then(setTickets);
@@ -475,7 +483,43 @@ const Account = () => {
               className="bg-fezzy hover:bg-fezzy/90"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              List Ticket
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent className="bg-ink text-cream border-cream/20">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Are you sure?</DialogTitle>
+            <DialogDescription className="text-cream-dim">
+              By listing your ticket, you're making it available for sale in the Fezzy Tickets resale marketplace.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTicket && (
+            <div className="p-4 bg-ink-card rounded-lg border border-cream/10">
+              <p className="font-display text-lg">{selectedTicket.events?.title}</p>
+              <p className="text-sm text-cream-dim mt-1">
+                {selectedTicket.ticket_tiers?.name} - Resale price: {formatPrice(parseInt(resalePrice || "0"))}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="default"
+              onClick={() => setIsConfirmDialogOpen(false)}
+              className="bg-transparent border border-cream/20 hover:bg-ink-card"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmListing}
+              disabled={isSubmitting}
+              className="bg-fezzy hover:bg-fezzy/90"
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Continue for Resale
             </Button>
           </DialogFooter>
         </DialogContent>

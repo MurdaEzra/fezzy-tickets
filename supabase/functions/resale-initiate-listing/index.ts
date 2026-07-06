@@ -266,20 +266,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate verification token
-    const verificationToken = crypto.randomUUID();
-    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    // Create the pending listing
+    // Create active listing directly
     const { data: listing, error: listingError } = await supabase
       .from("ticket_resale_listings")
       .insert({
         ticket_id: ticketId,
         seller_id: user.id,
         resale_price_kes: resalePriceKes,
-        status: "pending",
-        verification_token: verificationToken,
-        verification_expires_at: verificationExpiresAt.toISOString(),
+        status: "active",
+        listed_at: new Date().toISOString(),
       })
       .select("*")
       .single();
@@ -292,14 +287,14 @@ Deno.serve(async (req) => {
     await supabase.from("ticket_activity_logs").insert({
       ticket_id: ticketId,
       user_id: user.id,
-      action: "initiated_resale_listing",
+      action: "listed_for_resale",
       metadata: {
         resale_price_kes: resalePriceKes,
         listing_id: listing.id,
       },
     });
 
-    // Send verification email
+    // Send confirmation email instead of verification
     const dateStr = new Date(event.starts_at).toLocaleDateString("en-GB", {
       weekday: "long",
       day: "numeric",
@@ -308,14 +303,12 @@ Deno.serve(async (req) => {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const appUrl = Deno.env.get("APP_URL") || "https://fezzytickets.com";
-    const verificationUrl = `${appUrl}/verify-resale-listing?token=${verificationToken}`;
     const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Verify Your Resale Listing</title>
+<title>Your Ticket Is Listed for Resale</title>
 </head>
 <body
   style="
@@ -330,8 +323,8 @@ Deno.serve(async (req) => {
       margin:auto;
     "
   >
-    <h1>Verify Your Resale Listing</h1>
-    <p>Thanks for listing your ticket for resale! Please verify your listing by clicking the button below:</p>
+    <h1>Ticket Listed for Resale!</h1>
+    <p>Great news! Your ticket is now listed for resale on Fezzy Tickets.</p>
     
     <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(13,27,42,.18);border:1px solid #ebe2cf;margin-bottom:24px;padding:24px">
       <p><strong>Event:</strong> ${event.title}</p>
@@ -340,11 +333,7 @@ Deno.serve(async (req) => {
       <p><strong>Resale Price:</strong> KES ${resalePriceKes.toLocaleString()}</p>
     </div>
 
-    <a href="${verificationUrl}" style="display:inline-block;padding:12px 24px;background-color:#1FAD66;color:white;font-weight:bold;border-radius:8px;text-decoration:none;margin-bottom:24px">
-      Verify &amp; Activate Listing
-    </a>
-    
-    <p>This link will expire in 24 hours.</p>
+    <p>You can manage your listing from your Fezzy Tickets account dashboard.</p>
     
     <div style="
       border-top: 1px solid #ddd;
@@ -365,7 +354,7 @@ Deno.serve(async (req) => {
     try {
       await sendBrevoEmail({
         recipientEmail: ticket.orders.guest_email,
-        subject: `Verify Your Resale Listing - ${event.title}`,
+        subject: `Your Ticket Is Listed for Resale - ${event.title}`,
         htmlContent: emailHtml,
       });
     } catch (emailError) {
