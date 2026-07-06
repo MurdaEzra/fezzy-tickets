@@ -250,7 +250,11 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
   if (!event) throw new Error("Order event missing for ticket delivery");
 
   const accent = event?.ticket_design?.accent ?? "#7C3AED";
-  const ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+    let ref = order.ref;
+    if (!ref) {
+      ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+      await admin.from("orders").update({ ref }).eq("id", orderId);
+    }
 
   // Format start date/time
   const startDate = new Date(event.starts_at);

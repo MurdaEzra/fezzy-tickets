@@ -78,7 +78,7 @@ const Auth = () => {
       } else if (access === "rejected") {
         navigate("/application-pending", { replace: true });
       } else {
-        navigate("/start-selling", { replace: true });
+        navigate("/account", { replace: true });
       }
     })();
   }, [user, navigate, redirect]);
@@ -269,7 +269,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/account`,
         },
       });
       if (error) throw error;

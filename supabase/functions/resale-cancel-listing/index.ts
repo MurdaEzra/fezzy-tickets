@@ -49,7 +49,7 @@ async function sendBrevoEmail({
       body: JSON.stringify({
         sender: {
           name: "Fezzy Tickets",
-          email: "tickets@fezzy.app",
+          email: "hello@fezzytickets.com",
         },
         to: [
           {
@@ -175,10 +175,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if listing is active
-    if (listing.status !== "active") {
+    // Check if listing is active or pending
+    if (listing.status !== "active" && listing.status !== "pending") {
       return new Response(
-        JSON.stringify({ error: "Listing is not active" }),
+        JSON.stringify({ error: "Listing cannot be cancelled" }),
         {
           status: 400,
           headers: {

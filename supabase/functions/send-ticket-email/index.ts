@@ -51,7 +51,7 @@ async function sendBrevoEmail({
       body: JSON.stringify({
         sender: {
           name: "Fezzy Tickets",
-          email: "tickets@fezzy.app",
+          email: "hello@fezzytickets.com",
         },
         to: [
           {
@@ -210,8 +210,11 @@ Deno.serve(async (req) => {
     const accent =
       event?.ticket_design?.accent ?? "#1FAD66";
 
-    const ref =
-      `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+    let ref = order.ref;
+    if (!ref) {
+      ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+      await supabase.from("orders").update({ ref }).eq("id", orderId);
+    }
 
     const dateStr = new Date(
       event.starts_at
