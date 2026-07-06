@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.lpp-pay-installment]
 verify_jwt = false
+
+[functions.resale-verify-listing]
+verify_jwt = false
