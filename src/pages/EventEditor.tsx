@@ -65,6 +65,11 @@ const EventEditor = () => {
   const [showLogo, setShowLogo] = useState(true);
   const [showQR, setShowQR] = useState(true);
   const [showDate, setShowDate] = useState(true);
+  const [allowResale, setAllowResale] = useState(false);
+  const [minResalePercentage, setMinResalePercentage] = useState(80);
+  const [maxResalePercentage, setMaxResalePercentage] = useState(120);
+  const [resaleFeePercentage, setResaleFeePercentage] = useState(10);
+  const [resaleCloseHoursBeforeEvent, setResaleCloseHoursBeforeEvent] = useState(24);
   const [tiers, setTiers] = useState<TierDraft[]>([
     { name: "General", price_kes: 1500, quantity: 100, description: "", valid_dates: [] },
   ]);
@@ -101,6 +106,11 @@ const EventEditor = () => {
         setShowLogo(td.showLogo ?? true);
         setShowQR(td.showQR ?? true);
         setShowDate(td.showDate ?? true);
+        setAllowResale(ev.allow_resale ?? false);
+        setMinResalePercentage(ev.min_resale_percentage ?? 80);
+        setMaxResalePercentage(ev.max_resale_percentage ?? 120);
+        setResaleFeePercentage(ev.resale_fee_percentage ?? 10);
+        setResaleCloseHoursBeforeEvent(ev.resale_close_hours_before_event ?? 24);
         const { data: ts } = await supabase.from("ticket_tiers").select("*").eq("event_id", id).order("sort_order");
         if (ts && ts.length) {
           setTiers(ts.map((t) => ({
@@ -166,6 +176,11 @@ const EventEditor = () => {
         ticket_design: { theme, accent, pattern, seatLabel, seatArrangement, showLogo, showQR, showDate },
         fee_waived: false,
         status: publish ? "pending_approval" as const : "draft" as const,
+        allow_resale: allowResale,
+        min_resale_percentage: minResalePercentage,
+        max_resale_percentage: maxResalePercentage,
+        resale_fee_percentage: resaleFeePercentage,
+        resale_close_hours_before_event: resaleCloseHoursBeforeEvent,
       };
 
       let savedId = eventId;
@@ -483,48 +498,111 @@ const EventEditor = () => {
           )}
 
           {tab === "tickets" && (
-            <Card title="Ticket tiers">
-              <div className="space-y-3">
-                {tiers.map((t, i) => (
-                  <div key={i} className="space-y-3 rounded-2xl border border-border bg-background p-4">
-                    <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px_auto]">
-                      <Input value={t.name} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="e.g. Early Bird" />
-                      <Input type="number" value={t.price_kes} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, price_kes: Number(e.target.value) } : x))} placeholder="Price KES" />
-                      <Input type="number" value={t.quantity} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))} placeholder="Qty" />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setTiers((arr) => arr.filter((_, j) => j !== i))} disabled={tiers.length === 1}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                    <Input value={t.description} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} placeholder="Tier notes (optional)" />
-                    {eventDates.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valid dates</p>
-                        <div className="flex flex-wrap gap-2">
-                          {eventDates.map((date) => {
-                            const selected = t.valid_dates.includes(date);
-                            return (
-                              <button
-                                key={date}
-                                type="button"
-                                onClick={() => toggleTierDate(i, date)}
-                                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                                  selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
-                                }`}
-                              >
-                                {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                              </button>
-                            );
-                          })}
-                        </div>
+            <>
+              <Card title="Ticket tiers">
+                <div className="space-y-3">
+                  {tiers.map((t, i) => (
+                    <div key={i} className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                      <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px_auto]">
+                        <Input value={t.name} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="e.g. Early Bird" />
+                        <Input type="number" value={t.price_kes} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, price_kes: Number(e.target.value) } : x))} placeholder="Price KES" />
+                        <Input type="number" value={t.quantity} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))} placeholder="Qty" />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setTiers((arr) => arr.filter((_, j) => j !== i))} disabled={tiers.length === 1}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
-                    )}
-                  </div>
-                ))}
-                <Button type="button" variant="outline" onClick={() => setTiers((arr) => [...arr, { name: "", price_kes: 0, quantity: 100, description: "", valid_dates: [] }])}>
-                  <Plus className="h-4 w-4" /> Add tier
-                </Button>
-              </div>
-            </Card>
+                      <Input value={t.description} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} placeholder="Tier notes (optional)" />
+                      {eventDates.length > 0 && (
+                        <div>
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valid dates</p>
+                          <div className="flex flex-wrap gap-2">
+                            {eventDates.map((date) => {
+                              const selected = t.valid_dates.includes(date);
+                              return (
+                                <button
+                                  key={date}
+                                  type="button"
+                                  onClick={() => toggleTierDate(i, date)}
+                                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                    selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  {new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={() => setTiers((arr) => [...arr, { name: "", price_kes: 0, quantity: 100, description: "", valid_dates: [] }])}>
+                    <Plus className="h-4 w-4" /> Add tier
+                  </Button>
+                </div>
+              </Card>
+              
+              <Card title="Resale settings">
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      checked={allowResale} 
+                      onChange={(e) => setAllowResale(e.target.checked)} 
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-sm">Allow ticket resale for this event</span>
+                  </label>
+                  
+                  {allowResale && (
+                    <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                      <div>
+                        <Field label="Minimum resale price (%)">
+                          <Input 
+                            type="number" 
+                            value={minResalePercentage} 
+                            onChange={(e) => setMinResalePercentage(Number(e.target.value))}
+                            min="1"
+                            max="100"
+                          />
+                        </Field>
+                      </div>
+                      <div>
+                        <Field label="Maximum resale price (%)">
+                          <Input 
+                            type="number" 
+                            value={maxResalePercentage} 
+                            onChange={(e) => setMaxResalePercentage(Number(e.target.value))}
+                            min="1"
+                          />
+                        </Field>
+                      </div>
+                      <div>
+                        <Field label="Resale platform fee (%)">
+                          <Input 
+                            type="number" 
+                            value={resaleFeePercentage} 
+                            onChange={(e) => setResaleFeePercentage(Number(e.target.value))}
+                            min="0"
+                            max="100"
+                          />
+                        </Field>
+                      </div>
+                      <div>
+                        <Field label="Close resale (hours before event)">
+                          <Input 
+                            type="number" 
+                            value={resaleCloseHoursBeforeEvent} 
+                            onChange={(e) => setResaleCloseHoursBeforeEvent(Number(e.target.value))}
+                            min="0"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </>
           )}
 
           {tab === "design" && (
