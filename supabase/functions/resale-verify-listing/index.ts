@@ -50,7 +50,7 @@ async function sendBrevoEmail({
       body: JSON.stringify({
         sender: {
           name: "Fezzy Tickets",
-          email: "tickets@fezzy.app",
+          email: "hello@fezzytickets.com",
         },
         to: [
           {
