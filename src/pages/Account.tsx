@@ -370,9 +370,9 @@ const Account = () => {
                             <p className="flex items-center gap-1.5">
                               <Tag className="h-3 w-3 text-fezzy" /> {tier?.name ?? "Ticket"}
                             </p>
-                            {listing.status === "pending" && listing.verification_expires_at && (
+                            {listing.status === "pending_payment" && listing.payment_expires_at && (
                               <p className="text-amber-400">
-                                Verification link expires at {new Date(listing.verification_expires_at).toLocaleString()}
+                                Buyer reservation expires at {new Date(listing.payment_expires_at).toLocaleString()}
                               </p>
                             )}
                           </div>
