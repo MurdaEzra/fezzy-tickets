@@ -21,10 +21,11 @@ import { Label } from "@/components/ui/label";
 interface Listing {
   id: string;
   ticket_id: string;
-  seller_id: string;
+  seller_user_id: string;
   resale_price_kes: number;
   status: string;
   listed_at: string;
+  payment_expires_at: string | null;
   tickets: {
     id: string;
     holder_name: string;
