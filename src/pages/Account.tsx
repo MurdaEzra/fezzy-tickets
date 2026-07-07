@@ -21,10 +21,11 @@ import { Label } from "@/components/ui/label";
 interface Listing {
   id: string;
   ticket_id: string;
-  seller_id: string;
+  seller_user_id: string;
   resale_price_kes: number;
   status: string;
   listed_at: string;
+  payment_expires_at: string | null;
   tickets: {
     id: string;
     holder_name: string;
@@ -102,11 +103,11 @@ const Account = () => {
             events(*)
           )
         `)
-        .eq("seller_id", user.id)
+        .eq("seller_user_id", user.id)
         .order("listed_at", { ascending: false });
 
       if (error) throw error;
-      setListings(data || []);
+      setListings((data as unknown as Listing[]) || []);
     } catch (error) {
       console.error("Error fetching listings:", error);
       toast.error("Failed to load your listings");
@@ -294,7 +295,7 @@ const Account = () => {
                             <span className="font-display text-sm text-cream">
                               {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
                             </span>
-                            {!isListed && event?.allow_resale && ticket.status === "valid" && (
+                            {!isListed && event?.resale_enabled && ticket.status === "valid" && (
                               <Button
                                 variant="default"
                                 size="sm"
@@ -304,7 +305,7 @@ const Account = () => {
                                 List for Resale
                               </Button>
                             )}
-                            {!isListed && (!event?.allow_resale || ticket.status !== "valid") && (
+                            {!isListed && (!event?.resale_enabled || ticket.status !== "valid") && (
                               <span className="border border-cream/20 px-3 py-1 font-mono-label text-ash">QR emailed</span>
                             )}
                           </div>
@@ -369,9 +370,9 @@ const Account = () => {
                             <p className="flex items-center gap-1.5">
                               <Tag className="h-3 w-3 text-fezzy" /> {tier?.name ?? "Ticket"}
                             </p>
-                            {listing.status === "pending" && listing.verification_expires_at && (
+                            {listing.status === "pending_payment" && listing.payment_expires_at && (
                               <p className="text-amber-400">
-                                Verification link expires at {new Date(listing.verification_expires_at).toLocaleString()}
+                                Buyer reservation expires at {new Date(listing.payment_expires_at).toLocaleString()}
                               </p>
                             )}
                           </div>

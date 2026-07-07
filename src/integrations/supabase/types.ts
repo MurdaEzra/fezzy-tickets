@@ -30,8 +30,11 @@ export type Database = {
           longitude: number | null
           lpp_config: Json
           lpp_enabled: boolean
+          max_resale_percentage: number
+          min_resale_percentage: number
           organizer_id: string
           poster_url: string | null
+          resale_enabled: boolean
           slug: string
           starts_at: string
           status: Database["public"]["Enums"]["event_status"]
@@ -58,8 +61,11 @@ export type Database = {
           longitude?: number | null
           lpp_config?: Json
           lpp_enabled?: boolean
+          max_resale_percentage?: number
+          min_resale_percentage?: number
           organizer_id: string
           poster_url?: string | null
+          resale_enabled?: boolean
           slug: string
           starts_at: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -86,8 +92,11 @@ export type Database = {
           longitude?: number | null
           lpp_config?: Json
           lpp_enabled?: boolean
+          max_resale_percentage?: number
+          min_resale_percentage?: number
           organizer_id?: string
           poster_url?: string | null
+          resale_enabled?: boolean
           slug?: string
           starts_at?: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -171,6 +180,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings_public"
+            referencedColumns: ["event_id"]
           },
         ]
       }
@@ -484,6 +500,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_plans_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings_public"
+            referencedColumns: ["event_id"]
+          },
+          {
             foreignKeyName: "payment_plans_tier_id_fkey"
             columns: ["tier_id"]
             isOneToOne: false
@@ -576,6 +599,143 @@ export type Database = {
         }
         Relationships: []
       }
+      resale_transfers: {
+        Row: {
+          buyer_user_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          listing_id: string
+          payment_provider: string | null
+          payment_ref: string | null
+          previous_qr_token_hash: string
+          sale_price_kes: number
+          seller_user_id: string
+          ticket_id: string
+        }
+        Insert: {
+          buyer_user_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          payment_provider?: string | null
+          payment_ref?: string | null
+          previous_qr_token_hash: string
+          sale_price_kes: number
+          seller_user_id: string
+          ticket_id: string
+        }
+        Update: {
+          buyer_user_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          payment_provider?: string | null
+          payment_ref?: string | null
+          previous_qr_token_hash?: string
+          sale_price_kes?: number
+          seller_user_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resale_transfers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resale_transfers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings_public"
+            referencedColumns: ["listing_id"]
+          },
+          {
+            foreignKeyName: "resale_transfers_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_resale_listings: {
+        Row: {
+          buyer_user_id: string | null
+          cancelled_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          listed_at: string
+          payment_expires_at: string | null
+          payment_ref: string | null
+          resale_price_kes: number
+          seller_user_id: string
+          sold_at: string | null
+          status: Database["public"]["Enums"]["resale_listing_status"]
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_user_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          listed_at?: string
+          payment_expires_at?: string | null
+          payment_ref?: string | null
+          resale_price_kes: number
+          seller_user_id: string
+          sold_at?: string | null
+          status?: Database["public"]["Enums"]["resale_listing_status"]
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_user_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          listed_at?: string
+          payment_expires_at?: string | null
+          payment_ref?: string | null
+          resale_price_kes?: number
+          seller_user_id?: string
+          sold_at?: string | null
+          status?: Database["public"]["Enums"]["resale_listing_status"]
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_resale_listings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_resale_listings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings_public"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "ticket_resale_listings_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_tiers: {
         Row: {
           created_at: string
@@ -618,42 +778,58 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ticket_tiers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings_public"
+            referencedColumns: ["event_id"]
+          },
         ]
       }
       tickets: {
         Row: {
           checked_in_at: string | null
           created_at: string
+          current_owner_user_id: string | null
           event_id: string
           holder_email: string
           holder_name: string
           id: string
           order_id: string
           qr_token: string
+          qr_token_version: number
+          revoked_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           tier_id: string
         }
         Insert: {
           checked_in_at?: string | null
           created_at?: string
+          current_owner_user_id?: string | null
           event_id: string
           holder_email: string
           holder_name: string
           id?: string
           order_id: string
           qr_token?: string
+          qr_token_version?: number
+          revoked_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           tier_id: string
         }
         Update: {
           checked_in_at?: string | null
           created_at?: string
+          current_owner_user_id?: string | null
           event_id?: string
           holder_email?: string
           holder_name?: string
           id?: string
           order_id?: string
           qr_token?: string
+          qr_token_version?: number
+          revoked_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           tier_id?: string
         }
@@ -664,6 +840,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_resale_listings_public"
+            referencedColumns: ["event_id"]
           },
           {
             foreignKeyName: "tickets_order_id_fkey"
@@ -704,12 +887,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ticket_resale_listings_public: {
+        Row: {
+          event_city: string | null
+          event_cover_image_url: string | null
+          event_id: string | null
+          event_poster_url: string | null
+          event_slug: string | null
+          event_starts_at: string | null
+          event_title: string | null
+          event_venue_name: string | null
+          listed_at: string | null
+          listing_id: string | null
+          original_price_kes: number | null
+          resale_price_kes: number | null
+          status: Database["public"]["Enums"]["resale_listing_status"] | null
+          tier_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_organizer_admin_invite: {
         Args: { _token: string }
         Returns: string
+      }
+      complete_resale_transfer: {
+        Args: {
+          _listing_id: string
+          _new_qr_token: string
+          _payment_provider: string
+          _payment_ref: string
+        }
+        Returns: {
+          buyer_user_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          listing_id: string
+          payment_provider: string | null
+          payment_ref: string | null
+          previous_qr_token_hash: string
+          sale_price_kes: number
+          seller_user_id: string
+          ticket_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resale_transfers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_organizer_admin_invite: {
         Args: {
@@ -722,12 +950,42 @@ export type Database = {
           token: string
         }[]
       }
+      expire_stale_resale_reservations: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      initiate_resale_purchase: {
+        Args: {
+          _buyer_user_id: string
+          _expires_minutes?: number
+          _listing_id: string
+        }
+        Returns: {
+          buyer_user_id: string | null
+          cancelled_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          listed_at: string
+          payment_expires_at: string | null
+          payment_ref: string | null
+          resale_price_kes: number
+          seller_user_id: string
+          sold_at: string | null
+          status: Database["public"]["Enums"]["resale_listing_status"]
+          ticket_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ticket_resale_listings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       is_organizer_team_member: {
         Args: { _organizer_id: string; _user_id: string }
@@ -738,6 +996,12 @@ export type Database = {
       app_role: "admin" | "organizer" | "attendee" | "super_admin"
       event_status: "draft" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
+      resale_listing_status:
+        | "active"
+        | "pending_payment"
+        | "sold"
+        | "cancelled"
+        | "expired"
       ticket_status: "valid" | "used" | "refunded" | "cancelled"
     }
     CompositeTypes: {
@@ -869,6 +1133,13 @@ export const Constants = {
       app_role: ["admin", "organizer", "attendee", "super_admin"],
       event_status: ["draft", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
+      resale_listing_status: [
+        "active",
+        "pending_payment",
+        "sold",
+        "cancelled",
+        "expired",
+      ],
       ticket_status: ["valid", "used", "refunded", "cancelled"],
     },
   },

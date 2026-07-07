@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -9,72 +8,64 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { formatPrice } from "@/lib/eventsApi";
-import { Loader2, Search, Ticket, Calendar, MapPin, Tag } from "lucide-react";
+import { Loader2, Search, Ticket, Calendar, MapPin } from "lucide-react";
 
-interface Listing {
-  id: string;
-  ticket_id: string;
-  seller_id: string;
+/**
+ * Public marketplace listing shape — matches the ticket_resale_listings_public view.
+ * By design this view does NOT expose qr_token, buyer/seller identity, or holder PII.
+ * Do not add sensitive fields here without also changing the view definition.
+ */
+interface PublicListing {
+  listing_id: string;
   resale_price_kes: number;
-  status: string;
   listed_at: string;
-  tickets: {
-    id: string;
-    holder_name: string;
-    holder_email: string;
-    ticket_tiers: {
-      name: string;
-      price_kes: number;
-    };
-    events: {
-      id: string;
-      title: string;
-      starts_at: string;
-      venue_name: string;
-      city: string;
-      poster_url: string;
-    };
-  };
+  status: string;
+  tier_name: string;
+  original_price_kes: number;
+  event_id: string;
+  event_slug: string | null;
+  event_title: string;
+  event_starts_at: string | null;
+  event_venue_name: string | null;
+  event_city: string | null;
+  event_poster_url: string | null;
+  event_cover_image_url: string | null;
 }
 
 const ResaleMarketplace = () => {
   const { user } = useAuth();
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("price_asc");
 
   useEffect(() => {
     fetchListings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
 
   const fetchListings = async () => {
     try {
+      setLoading(true);
       let query = supabase
-        .from("ticket_resale_listings")
-        .select(`
-          *,
-          tickets(*,
-            ticket_tiers(*),
-            events(*)
-          )
-        `)
-        .eq("status", "active");
+        // Public, PII-safe view. Never query ticket_resale_listings directly from anon UI.
+        .from("ticket_resale_listings_public" as never)
+        .select("*");
 
       if (sortBy === "price_asc") {
         query = query.order("resale_price_kes", { ascending: true });
       } else if (sortBy === "price_desc") {
         query = query.order("resale_price_kes", { ascending: false });
       } else if (sortBy === "date_asc") {
-        query = query.order("listed_at", { ascending: true });
+        query = query.order("listed_at", { ascending: false });
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
-      setListings(data || []);
+      setListings((data as unknown as PublicListing[]) ?? []);
     } catch (error) {
-      console.error("Error fetching listings:", error);
+      console.error("Error fetching resale listings:", error);
       toast.error("Failed to load resale listings");
     } finally {
       setLoading(false);
@@ -88,40 +79,42 @@ const ResaleMarketplace = () => {
     }
 
     try {
-      setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-initiate-purchase`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+      setPurchasingId(listingId);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-initiate-purchase`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({ listingId, paymentMethod: "card" }),
         },
-        body: JSON.stringify({ listingId, paymentMethod: "card" }),
-      });
+      );
 
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || "Purchase failed");
       }
 
-      toast.success("Your ticket purchase was successful! Check your email for the new ticket.");
-
+      toast.success("Reserved — complete payment to receive your new ticket.");
       fetchListings();
     } catch (error) {
       console.error("Error purchasing ticket:", error);
       toast.error(error instanceof Error ? error.message : "An error occurred");
     } finally {
-      setLoading(false);
+      setPurchasingId(null);
     }
   };
 
   const filteredListings = listings.filter((listing) =>
-    listing.tickets.events.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.tickets.events.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.tickets.ticket_tiers.name.toLowerCase().includes(searchQuery.toLowerCase())
+    listing.event_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (listing.event_city ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    listing.tier_name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Date TBA";
     return new Date(dateString).toLocaleDateString("en-GB", {
       weekday: "long",
       day: "numeric",
@@ -164,7 +157,7 @@ const ResaleMarketplace = () => {
               <SelectContent className="bg-ink-card border-cream/20 text-cream">
                 <SelectItem value="price_asc">Price: Low to High</SelectItem>
                 <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                <SelectItem value="date_asc">Date: Newest First</SelectItem>
+                <SelectItem value="date_asc">Recently Listed</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -183,58 +176,62 @@ const ResaleMarketplace = () => {
             </div>
           ) : (
             <div className="grid gap-px bg-cream/10 md:grid-cols-2 lg:grid-cols-3">
-              {filteredListings.map((listing) => (
-                <article key={listing.id} className="flex flex-col bg-ink transition-colors hover:bg-ink-card">
-                  {listing.tickets.events.poster_url || listing.tickets.events.cover_image_url ? (
-                    <div className="relative h-48 w-full flex-shrink-0 bg-ink-soft overflow-hidden">
-                      <img
-                        src={listing.tickets.events.poster_url || listing.tickets.events.cover_image_url}
-                        alt={listing.tickets.events.title}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="grid h-48 w-full place-items-center bg-ink-soft">
-                      <Ticket className="h-8 w-8 text-fezzy" />
-                    </div>
-                  )}
-                  <div className="flex-1 p-5">
-                    <p className="font-mono-label text-fezzy">{listing.tickets.ticket_tiers.name}</p>
-                    <h3 className="mt-1 font-display text-lg leading-tight text-cream">
-                      {listing.tickets.events.title}
-                    </h3>
-                    <div className="mt-3 space-y-1 text-xs text-cream-dim">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3 w-3 text-fezzy" />
-                        {formatDate(listing.tickets.events.starts_at)}
+              {filteredListings.map((listing) => {
+                const image = listing.event_poster_url ?? listing.event_cover_image_url;
+                return (
+                  <article key={listing.listing_id} className="flex flex-col bg-ink transition-colors hover:bg-ink-card">
+                    {image ? (
+                      <div className="relative h-48 w-full flex-shrink-0 bg-ink-soft overflow-hidden">
+                        <img
+                          src={image}
+                          alt={listing.event_title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3 w-3 text-fezzy" />
-                        {listing.tickets.events.venue_name ?? "Venue TBA"}, {listing.tickets.events.city ?? "Location TBA"}
+                    ) : (
+                      <div className="grid h-48 w-full place-items-center bg-ink-soft">
+                        <Ticket className="h-8 w-8 text-fezzy" />
+                      </div>
+                    )}
+                    <div className="flex-1 p-5">
+                      <p className="font-mono-label text-fezzy">{listing.tier_name}</p>
+                      <h3 className="mt-1 font-display text-lg leading-tight text-cream">
+                        {listing.event_title}
+                      </h3>
+                      <div className="mt-3 space-y-1 text-xs text-cream-dim">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3 w-3 text-fezzy" />
+                          {formatDate(listing.event_starts_at)}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 text-fezzy" />
+                          {listing.event_venue_name ?? "Venue TBA"}, {listing.event_city ?? "Location TBA"}
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between border-t border-cream/10 pt-3">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-display text-lg text-green-400">
+                            {formatPrice(listing.resale_price_kes)}
+                          </span>
+                          <span className="text-sm text-ash line-through">
+                            {formatPrice(listing.original_price_kes)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-cream/10 pt-3">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-display text-lg text-green-400">
-                          {formatPrice(listing.resale_price_kes)}
-                        </span>
-                        <span className="text-sm text-ash line-through">
-                          {formatPrice(listing.tickets.ticket_tiers.price_kes)}
-                        </span>
-                      </div>
+                    <div className="p-5 pt-0">
+                      <Button
+                        className="btn-ember w-full justify-center"
+                        onClick={() => handlePurchase(listing.listing_id)}
+                        disabled={purchasingId === listing.listing_id}
+                      >
+                        {purchasingId === listing.listing_id ? "Reserving..." : "Buy Ticket"}
+                      </Button>
                     </div>
-                  </div>
-                  <div className="p-5 pt-0">
-                    <Button
-                      className="btn-ember w-full justify-center"
-                      onClick={() => handlePurchase(listing.id)}
-                      disabled={loading}
-                    >
-                      Buy Ticket
-                    </Button>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
