@@ -332,20 +332,27 @@ Deno.serve(async (req) => {
         checked_in_at,
         holder_name,
         holder_email,
-        holder_phone
+        holder_phone,
+        revoked_at,
+        qr_token_version
       `)
       .eq('id', verified.tid)
       .single();
 
+    // Reject when: ticket missing, wrong event, QR was rotated (resale invalidates the old token
+    // by replacing qr_token), or the ticket was explicitly revoked. qr_token comparison already
+    // rejects stale QR codes captured before a resale, but we also short-circuit on revoked_at
+    // for defense-in-depth and to give scanners a clearer failure reason.
     if (
       !ticket ||
       ticket.qr_token !== token ||
-      ticket.event_id !== verified.eid
+      ticket.event_id !== verified.eid ||
+      ticket.revoked_at !== null
     ) {
       return new Response(
         JSON.stringify({
           status: 'INVALID',
-          reason: 'not_found',
+          reason: ticket?.revoked_at ? 'revoked' : 'not_found',
         }),
         {
           headers: {
