@@ -103,11 +103,11 @@ const Account = () => {
             events(*)
           )
         `)
-        .eq("seller_id", user.id)
+        .eq("seller_user_id", user.id)
         .order("listed_at", { ascending: false });
 
       if (error) throw error;
-      setListings(data || []);
+      setListings((data as unknown as Listing[]) || []);
     } catch (error) {
       console.error("Error fetching listings:", error);
       toast.error("Failed to load your listings");
