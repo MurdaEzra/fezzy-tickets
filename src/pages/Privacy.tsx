@@ -50,9 +50,9 @@ const Privacy = () => (
             <h2 className="font-display text-2xl text-cream">5. Sharing</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5">
               <li><strong className="text-cream">Organizers</strong> of events you buy tickets to receive the ticket-holder name, email, phone, tier, and order reference, so they can communicate with you and validate entry.</li>
-              <li><strong className="text-cream">Payment processors</strong> (Paystack) receive the data needed to process your payment and split funds to the organizer's subaccount.</li>
+              <li><strong className="text-cream">Payment processors</strong> (Paystack) and (Mpesa) receive the data needed to process your payment and split funds to the organizer's subaccount.</li>
               <li><strong className="text-cream">Email delivery</strong> (Brevo) receives recipient address and email content needed to send ticket-delivery and account emails.</li>
-              <li><strong className="text-cream">Cloud infrastructure</strong> (Supabase, Lovable Cloud) hosts our database and edge functions under data-processing agreements.</li>
+              <li><strong className="text-cream">Cloud infrastructure</strong> (Supabase) hosts our database and edge functions under data-processing agreements.</li>
               <li><strong className="text-cream">Authorities</strong> when we are legally required to disclose information.</li>
             </ul>
             <p className="mt-3">We do not sell your personal data.</p>
@@ -70,7 +70,7 @@ const Privacy = () => (
 
           <section>
             <h2 className="font-display text-2xl text-cream">8. Your rights</h2>
-            <p className="mt-3">Depending on where you live, you may have the right to access, correct, export, restrict, object to, or delete your personal data, and to withdraw consent for marketing at any time. To exercise these rights, email <a href="mailto:privacy@fezzy.app" className="font-semibold text-fezzy hover:text-lime">privacy@fezzy.app</a>. We may need to verify your identity before acting on a request.</p>
+            <p className="mt-3">Depending on where you live, you may have the right to access, correct, export, restrict, object to, or delete your personal data, and to withdraw consent for marketing at any time. To exercise these rights, email <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">privacy@fezzy.app</a>. We may need to verify your identity before acting on a request.</p>
           </section>
 
           <section>
@@ -95,7 +95,7 @@ const Privacy = () => (
 
           <section>
             <h2 className="font-display text-2xl text-cream">13. Contact</h2>
-            <p className="mt-3">Privacy questions or requests: <a href="mailto:privacy@fezzy.app" className="font-semibold text-fezzy hover:text-lime">privacy@fezzy.app</a>.</p>
+            <p className="mt-3">Privacy questions or requests: <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">privacy@fezzy.app</a>.</p>
           </section>
         </article>
       </div>
