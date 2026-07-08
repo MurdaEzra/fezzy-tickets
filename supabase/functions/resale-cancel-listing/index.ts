@@ -1,5 +1,7 @@
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Cancel an active resale listing. Only the seller can cancel, and only while
+// the listing is still 'active' (a pending_payment reservation must be allowed
+// to lapse via the payment_expires_at window before it can be re-listed).
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,288 +10,59 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface Body {
-  listingId: string;
-}
-
-async function sendBrevoEmail({
-  recipientEmail,
-  subject,
-  htmlContent,
-}: {
-  recipientEmail: string;
-  subject: string;
-  htmlContent: string;
-}) {
-  const apiKey = Deno.env.get("BREVO_API_KEY");
-
-  if (!apiKey) {
-    throw new Error("BREVO_API_KEY not configured");
-  }
-
-  const response = await fetch(
-    "https://api.brevo.com/v3/smtp/email",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": apiKey,
-      },
-      body: JSON.stringify({
-        sender: {
-          name: "Fezzy Tickets",
-          email: "hello@fezzytickets.com",
-        },
-        to: [
-          {
-            email: recipientEmail,
-          },
-        ],
-        subject,
-        htmlContent,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText);
-  }
-
-  return await response.json();
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: corsHeaders,
-    });
-  }
-
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-    const { listingId } = (await req.json()) as Body;
+    const { listingId } = await req.json();
+    if (!listingId) return json({ error: "listingId is required" }, 400);
 
-    if (!listingId) {
-      return new Response(
-        JSON.stringify({ error: "listingId is required" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    const supabase = createClient(
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Get user from auth header
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", "")
+    const { data: userRes, error: userErr } = await admin.auth.getUser(
+      authHeader.replace("Bearer ", ""),
     );
+    if (userErr || !userRes.user) return json({ error: "Invalid session" }, 401);
+    const user = userRes.user;
 
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid authorization" }),
-        {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    // Get the listing
-    const { data: listing, error: listingError } = await supabase
+    const { data: listing, error: fetchErr } = await admin
       .from("ticket_resale_listings")
-      .select(`
-        *,
-        tickets(
-          *,
-          orders(*),
-          events(*),
-          ticket_tiers(*)
-        )
-      `)
+      .select("id, seller_user_id, status")
       .eq("id", listingId)
-      .single();
+      .maybeSingle();
 
-    if (listingError || !listing) {
-      return new Response(
-        JSON.stringify({ error: "Listing not found" }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (fetchErr || !listing) return json({ error: "Listing not found" }, 404);
+    if (listing.seller_user_id !== user.id) return json({ error: "You don't own this listing" }, 403);
+    if (listing.status !== "active") {
+      return json({ error: "Listing cannot be cancelled in its current state" }, 400);
     }
 
-    // Check if user is the seller
-    if (listing.seller_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: "You don't own this listing" }),
-        {
-          status: 403,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    // Check if listing is active or pending
-    if (listing.status !== "active" && listing.status !== "pending") {
-      return new Response(
-        JSON.stringify({ error: "Listing cannot be cancelled" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    // Update listing status to cancelled
-    const { data: updatedListing, error: updateError } = await supabase
+    const { data: updated, error: updateErr } = await admin
       .from("ticket_resale_listings")
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-      })
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
       .eq("id", listingId)
+      .eq("status", "active") // guard against races with the reserve RPC
       .select("*")
-      .single();
+      .maybeSingle();
 
-    if (updateError) {
-      throw updateError;
-    }
+    if (updateErr) return json({ error: updateErr.message }, 500);
+    if (!updated) return json({ error: "Listing state changed — refresh and try again" }, 409);
 
-    // Log the activity
-    await supabase.from("ticket_activity_logs").insert({
-      ticket_id: listing.ticket_id,
-      user_id: user.id,
-      action: "cancelled_resale_listing",
-      metadata: {
-        listing_id: listingId,
-      },
-    });
-
-    // Send confirmation email
-    const event = listing.tickets.events;
-    const dateStr = new Date(event.starts_at).toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Your Resale Listing Has Been Cancelled</title>
-</head>
-<body
-  style="
-    background:#FFF8EE;
-    padding:24px;
-    font-family:Arial,sans-serif;
-  "
->
-  <div
-    style="
-      max-width:700px;
-      margin:auto;
-    "
-  >
-    <h1>Resale Listing Cancelled</h1>
-    <p>Your resale listing for <strong>${event.title}</strong> has been successfully cancelled.</p>
-    
-    <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(13,27,42,.18);border:1px solid #ebe2cf;margin-bottom:24px;padding:24px">
-      <p><strong>Event:</strong> ${event.title}</p>
-      <p><strong>Date:</strong> ${dateStr}</p>
-      <p><strong>Ticket Type:</strong> ${listing.tickets.ticket_tiers?.name ?? "General"}</p>
-      <p><strong>Original Resale Price:</strong> KES ${listing.resale_price_kes.toLocaleString()}</p>
-      <p><strong>Listing ID:</strong> ${listingId}</p>
-    </div>
-
-    <p>Your ticket is now active again and you can use it for the event or relist it for resale.</p>
-    <div style="
-      border-top: 1px solid #ddd;
-      padding-top: 24px;
-      margin-top: 24px;
-      text-align: center;
-      font-size: 12px;
-      color: #777;
-    ">
-      <p style="margin: 4px 0;">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
-      <p style="margin: 4px 0;">Phone: +254728135200</p>
-    </div>
-  </div>
-</body>
-</html>
-`;
-
-    try {
-      await sendBrevoEmail({
-        recipientEmail: listing.tickets.orders.guest_email,
-        subject: `Your Resale Listing for ${event.title} Has Been Cancelled`,
-        htmlContent: emailHtml,
-      });
-    } catch (emailError) {
-      console.error("[RESALE-CANCEL-LISTING EMAIL ERROR]", emailError);
-    }
-
-    return new Response(
-      JSON.stringify({ ok: true, listing: updatedListing }),
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-  } catch (error) {
-    console.error("[RESALE-CANCEL-LISTING ERROR]", error);
-
-    return new Response(
-      JSON.stringify({ error: String(error) }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    return json({ ok: true, listing: updated });
+  } catch (err) {
+    console.error("[resale-cancel-listing]", err);
+    return json({ error: err instanceof Error ? err.message : "Internal error" }, 500);
   }
 });

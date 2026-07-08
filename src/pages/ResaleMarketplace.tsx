@@ -80,6 +80,7 @@ const ResaleMarketplace = () => {
 
     try {
       setPurchasingId(listingId);
+      const callbackUrl = `${window.location.origin}/payment/callback`;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-initiate-purchase`,
         {
@@ -88,21 +89,20 @@ const ResaleMarketplace = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
           },
-          body: JSON.stringify({ listingId, paymentMethod: "card" }),
+          body: JSON.stringify({ listingId, paymentMethod: "card", callbackUrl }),
         },
       );
 
       const result = await response.json();
-      if (!response.ok) {
+      if (!response.ok || !result.authorization_url) {
         throw new Error(result.error || "Purchase failed");
       }
 
-      toast.success("Reserved — complete payment to receive your new ticket.");
-      fetchListings();
+      toast.success("Redirecting to secure checkout…");
+      window.location.href = result.authorization_url as string;
     } catch (error) {
       console.error("Error purchasing ticket:", error);
       toast.error(error instanceof Error ? error.message : "An error occurred");
-    } finally {
       setPurchasingId(null);
     }
   };

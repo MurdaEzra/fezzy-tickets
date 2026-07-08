@@ -29,6 +29,35 @@ Deno.serve(async (req) => {
   );
 
   const tx = event.data;
+
+  // Resale branch: rotate qr_token and reassign ownership atomically via RPC.
+  // Idempotent — if the browser-side verify hit first, the listing is already 'sold'
+  // and the RPC returns a "not finalizable" error that we can safely ignore.
+  if (tx.metadata?.kind === "resale") {
+    const listingId = tx.metadata.listing_id as string | undefined;
+    if (!listingId) return new Response("missing listing id", { status: 400 });
+
+    await admin
+      .from("payments")
+      .update({ status: "success", result_desc: tx.status, raw_callback: tx as unknown as Record<string, unknown> })
+      .eq("paystack_reference", tx.reference);
+
+    const rand = new Uint8Array(32);
+    crypto.getRandomValues(rand);
+    const newQrToken = Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
+
+    const { error } = await admin.rpc("complete_resale_transfer", {
+      _listing_id: listingId,
+      _payment_ref: tx.reference,
+      _payment_provider: "paystack",
+      _new_qr_token: newQrToken,
+    });
+    if (error && !/not finalizable/i.test(error.message ?? "")) {
+      console.error("[paystack-webhook resale]", error);
+    }
+    return new Response("ok", { status: 200 });
+  }
+
   const orderId = tx.metadata?.order_id as string | undefined;
   if (!orderId) return new Response("missing order id", { status: 400 });
 
