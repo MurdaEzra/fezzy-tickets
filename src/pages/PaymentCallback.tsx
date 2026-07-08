@@ -13,6 +13,7 @@ const PaymentCallback = () => {
   const reference = params.get("reference") || params.get("trxref") || "";
   const [status, setStatus] = useState<Status>("verifying");
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [isResale, setIsResale] = useState(false);
 
   useEffect(() => {
     if (!reference) { setStatus("failed"); return; }
@@ -29,7 +30,8 @@ const PaymentCallback = () => {
         else timer = window.setTimeout(run, 1500);
         return;
       }
-      const d = data as { paymentStatus: Status; orderId?: string };
+      const d = data as { paymentStatus: Status; orderId?: string; resale?: boolean; listingId?: string };
+      if (d.resale) setIsResale(true);
       if (d.orderId) setOrderId(d.orderId);
       if (d.paymentStatus === "success") setStatus("success");
       else if (d.paymentStatus === "failed") setStatus("failed");
