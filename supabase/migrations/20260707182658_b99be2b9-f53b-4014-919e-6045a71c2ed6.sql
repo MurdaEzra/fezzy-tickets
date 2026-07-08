@@ -1,17 +1,3 @@
-
--- =============================================================================
--- Resale Marketplace: secure foundation (Phase 1)
---
--- Security note for future reviewers:
--- The public marketplace browses through `ticket_resale_listings_public` — a
--- view that structurally OMITS qr_token, holder_name, holder_email, and any
--- raw tickets.* / orders.* columns. NEVER grant SELECT on public.tickets to
--- `anon`, and NEVER add an RLS policy on public.tickets that permits reads by
--- non-owners "so buyers can preview". qr_token IS the entry credential —
--- exposing it to prospective buyers before purchase equals free entry.
--- =============================================================================
-
--- Events: resale controls (idempotent)
 ALTER TABLE public.events
   ADD COLUMN IF NOT EXISTS resale_enabled boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS min_resale_percentage integer NOT NULL DEFAULT 80,
