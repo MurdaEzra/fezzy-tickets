@@ -159,6 +159,107 @@ async function finalizeOrder(
   }
 }
 
+// Finalize a resale purchase:
+// 1) Generate a fresh strong qr_token (the buyer's new entry credential).
+// 2) Call `complete_resale_transfer` which — atomically inside the DB —
+//    rotates the token, bumps qr_token_version, reassigns ownership,
+//    marks the listing 'sold', and writes an audit row in resale_transfers
+//    that stores ONLY a SHA-256 hash of the previous token.
+// 3) Best-effort email the buyer that their ticket is ready.
+async function finalizeResale(
+  admin: AdminClient,
+  listingId: string,
+  reference: string,
+  tx: { metadata?: Record<string, unknown> },
+) {
+  // 32 bytes of entropy → 64 hex chars. RPC enforces length >= 16.
+  const rand = new Uint8Array(32);
+  crypto.getRandomValues(rand);
+  const newQrToken = Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
+
+  const { data: transfer, error } = await admin.rpc("complete_resale_transfer", {
+    _listing_id: listingId,
+    _payment_ref: reference,
+    _payment_provider: "paystack",
+    _new_qr_token: newQrToken,
+  });
+
+  if (error) {
+    // Idempotency: a webhook may finalize a listing before the browser reaches
+    // /payment/callback. If the listing is already 'sold' the RPC raises
+    // "Listing not finalizable" — safe to swallow.
+    if (!/not finalizable/i.test(error.message ?? "")) {
+      console.error("[resale-finalize] complete_resale_transfer failed:", error);
+    }
+    return;
+  }
+
+  try {
+    await notifyResaleBuyer(admin, listingId, transfer);
+  } catch (e) {
+    console.error("[resale-finalize] buyer email failed:", e);
+  }
+}
+
+async function notifyResaleBuyer(admin: AdminClient, listingId: string, _transfer: unknown) {
+  // Pull public, non-sensitive event + tier info via the safe view.
+  const { data: listing } = await admin
+    .from("ticket_resale_listings_public")
+    .select("event_title, event_starts_at, event_venue_name, event_city, tier_name, resale_price_kes")
+    .eq("listing_id", listingId)
+    .maybeSingle();
+  if (!listing) return;
+
+  // Look up the buyer email via auth.users — only the service role can do this.
+  const { data: raw } = await admin
+    .from("ticket_resale_listings")
+    .select("buyer_user_id")
+    .eq("id", listingId)
+    .maybeSingle();
+  const buyerId = raw?.buyer_user_id;
+  if (!buyerId) return;
+  const { data: userRes } = await admin.auth.admin.getUserById(buyerId);
+  const email = userRes.user?.email;
+  if (!email) return;
+
+  const dateStr = listing.event_starts_at
+    ? new Date(listing.event_starts_at).toLocaleString("en-GB", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+    : "TBA";
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0b0b0f;font-family:Georgia,'Times New Roman',serif;color:#f5efe1;">
+<div style="max-width:640px;margin:0 auto;padding:32px 24px;">
+  <div style="border:1px solid #2b241a;background:linear-gradient(135deg,#151009 0%,#0b0b0f 100%);border-radius:24px;padding:40px 32px;">
+    <p style="letter-spacing:.28em;font-size:11px;color:#c8a664;margin:0 0 12px;text-transform:uppercase;">Resale · Confirmed</p>
+    <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:34px;line-height:1.1;margin:0 0 20px;color:#f5efe1;">Your ticket is ready.</h1>
+    <p style="color:#c9c1b2;font-size:15px;line-height:1.6;margin:0 0 24px;">The ticket for <strong style="color:#f5efe1;">${escapeHtml(listing.event_title ?? "")}</strong> has been transferred to you. Sign in to Fezzy Tickets and open the Tickets tab to reveal your QR code — the previous holder's code no longer works.</p>
+    <div style="border:1px solid #2b241a;border-radius:16px;padding:20px 24px;background:rgba(200,166,100,0.06);margin:0 0 28px;">
+      <p style="margin:0 0 8px;color:#c8a664;font-size:11px;letter-spacing:.24em;text-transform:uppercase;">${escapeHtml(listing.tier_name ?? "")}</p>
+      <p style="margin:0;color:#f5efe1;font-size:17px;">${escapeHtml(listing.event_title ?? "")}</p>
+      <p style="margin:6px 0 0;color:#c9c1b2;font-size:13px;">${escapeHtml(dateStr)}</p>
+      <p style="margin:6px 0 0;color:#c9c1b2;font-size:13px;">${escapeHtml(listing.event_venue_name ?? "Venue TBA")}, ${escapeHtml(listing.event_city ?? "")}</p>
+      <p style="margin:14px 0 0;color:#f5efe1;font-size:15px;">Paid: KES ${Number(listing.resale_price_kes ?? 0).toLocaleString()}</p>
+    </div>
+    <a href="https://fezzytickets.com/account" style="display:inline-block;background:#c8a664;color:#0b0b0f;padding:14px 28px;border-radius:999px;text-decoration:none;font-weight:600;letter-spacing:.06em;">Open my tickets</a>
+    <p style="margin:32px 0 0;color:#7c7566;font-size:11px;line-height:1.6;">Along Karen Rd, Langata · Nairobi, Kenya · +254 728 135 200</p>
+  </div>
+</div></body></html>`;
+
+  await sendBrevoEmail({
+    recipientEmail: email,
+    subject: `Your resale ticket for ${listing.event_title} is ready`,
+    htmlContent: html,
+  });
+}
+
+function escapeHtml(s: string): string {
+  return String(s).replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string
+  ));
+}
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
