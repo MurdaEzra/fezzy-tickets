@@ -34,6 +34,28 @@ Deno.serve(async (req) => {
 
     const tx = data.data;
     const status: string = tx.status;
+
+    // ---- Resale purchase branch --------------------------------------------------
+    // Payments started by `resale-initiate-purchase` carry metadata.kind === 'resale'.
+    // We must NOT run the regular order/ticket-issuance path — the ticket already
+    // exists; we just rotate its qr_token and reassign ownership atomically via the
+    // `complete_resale_transfer` RPC.
+    if (tx.metadata?.kind === "resale") {
+      const listingId = tx.metadata.listing_id as string | undefined;
+      if (!listingId) return json({ error: "Listing id missing in metadata" }, 400);
+
+      if (status === "success") {
+        await finalizeResale(admin, listingId, reference, tx);
+      }
+      return json({
+        paymentStatus: status === "success" ? "success" : status === "abandoned" ? "pending" : "failed",
+        listingId,
+        reference,
+        resale: true,
+      });
+    }
+    // -----------------------------------------------------------------------------
+
     const orderId = tx.metadata?.order_id as string | undefined;
     if (!orderId) return json({ error: "Order id missing in metadata" }, 400);
 
