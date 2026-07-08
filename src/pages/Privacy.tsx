@@ -70,7 +70,7 @@ const Privacy = () => (
 
           <section>
             <h2 className="font-display text-2xl text-cream">8. Your rights</h2>
-            <p className="mt-3">Depending on where you live, you may have the right to access, correct, export, restrict, object to, or delete your personal data, and to withdraw consent for marketing at any time. To exercise these rights, email <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">privacy@fezzy.app</a>. We may need to verify your identity before acting on a request.</p>
+            <p className="mt-3">Depending on where you live, you may have the right to access, correct, export, restrict, object to, or delete your personal data, and to withdraw consent for marketing at any time. To exercise these rights, email <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">support@fezzytickets.com</a>. We may need to verify your identity before acting on a request.</p>
           </section>
 
           <section>
@@ -95,7 +95,7 @@ const Privacy = () => (
 
           <section>
             <h2 className="font-display text-2xl text-cream">13. Contact</h2>
-            <p className="mt-3">Privacy questions or requests: <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">privacy@fezzy.app</a>.</p>
+            <p className="mt-3">Privacy questions or requests: <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">support@fezzytickets.com</a>.</p>
           </section>
         </article>
       </div>

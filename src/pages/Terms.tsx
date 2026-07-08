@@ -107,7 +107,7 @@ const Terms = () => (
 
           <section>
             <h2 className="font-display text-2xl text-cream">14. Contact</h2>
-            <p className="mt-3">Questions about these Terms? Reach us at <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">legal@fezzy.app</a>.</p>
+            <p className="mt-3">Questions about these Terms? Reach us at <a href="mailto:support@fezzytickets.com" className="font-semibold text-fezzy hover:text-lime">support@fezzytickets.com</a>.</p>
           </section>
         </article>
       </div>
