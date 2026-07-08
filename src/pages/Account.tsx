@@ -295,7 +295,7 @@ const Account = () => {
                             <span className="font-display text-sm text-cream">
                               {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
                             </span>
-                            {!isListed && event?.resale_enabled && ticket.status === "valid" && (
+                            {!isListed && (event?.resale_enabled || event?.allow_resale) && ticket.status === "valid" && (
                               <Button
                                 variant="default"
                                 size="sm"
@@ -305,7 +305,7 @@ const Account = () => {
                                 List for Resale
                               </Button>
                             )}
-                            {!isListed && (!event?.resale_enabled || ticket.status !== "valid") && (
+                            {!isListed && (!(event?.resale_enabled || event?.allow_resale) || ticket.status !== "valid") && (
                               <span className="border border-cream/20 px-3 py-1 font-mono-label text-ash">QR emailed</span>
                             )}
                           </div>

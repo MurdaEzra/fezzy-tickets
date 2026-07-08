@@ -27,6 +27,7 @@ export type DbEvent = {
   status: "draft" | "pending_approval" | "published" | "cancelled" | "completed";
   fee_waived: boolean;
   resale_enabled?: boolean;
+  allow_resale?: boolean;
   min_resale_percentage?: number;
   max_resale_percentage?: number;
 };

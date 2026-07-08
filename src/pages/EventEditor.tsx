@@ -106,7 +106,7 @@ const EventEditor = () => {
         setShowLogo(td.showLogo ?? true);
         setShowQR(td.showQR ?? true);
         setShowDate(td.showDate ?? true);
-        setAllowResale(ev.allow_resale ?? false);
+        setAllowResale(ev.resale_enabled ?? ev.allow_resale ?? false);
         setMinResalePercentage(ev.min_resale_percentage ?? 80);
         setMaxResalePercentage(ev.max_resale_percentage ?? 120);
         setResaleFeePercentage(ev.resale_fee_percentage ?? 10);
@@ -177,6 +177,7 @@ const EventEditor = () => {
         fee_waived: false,
         status: publish ? "pending_approval" as const : "draft" as const,
         allow_resale: allowResale,
+        resale_enabled: allowResale,
         min_resale_percentage: minResalePercentage,
         max_resale_percentage: maxResalePercentage,
         resale_fee_percentage: resaleFeePercentage,
