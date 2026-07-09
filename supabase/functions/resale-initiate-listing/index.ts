@@ -49,13 +49,22 @@ Deno.serve(async (req) => {
       .select(`
         id, event_id, current_owner_user_id, checked_in_at, revoked_at, status,
         ticket_tiers(id, name, price_kes),
-        events(id, title, starts_at, resale_enabled, min_resale_percentage, max_resale_percentage)
+        events(id, title, starts_at, resale_enabled, min_resale_percentage, max_resale_percentage),
+        orders(user_id)
       `)
       .eq("id", ticketId)
       .maybeSingle<any>();
 
     if (ticketErr || !ticket) return json({ error: "Ticket not found" }, 404);
-    if (ticket.current_owner_user_id !== user.id) {
+
+    // Check ownership: current_owner_user_id (set after resale transfers) OR
+    // fall back to orders.user_id for original ticket purchasers whose
+    // current_owner_user_id was never backfilled.
+    const isOwner =
+      ticket.current_owner_user_id === user.id ||
+      (!ticket.current_owner_user_id && ticket.orders?.user_id === user.id);
+
+    if (!isOwner) {
       return json({ error: "You don't own this ticket" }, 403);
     }
     if (ticket.revoked_at || ticket.checked_in_at) {
