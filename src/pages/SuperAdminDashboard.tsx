@@ -188,7 +188,7 @@ const SuperAdminDashboard = () => {
       const ok = roles.includes("super_admin") || roles.includes("admin");
       setAuthorized(ok);
       if (!ok) return;
-      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }, settings] = await Promise.all([
+      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }, { data: resale }, settings] = await Promise.all([
         supabase.from("events").select("id, title, tagline, description, category, status, slug, starts_at, ends_at, venue_name, venue_address, city, country, cover_image_url, poster_url, is_stream, stream_url, organizer_id, created_at").order("created_at", { ascending: false }).limit(100),
         supabase.from("orders").select("id, total_kes, buyer_fee_kes, platform_fee_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
         supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code").order("created_at", { ascending: false }),
