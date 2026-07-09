@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Loader2, Shield, Users, Calendar, Ticket, ExternalLink, ClipboardCheck, ScrollText,
   Megaphone, LayoutDashboard, ListChecks, ReceiptText, Building2, FileText, Save,
-  LogOut, ChevronRight, X, MapPin, Clock, ArrowLeft, Check, XCircle,
+  LogOut, ChevronRight, X, MapPin, Clock, ArrowLeft, Check, XCircle, ShieldCheck,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ const SuperAdminDashboard = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<null | boolean>(null);
-  const [view, setView] = useState<"overview" | "homepage" | "approvals" | "events" | "orders" | "organizers" | "logs">("overview");
+  const [view, setView] = useState<"overview" | "homepage" | "approvals" | "events" | "orders" | "organizers" | "logs" | "resale">("overview");
   const [homepageSubView, setHomepageSubView] = useState<"general" | "trending" | "calendar" | "artists" | "venues">("general");
   const [homepageMenuOpen, setHomepageMenuOpen] = useState(false);
   const homepageMenuRef = useRef<HTMLDivElement>(null);
@@ -103,6 +103,7 @@ const SuperAdminDashboard = () => {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [organizers, setOrganizers] = useState<{ id: string; org_name: string; events_published_count: number; contact_email: string | null; fee_locked_pct: number | null; paystack_subaccount_code: string | null }[]>([]);
+  const [resaleListings, setResaleListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [savingHomepage, setSavingHomepage] = useState(false);
@@ -193,12 +194,18 @@ const SuperAdminDashboard = () => {
         supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code").order("created_at", { ascending: false }),
         supabase.from("organizer_approval_requests").select("id, application_details, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
         supabase.from("platform_logs").select("id, level, action, message, metadata, created_at").order("created_at", { ascending: false }).limit(200),
+        supabase.from("ticket_resale_listings").select(`
+          id, resale_price_kes, status, listed_at, sold_at, payment_ref, buyer_user_id, seller_user_id,
+          events(id, title, starts_at),
+          resale_transfers(payout_status)
+        `).in("status", ["pending_approval", "sold"]).order("created_at", { ascending: false }),
         fetchHomepageSettings(),
       ]);
       setEvents((evts ?? []) as EventRow[]);
       setOrders((ords ?? []) as OrderRow[]);
       setOrganizers((orgs ?? []) as typeof organizers);
       setApprovals((pending ?? []) as ApprovalRow[]);
+      setResaleListings(resale ?? []);
       setLogs((logRows ?? []) as LogRow[]);
       setLiveBarText(settings.live_bar_items.join("\n"));
       setHeadlinerEventId(settings.headliner_event_id ?? "");
@@ -340,6 +347,7 @@ const SuperAdminDashboard = () => {
 
   const pendingOrgCount = approvals.filter((a) => a.status === "pending").length;
   const pendingEventCount = events.filter((e) => e.status === "pending_approval").length;
+  const pendingResaleCount = resaleListings.filter((l) => l.status === "pending_approval" || (l.status === "sold" && l.resale_transfers?.[0]?.payout_status === "pending" && new Date(l.events?.starts_at) < new Date())).length;
   const errorCount = logs.filter((l) => l.level === "error").length;
   const totalPlatformRev = orders.reduce((s, o) => s + (o.platform_fee_kes ?? o.organizer_fee_kes ?? 0), 0);
   const totalBuyerFees = orders.reduce((s, o) => s + (o.buyer_fee_kes ?? 0), 0);
@@ -420,6 +428,7 @@ const SuperAdminDashboard = () => {
               ["homepage", Megaphone, "Homepage", null],
               ["approvals", ListChecks, "Approvals", pendingOrgCount],
               ["events", Calendar, "Events", pendingEventCount],
+              ["resale", ShieldCheck, "Resale Escrow", pendingResaleCount],
               ["orders", ReceiptText, "Orders", null],
               ["organizers", Building2, "Organizers", null],
               ["logs", FileText, "Logs", errorCount],
@@ -597,6 +606,129 @@ const SuperAdminDashboard = () => {
                             </button>
                           ))}
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {view === "resale" && (
+                    <div className="space-y-6">
+                      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/20">
+                            <ShieldCheck className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <h2 className="font-display text-xl font-bold text-foreground">Resale Moderation & Payouts</h2>
+                            <p className="text-sm text-muted-foreground">Approve new resale tickets and issue B2C payouts.</p>
+                          </div>
+                        </div>
+
+                        {resaleListings.length === 0 ? (
+                          <div className="py-12 text-center border border-dashed border-border rounded-xl">
+                            <p className="text-muted-foreground">No resale listings needing attention.</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm table-auto border-collapse">
+                              <thead>
+                                <tr className="border-b border-border text-muted-foreground">
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Action</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Event</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Starts</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Price (KES)</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {resaleListings.map((listing) => {
+                                  const isPendingApproval = listing.status === "pending_approval";
+                                  const eventStarted = new Date(listing.events?.starts_at) < new Date();
+                                  const payoutPending = listing.status === "sold" && listing.resale_transfers?.[0]?.payout_status === "pending";
+
+                                  return (
+                                    <tr key={listing.id} className="group">
+                                      <td className="py-4 pr-4">
+                                        {isPendingApproval && (
+                                          <Button
+                                            size="sm"
+                                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                                            onClick={async () => {
+                                              if (!window.confirm("Approve this resale ticket and transfer it to the buyer?")) return;
+                                              const toastId = toast.loading("Approving resale...");
+                                              try {
+                                                const res = await supabase.functions.invoke("resale-admin-action", {
+                                                  body: { listingId: listing.id, action: "approve" }
+                                                });
+                                                if (res.error) throw new Error(res.error.message || res.data?.error);
+                                                
+                                                toast.success("Ticket approved and buyer notified!", { id: toastId });
+                                                setResaleListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: "sold" } : l));
+                                              } catch (err) {
+                                                toast.error((err as Error).message, { id: toastId });
+                                              }
+                                            }}
+                                          >
+                                            <Check className="h-4 w-4 mr-1" /> Approve
+                                          </Button>
+                                        )}
+                                        {payoutPending && eventStarted && (
+                                          <Button
+                                            size="sm"
+                                            className="bg-[#10ff8a] hover:bg-[#10ff8a]/90 text-[#04130a] font-bold"
+                                            onClick={async () => {
+                                              if (!window.confirm("Disburse B2C payout to the seller?")) return;
+                                              const toastId = toast.loading("Sending B2C payout...");
+                                              try {
+                                                const res = await supabase.functions.invoke("resale-admin-action", {
+                                                  body: { listingId: listing.id, action: "payout" }
+                                                });
+                                                if (res.error) throw new Error(res.error.message || res.data?.error);
+                                                
+                                                toast.success("B2C Payout processed via M-Pesa!", { id: toastId });
+                                                setResaleListings(prev => prev.map(l => l.id === listing.id ? { ...l, resale_transfers: [{ payout_status: "paid" }] } : l));
+                                              } catch (err) {
+                                                toast.error((err as Error).message, { id: toastId });
+                                              }
+                                            }}
+                                          >
+                                            <ShieldCheck className="h-4 w-4 mr-1" /> Send B2C
+                                          </Button>
+                                        )}
+                                        {payoutPending && !eventStarted && (
+                                          <span className="text-[10px] text-muted-foreground uppercase px-2 py-1 bg-secondary rounded-full">
+                                            Awaiting Event
+                                          </span>
+                                        )}
+                                        {listing.status === "sold" && listing.resale_transfers?.[0]?.payout_status === "paid" && (
+                                          <span className="text-[10px] text-primary uppercase px-2 py-1 bg-primary/20 rounded-full font-bold">
+                                            Payout Complete
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-4 pr-4">
+                                        <p className="font-semibold">{listing.events?.title}</p>
+                                        <p className="text-xs text-muted-foreground">ID: {listing.id.split('-')[0]}</p>
+                                      </td>
+                                      <td className="py-4 pr-4 whitespace-nowrap">
+                                        {listing.events?.starts_at ? new Date(listing.events.starts_at).toLocaleDateString() : "TBA"}
+                                      </td>
+                                      <td className="py-4 pr-4 font-mono font-semibold">
+                                        {formatKES(listing.resale_price_kes)}
+                                      </td>
+                                      <td className="py-4 pr-4">
+                                        <span className={`rounded-full px-2 py-1 text-[10px] uppercase font-bold \${
+                                          isPendingApproval ? 'bg-amber-500/20 text-amber-500' : 'bg-primary/20 text-primary'
+                                        }`}>
+                                          {isPendingApproval ? "Pending Escrow" : "Sold"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

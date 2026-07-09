@@ -89,7 +89,7 @@ const ResaleMarketplace = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
           },
-          body: JSON.stringify({ listingId, paymentMethod: "card", callbackUrl }),
+          body: JSON.stringify({ listingId, paymentMethod: "mpesa", callbackUrl }),
         },
       );
 
@@ -98,7 +98,7 @@ const ResaleMarketplace = () => {
         throw new Error(result.error || "Purchase failed");
       }
 
-      toast.success("Redirecting to secure checkout…");
+      toast.success("Redirecting to secure M-Pesa checkout…");
       window.location.href = result.authorization_url as string;
     } catch (error) {
       console.error("Error purchasing ticket:", error);
@@ -226,7 +226,7 @@ const ResaleMarketplace = () => {
                         onClick={() => handlePurchase(listing.listing_id)}
                         disabled={purchasingId === listing.listing_id}
                       >
-                        {purchasingId === listing.listing_id ? "Reserving..." : "Buy Ticket"}
+                        {purchasingId === listing.listing_id ? "Reserving..." : "Buy via M-Pesa"}
                       </Button>
                     </div>
                   </article>

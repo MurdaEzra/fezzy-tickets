@@ -36,9 +36,13 @@ Deno.serve(async (req) => {
 
     const { listingId, callbackUrl, paymentMethod } = await req.json();
     if (!listingId) return json({ error: "listingId is required" }, 400);
-
-    const method: "card" | "mpesa" =
-      paymentMethod === "mpesa" ? "mpesa" : "card";
+    
+    // We strictly enforce M-Pesa only
+    if (paymentMethod !== "mpesa") {
+      return json({ error: "Only M-Pesa is supported for resale purchases" }, 400);
+    }
+    
+    const method = "mpesa";
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -118,7 +122,7 @@ Deno.serve(async (req) => {
         ],
       },
       customer: { email: buyerEmail, name: buyer.user_metadata?.full_name ?? buyerEmail },
-      channels: method === "mpesa" ? ["mobile_money"] : ["card"],
+      channels: ["mobile_money"],
     };
 
     const res = await fetch("https://api.paystack.co/transaction/initialize", {
