@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Calendar, Loader2, MapPin, Ticket, Trash2, Tag, X, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight, Calendar, Loader2, MapPin, Ticket, Trash2, Tag, CheckCircle2,
+  User, ListOrdered, Store, Settings,
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,10 +15,9 @@ import {
   type AccountTicket,
 } from "@/lib/eventsApi";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 interface Listing {
@@ -47,9 +49,19 @@ interface Listing {
   };
 }
 
+type AccountView = "tickets" | "listings" | "marketplace" | "settings";
+
+const sideMenuItems: { key: AccountView; label: string; icon: React.ElementType }[] = [
+  { key: "tickets", label: "My Tickets", icon: Ticket },
+  { key: "listings", label: "My Listings", icon: Tag },
+  { key: "marketplace", label: "Resale Marketplace", icon: Store },
+  { key: "settings", label: "Settings", icon: Settings },
+];
+
 const Account = () => {
   const { user, loading, deleteAccount } = useAuth();
   const navigate = useNavigate();
+  const [view, setView] = useState<AccountView>("tickets");
   const [tickets, setTickets] = useState<AccountTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -72,7 +84,7 @@ const Account = () => {
       .then((rows) => {
         if (!cancelled) setTickets(rows);
       })
-      .catch((error) => {
+      .catch(() => {
         if (!cancelled) {
           setTickets([]);
           toast.error("Could not load tickets");
@@ -81,9 +93,7 @@ const Account = () => {
       .finally(() => {
         if (!cancelled) setTicketsLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user]);
 
   useEffect(() => {
@@ -103,7 +113,7 @@ const Account = () => {
             events(*)
           )
         `)
-        .eq("seller_user_id", user.id)
+        .eq("seller_user_id", user!.id)
         .order("listed_at", { ascending: false });
 
       if (error) throw error;
@@ -127,7 +137,7 @@ const Account = () => {
       await deleteAccount();
       toast.success("Account deleted");
       navigate("/", { replace: true });
-    } catch (error) {
+    } catch {
       toast.error("Could not delete account");
     }
   };
@@ -208,235 +218,290 @@ const Account = () => {
     }
   };
 
+  const activeItem = sideMenuItems.find((i) => i.key === view)!;
+
   return (
     <div className="fezzy-editorial min-h-screen bg-ink text-cream">
       <Navbar />
       <main>
+        {/* Header */}
         <section className="border-b border-cream/10 noise-overlay">
-          <div className="mx-auto max-w-1440 px-5 py-16 lg:px-8">
-            <p className="mb-4 font-mono-label text-fezzy-glow">My account</p>
-            <h1 className="font-display text-4xl text-cream sm:text-5xl md:text-6xl">
+          <div className="mx-auto max-w-1440 px-5 py-12 lg:px-8">
+            <p className="mb-2 font-mono-label text-fezzy-glow">My account</p>
+            <h1 className="font-display text-3xl text-cream sm:text-4xl md:text-5xl">
               Hello, {name}
             </h1>
-            <p className="mt-3 text-base text-cream-dim">{user.email}</p>
+            <p className="mt-2 text-sm text-cream-dim">{user.email}</p>
           </div>
         </section>
 
-        <section className="mx-auto max-w-1440 px-5 py-12 lg:px-8">
-          <Tabs defaultValue="tickets" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8 bg-ink-card">
-              <TabsTrigger value="tickets" className="data-[state=active]:bg-fezzy data-[state=active]:text-white">
-                My Tickets
-              </TabsTrigger>
-              <TabsTrigger value="listings" className="data-[state=active]:bg-fezzy data-[state=active]:text-white">
-                My Listings
-              </TabsTrigger>
-              <TabsTrigger value="marketplace" className="data-[state=active]:bg-fezzy data-[state=active]:text-white">
-                Resale Marketplace
-              </TabsTrigger>
-            </TabsList>
+        {/* Side Menu + Content */}
+        <section className="mx-auto max-w-1440 px-5 py-10 lg:px-8">
+          <div className="flex flex-col gap-8 md:flex-row">
+            {/* Sidebar */}
+            <aside className="w-full shrink-0 md:w-56">
+              <nav className="flex flex-row gap-1 overflow-x-auto md:flex-col md:gap-0.5">
+                {sideMenuItems.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setView(key)}
+                    className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
+                      view === key
+                        ? "bg-fezzy/15 text-fezzy shadow-sm"
+                        : "text-cream-dim hover:bg-cream/5 hover:text-cream"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    {label}
+                    {key === "tickets" && tickets.length > 0 && (
+                      <span className="ml-auto rounded-full bg-cream/10 px-2 py-0.5 text-[10px] font-bold text-cream">{tickets.length}</span>
+                    )}
+                    {key === "listings" && listings.filter(l => l.status === "active").length > 0 && (
+                      <span className="ml-auto rounded-full bg-fezzy/20 px-2 py-0.5 text-[10px] font-bold text-fezzy">{listings.filter(l => l.status === "active").length}</span>
+                    )}
+                  </button>
+                ))}
+              </nav>
+            </aside>
 
-            <TabsContent value="tickets">
-              <div className="mb-8 flex items-center justify-between">
-                <h2 className="font-display text-2xl text-cream">Your tickets</h2>
-                <Link to="/events" className="btn-outline-editorial px-4 py-2">Browse more</Link>
-              </div>
+            {/* Main Content */}
+            <div className="min-w-0 flex-1">
+              {/* ──── MY TICKETS ──── */}
+              {view === "tickets" && (
+                <div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="font-display text-2xl text-cream">Your tickets</h2>
+                    <Link to="/events" className="btn-outline-editorial px-4 py-2 text-sm">Browse more</Link>
+                  </div>
 
-              {ticketsLoading ? (
-                <div className="grid min-h-48 place-items-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-ash" />
-                </div>
-              ) : tickets.length === 0 ? (
-                <div className="border border-dashed border-cream/20 bg-ink-card p-16 text-center">
-                  <Ticket className="mx-auto h-10 w-10 text-ash" />
-                  <p className="mt-4 font-display text-2xl text-cream">No tickets yet</p>
-                  <p className="mt-1 text-sm text-cream-dim">When you grab tickets, they'll appear here.</p>
-                  <Link to="/events" className="btn-ember mt-6 inline-flex">
-                    Find events <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid gap-px bg-cream/10 md:grid-cols-2">
-                  {tickets.map((ticket) => {
-                    const event = ticket.events;
-                    const tier = ticket.ticket_tiers;
-                    const isListed = listings.some(l => l.ticket_id === ticket.id && (l.status === "active" || l.status === "pending"));
-                    const listingStatus = listings.find(l => l.ticket_id === ticket.id)?.status;
-                    return (
-                      <article key={ticket.id} className="flex bg-ink transition-colors hover:bg-ink-card">
-                        <div className="relative w-32 flex-shrink-0 bg-ink-soft sm:w-44">
-                          {event?.cover_image_url ? (
-                            <img src={event.cover_image_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="grid h-full min-h-40 place-items-center px-3 text-center">
-                              <Ticket className="h-8 w-8 text-fezzy" />
+                  {ticketsLoading ? (
+                    <div className="grid min-h-48 place-items-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-ash" />
+                    </div>
+                  ) : tickets.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-cream/20 bg-ink-card p-16 text-center">
+                      <Ticket className="mx-auto h-10 w-10 text-ash" />
+                      <p className="mt-4 font-display text-2xl text-cream">No tickets yet</p>
+                      <p className="mt-1 text-sm text-cream-dim">When you grab tickets, they'll appear here.</p>
+                      <Link to="/events" className="btn-ember mt-6 inline-flex">
+                        Find events <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {tickets.map((ticket) => {
+                        const event = ticket.events;
+                        const tier = ticket.ticket_tiers;
+                        const isListed = listings.some(l => l.ticket_id === ticket.id && (l.status === "active" || l.status === "pending"));
+                        const listingStatus = listings.find(l => l.ticket_id === ticket.id)?.status;
+                        return (
+                          <article key={ticket.id} className="flex overflow-hidden rounded-2xl border border-cream/10 bg-ink transition-colors hover:border-cream/20">
+                            <div className="relative w-28 flex-shrink-0 bg-ink-soft sm:w-36">
+                              {event?.cover_image_url ? (
+                                <img src={event.cover_image_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="grid h-full min-h-36 place-items-center px-3 text-center">
+                                  <Ticket className="h-8 w-8 text-fezzy" />
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div className="flex-1 p-5">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-mono-label text-fezzy">{ticket.status}</p>
-                              <h3 className="mt-1 font-display text-lg leading-tight text-cream">
-                                {event?.title ?? "Event unavailable"}
-                              </h3>
+                            <div className="flex-1 p-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-mono-label text-[10px] uppercase tracking-wider text-fezzy">{ticket.status}</p>
+                                  <h3 className="mt-1 font-display text-base leading-tight text-cream">
+                                    {event?.title ?? "Event unavailable"}
+                                  </h3>
+                                </div>
+                                {isListed && (
+                                  <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                                    <Tag className="h-3 w-3" /> {listingStatus === "pending" ? "Pending" : "Listed"}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 space-y-0.5 text-xs text-cream-dim">
+                                {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-fezzy" /> {formatEventDate(event.starts_at)}</p>}
+                                {event && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-fezzy" /> {event.venue_name ?? "Venue TBA"}, {event.city ?? "Location TBA"}</p>}
+                              </div>
+                              <div className="mt-3 flex items-center justify-between border-t border-cream/10 pt-3">
+                                <span className="font-display text-sm text-cream">
+                                  {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
+                                </span>
+                                {!isListed && (event?.resale_enabled || event?.allow_resale) && ticket.status === "valid" && (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => handleListTicket(ticket)}
+                                    className="bg-fezzy hover:bg-fezzy/90 text-white text-xs"
+                                  >
+                                    List for Resale
+                                  </Button>
+                                )}
+                                {!isListed && (!(event?.resale_enabled || event?.allow_resale) || ticket.status !== "valid") && (
+                                  <span className="rounded-full border border-cream/20 px-3 py-1 font-mono-label text-[10px] text-ash">QR emailed</span>
+                                )}
+                              </div>
                             </div>
-                            {isListed && (
-                              <span className="flex items-center gap-1 text-xs text-amber-400">
-                                <Tag className="h-3 w-3" /> {listingStatus === "pending" ? "Pending Verification" : "Listed"}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-3 space-y-1 text-xs text-cream-dim">
-                            {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-fezzy" /> {formatEventDate(event.starts_at)}</p>}
-                            {event && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-fezzy" /> {event.venue_name ?? "Venue TBA"}, {event.city ?? "Location TBA"}</p>}
-                          </div>
-                          <div className="mt-4 flex items-center justify-between border-t border-cream/10 pt-3">
-                            <span className="font-display text-sm text-cream">
-                              {tier?.name ?? "Ticket"} {ticket.orders ? `- ${formatPrice(ticket.orders.total_kes)}` : ""}
-                            </span>
-                            {!isListed && (event?.resale_enabled || event?.allow_resale) && ticket.status === "valid" && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleListTicket(ticket)}
-                                className="bg-fezzy hover:bg-fezzy/90 text-white"
-                              >
-                                List for Resale
-                              </Button>
-                            )}
-                            {!isListed && (!(event?.resale_enabled || event?.allow_resale) || ticket.status !== "valid") && (
-                              <span className="border border-cream/20 px-3 py-1 font-mono-label text-ash">QR emailed</span>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
-            </TabsContent>
 
-            <TabsContent value="listings">
-              <div className="mb-8">
-                <h2 className="font-display text-2xl text-cream">Your Resale Listings</h2>
-              </div>
+              {/* ──── MY LISTINGS ──── */}
+              {view === "listings" && (
+                <div>
+                  <div className="mb-6">
+                    <h2 className="font-display text-2xl text-cream">Your Resale Listings</h2>
+                  </div>
 
-              {listingsLoading ? (
-                <div className="grid min-h-48 place-items-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-ash" />
-                </div>
-              ) : listings.length === 0 ? (
-                <div className="border border-dashed border-cream/20 bg-ink-card p-16 text-center">
-                  <Tag className="mx-auto h-10 w-10 text-ash" />
-                  <p className="mt-4 font-display text-2xl text-cream">No listings yet</p>
-                  <p className="mt-1 text-sm text-cream-dim">List your tickets for resale to get started.</p>
-                </div>
-              ) : (
-                <div className="grid gap-px bg-cream/10 md:grid-cols-2">
-                  {listings.map((listing) => {
-                    const event = listing.tickets.events;
-                    const tier = listing.tickets.ticket_tiers;
-                    return (
-                      <article key={listing.id} className="flex bg-ink transition-colors hover:bg-ink-card">
-                        <div className="relative w-32 flex-shrink-0 bg-ink-soft sm:w-44">
-                          {event?.poster_url ? (
-                            <img src={event.poster_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="grid h-full min-h-40 place-items-center px-3 text-center">
-                              <Ticket className="h-8 w-8 text-fezzy" />
+                  {listingsLoading ? (
+                    <div className="grid min-h-48 place-items-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-ash" />
+                    </div>
+                  ) : listings.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-cream/20 bg-ink-card p-16 text-center">
+                      <Tag className="mx-auto h-10 w-10 text-ash" />
+                      <p className="mt-4 font-display text-2xl text-cream">No listings yet</p>
+                      <p className="mt-1 text-sm text-cream-dim">List your tickets for resale to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {listings.map((listing) => {
+                        const event = listing.tickets.events;
+                        const tier = listing.tickets.ticket_tiers;
+                        return (
+                          <article key={listing.id} className="flex overflow-hidden rounded-2xl border border-cream/10 bg-ink transition-colors hover:border-cream/20">
+                            <div className="relative w-28 flex-shrink-0 bg-ink-soft sm:w-36">
+                              {event?.poster_url ? (
+                                <img src={event.poster_url} alt={event.title} className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="grid h-full min-h-36 place-items-center px-3 text-center">
+                                  <Ticket className="h-8 w-8 text-fezzy" />
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div className="flex-1 p-5">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className={`font-mono-label ${
-                                listing.status === "active" ? "text-green-400" :
-                                listing.status === "pending" ? "text-amber-400" :
-                                listing.status === "completed" ? "text-blue-400" : "text-gray-400"
-                              }`}>
-                                {listing.status === "pending" 
-                                  ? "Pending Verification" 
-                                  : listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
-                              </p>
-                              <h3 className="mt-1 font-display text-lg leading-tight text-cream">
-                                {event?.title ?? "Event unavailable"}
-                              </h3>
+                            <div className="flex-1 p-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className={`font-mono-label text-[10px] uppercase tracking-wider ${
+                                    listing.status === "active" ? "text-green-400" :
+                                    listing.status === "pending" ? "text-amber-400" :
+                                    listing.status === "completed" ? "text-blue-400" : "text-gray-400"
+                                  }`}>
+                                    {listing.status === "pending"
+                                      ? "Pending Verification"
+                                      : listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
+                                  </p>
+                                  <h3 className="mt-1 font-display text-base leading-tight text-cream">
+                                    {event?.title ?? "Event unavailable"}
+                                  </h3>
+                                </div>
+                              </div>
+                              <div className="mt-2 space-y-0.5 text-xs text-cream-dim">
+                                {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-fezzy" /> {formatEventDate(event.starts_at)}</p>}
+                                <p className="flex items-center gap-1.5">
+                                  <Tag className="h-3 w-3 text-fezzy" /> {tier?.name ?? "Ticket"}
+                                </p>
+                                {listing.status === "pending_payment" && listing.payment_expires_at && (
+                                  <p className="text-amber-400">
+                                    Buyer reservation expires at {new Date(listing.payment_expires_at).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="mt-3 flex items-center justify-between border-t border-cream/10 pt-3">
+                                <span className="font-display text-base text-green-400">
+                                  {formatPrice(listing.resale_price_kes)}
+                                </span>
+                                {(listing.status === "active" || listing.status === "pending") && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => handleCancelListing(listing.id)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                )}
+                                {listing.status === "completed" && (
+                                  <span className="flex items-center gap-1 text-green-400 text-xs">
+                                    <CheckCircle2 className="h-4 w-4" /> Sold
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="mt-3 space-y-1 text-xs text-cream-dim">
-                            {event && <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-fezzy" /> {formatEventDate(event.starts_at)}</p>}
-                            <p className="flex items-center gap-1.5">
-                              <Tag className="h-3 w-3 text-fezzy" /> {tier?.name ?? "Ticket"}
-                            </p>
-                            {listing.status === "pending_payment" && listing.payment_expires_at && (
-                              <p className="text-amber-400">
-                                Buyer reservation expires at {new Date(listing.payment_expires_at).toLocaleString()}
-                              </p>
-                            )}
-                          </div>
-                          <div className="mt-4 flex items-center justify-between border-t border-cream/10 pt-3">
-                            <span className="font-display text-lg text-green-400">
-                              {formatPrice(listing.resale_price_kes)}
-                            </span>
-                            {(listing.status === "active" || listing.status === "pending") && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleCancelListing(listing.id)}
-                              >
-                                Cancel Listing
-                              </Button>
-                            )}
-                            {listing.status === "completed" && (
-                              <span className="flex items-center gap-1 text-green-400">
-                                <CheckCircle2 className="h-4 w-4" /> Sold
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
-            </TabsContent>
 
-            <TabsContent value="marketplace">
-              <div className="mb-8 flex items-center justify-between">
-                <h2 className="font-display text-2xl text-cream">Resale Marketplace</h2>
-                <Link to="/resale" className="btn-outline-editorial px-4 py-2">
-                  View Full Marketplace
-                </Link>
-              </div>
-              <div className="border border-dashed border-cream/20 bg-ink-card p-16 text-center">
-                <Ticket className="mx-auto h-10 w-10 text-ash" />
-                <p className="mt-4 font-display text-2xl text-cream">Browse resale tickets</p>
-                <p className="mt-1 text-sm text-cream-dim">Find tickets from other fans in the full marketplace.</p>
-                <Link to="/resale" className="btn-ember mt-6 inline-flex">
-                  Go to Marketplace <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </section>
+              {/* ──── MARKETPLACE ──── */}
+              {view === "marketplace" && (
+                <div>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="font-display text-2xl text-cream">Resale Marketplace</h2>
+                    <Link to="/resale" className="btn-outline-editorial px-4 py-2 text-sm">
+                      View Full Marketplace
+                    </Link>
+                  </div>
+                  <div className="rounded-2xl border border-dashed border-cream/20 bg-ink-card p-16 text-center">
+                    <Ticket className="mx-auto h-10 w-10 text-ash" />
+                    <p className="mt-4 font-display text-2xl text-cream">Browse resale tickets</p>
+                    <p className="mt-1 text-sm text-cream-dim">Find tickets from other fans in the full marketplace.</p>
+                    <Link to="/resale" className="btn-ember mt-6 inline-flex">
+                      Go to Marketplace <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              )}
 
-        <section className="mx-auto max-w-1440 px-5 pb-12 lg:px-8">
-          <div className="border border-ember/30 bg-ember/10 p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-display text-lg text-cream">Delete account</h2>
-                <p className="mt-1 text-sm text-cream-dim">Permanently remove your buyer account and sign out.</p>
-              </div>
-              <button onClick={handleDeleteAccount} className="inline-flex items-center gap-2 border border-ember bg-ember px-4 py-2 font-mono-label text-cream transition-colors hover:bg-ember-deep">
-                <Trash2 className="h-4 w-4" /> Delete account
-              </button>
+              {/* ──── SETTINGS ──── */}
+              {view === "settings" && (
+                <div>
+                  <h2 className="font-display text-2xl text-cream mb-6">Account Settings</h2>
+
+                  <div className="space-y-6">
+                    {/* Profile Info */}
+                    <div className="rounded-2xl border border-cream/10 bg-ink-card p-6">
+                      <h3 className="font-display text-lg text-cream mb-4">Profile</h3>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs text-cream-dim mb-1">Name</p>
+                          <p className="text-sm text-cream">{name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-cream-dim mb-1">Email</p>
+                          <p className="text-sm text-cream">{user.email}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="rounded-2xl border border-ember/30 bg-ember/5 p-6">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="font-display text-lg text-cream">Delete account</h3>
+                          <p className="mt-1 text-sm text-cream-dim">Permanently remove your buyer account and sign out.</p>
+                        </div>
+                        <button onClick={handleDeleteAccount} className="inline-flex items-center gap-2 rounded-xl border border-ember bg-ember px-4 py-2 font-mono-label text-sm text-cream transition-colors hover:bg-ember-deep">
+                          <Trash2 className="h-4 w-4" /> Delete account
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
       </main>
 
+      {/* Listing Dialog */}
       <Dialog open={isListingDialogOpen} onOpenChange={setIsListingDialogOpen}>
         <DialogContent className="bg-ink text-cream border-cream/20">
           <DialogHeader>
@@ -490,6 +555,7 @@ const Account = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Confirm Dialog */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="bg-ink text-cream border-cream/20">
           <DialogHeader>
