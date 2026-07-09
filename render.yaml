@@ -10,7 +10,7 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: ALLOWED_BROWSER_ORIGINS
-        value: http://localhost:8080,https://fezzytickets.com
+        value: http://localhost:8080,https://fezzytickets.com,https://www.fezzytickets.com
       - key: PORT
         value: 10000
       - key: RENDER_API_BASE_URL
