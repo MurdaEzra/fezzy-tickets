@@ -63,7 +63,7 @@ function enforceRateLimit(limiter, key) {
 
 function getBrowserHeaders(req, config) {
   const origin = assertAllowedBrowserOrigin(getRequestOrigin(req), config.allowedBrowserOrigins);
-  return createBrowserCorsHeaders(origin);
+  return origin ? createBrowserCorsHeaders(origin) : {};
 }
 
 async function finalizeSuccessfulPayment({ attempt, store }) {
@@ -333,7 +333,8 @@ export function createApp(deps = {}) {
 
     try {
       if (req.method === "OPTIONS" && url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/webhooks/")) {
-        const headers = createBrowserCorsHeaders(assertAllowedBrowserOrigin(getRequestOrigin(req), config.allowedBrowserOrigins));
+        const origin = assertAllowedBrowserOrigin(getRequestOrigin(req), config.allowedBrowserOrigins);
+        const headers = origin ? createBrowserCorsHeaders(origin) : {};
         sendEmpty(res, 204, headers);
         return;
       }
