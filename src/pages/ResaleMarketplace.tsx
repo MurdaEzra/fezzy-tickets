@@ -10,16 +10,10 @@ import Footer from "@/components/Footer";
 import { formatPrice } from "@/lib/eventsApi";
 import { Loader2, Search, Ticket, Calendar, MapPin } from "lucide-react";
 
-/**
- * Public marketplace listing shape — matches the ticket_resale_listings_public view.
- * By design this view does NOT expose qr_token, buyer/seller identity, or holder PII.
- * Do not add sensitive fields here without also changing the view definition.
- */
 interface PublicListing {
   listing_id: string;
   resale_price_kes: number;
   listed_at: string;
-  status: string;
   tier_name: string;
   original_price_kes: number;
   event_id: string;
@@ -48,25 +42,46 @@ const ResaleMarketplace = () => {
   const fetchListings = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        // Public, PII-safe view. Never query ticket_resale_listings directly from anon UI.
-        .from("ticket_resale_listings_public" as never)
-        .select("*");
 
-      if (sortBy === "price_asc") {
-        query = query.order("resale_price_kes", { ascending: true });
-      } else if (sortBy === "price_desc") {
-        query = query.order("resale_price_kes", { ascending: false });
-      } else if (sortBy === "date_asc") {
-        query = query.order("listed_at", { ascending: false });
+      const { data, error } = await supabase.rpc(
+        "get_public_resale_listings"
+      );
+
+      if (error) throw error;
+
+      let listingsData = (data as PublicListing[]) ?? [];
+
+      switch (sortBy) {
+        case "price_asc":
+          listingsData.sort(
+            (a, b) => a.resale_price_kes - b.resale_price_kes
+          );
+          break;
+
+        case "price_desc":
+          listingsData.sort(
+            (a, b) => b.resale_price_kes - a.resale_price_kes
+          );
+          break;
+
+        case "date_asc":
+          listingsData.sort(
+            (a, b) =>
+              new Date(b.listed_at).getTime() -
+              new Date(a.listed_at).getTime()
+          );
+          break;
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setListings((data as unknown as PublicListing[]) ?? []);
+      setListings(listingsData);
     } catch (error) {
       console.error("Error fetching resale listings:", error);
-      toast.error("Failed to load resale listings");
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to load resale listings"
+      );
     } finally {
       setLoading(false);
     }
