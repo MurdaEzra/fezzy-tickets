@@ -7,7 +7,7 @@ function throwIfError(error, message) {
   }
 }
 
-export function createPaymentStore(admin, { ticketDeliverySecret }) {
+export function createPaymentStore(admin, { brevoApiKey, ticketDeliverySecret }) {
   return {
     async createCheckoutSession(record) {
       const { data, error } = await admin
@@ -244,16 +244,123 @@ export function createPaymentStore(admin, { ticketDeliverySecret }) {
     },
 
     async sendTicketDelivery(orderId) {
-      const { error } = await admin.functions.invoke("send-ticket-email", {
-        body: { orderId },
-        headers: {
-          "x-internal-ticket-secret": ticketDeliverySecret,
-        },
+      // Attempt 1: Supabase Edge Function
+      try {
+        const { error } = await admin.functions.invoke("send-ticket-email", {
+          body: { orderId },
+          headers: {
+            "x-internal-ticket-secret": ticketDeliverySecret,
+          },
+        });
+
+        if (!error) {
+          console.log("[ticket-delivery] Sent via edge function");
+          return;
+        }
+
+        console.warn("[ticket-delivery] Edge function returned error, falling back to direct Brevo:", error);
+      } catch (edgeFnError) {
+        console.warn("[ticket-delivery] Edge function threw, falling back to direct Brevo:", edgeFnError);
+      }
+
+      // Attempt 2: Direct Brevo email
+      if (!brevoApiKey) {
+        console.error("[ticket-delivery-fallback] No BREVO_API_KEY configured, cannot send ticket email");
+        return;
+      }
+
+      const { data: order, error: orderError } = await admin
+        .from("orders")
+        .select("*, events(*), tickets(*, ticket_tiers(*))")
+        .eq("id", orderId)
+        .single();
+
+      if (orderError || !order) {
+        console.error("[ticket-delivery-fallback] Could not load order:", orderError);
+        return;
+      }
+
+      const event = order.events;
+      const dateStr = new Date(event.starts_at).toLocaleString("en-GB", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
       });
 
-      if (error) {
-        throw new Error("Unable to trigger ticket delivery");
+      const ref = order.ref || `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+
+      // Group tickets by holder email
+      const ticketsByEmail = new Map();
+      for (const ticket of order.tickets) {
+        const list = ticketsByEmail.get(ticket.holder_email) ?? [];
+        list.push(ticket);
+        ticketsByEmail.set(ticket.holder_email, list);
       }
+
+      let sentCount = 0;
+      for (const [recipientEmail, tickets] of ticketsByEmail.entries()) {
+        const ticketRows = tickets.map((t) =>
+          `<tr>
+            <td style="padding:8px;border-bottom:1px solid #eee">${t.holder_name}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee">${t.ticket_tiers?.name ?? "General"}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee"><code>${t.qr_token}</code></td>
+          </tr>`
+        ).join("");
+
+        const htmlContent = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Your Fezzy Tickets</title></head>
+<body style="background:#FFF8EE;padding:24px;font-family:Arial,sans-serif">
+<div style="max-width:700px;margin:auto">
+  <div style="background:linear-gradient(135deg,#1FAD66,#2bd083);padding:28px;color:white;border-radius:12px 12px 0 0">
+    <p style="margin:0;font-size:11px;text-transform:uppercase">Admit One</p>
+    <h1 style="margin:8px 0">${event.title}</h1>
+    <p style="margin:0">${dateStr} · ${event.venue_name ?? "TBA"}, ${event.city ?? ""}</p>
+  </div>
+  <div style="background:#fff;padding:24px;border-radius:0 0 12px 12px;border:1px solid #ebe2cf;border-top:0">
+    <p>Booking Reference: <strong>${ref}</strong></p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0">
+      <thead><tr style="text-align:left">
+        <th style="padding:8px;border-bottom:2px solid #ddd">Holder</th>
+        <th style="padding:8px;border-bottom:2px solid #ddd">Tier</th>
+        <th style="padding:8px;border-bottom:2px solid #ddd">QR Token</th>
+      </tr></thead>
+      <tbody>${ticketRows}</tbody>
+    </table>
+    <p style="color:#777;text-align:center;margin-top:24px">Show your QR code at the gate. Screenshots are accepted.</p>
+  </div>
+  <div style="border-top:1px solid #ddd;padding-top:24px;margin-top:24px;text-align:center;font-size:12px;color:#777">
+    <p style="margin:4px 0">Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya</p>
+    <p style="margin:4px 0">Phone: +254728135200</p>
+  </div>
+</div>
+</body></html>`;
+
+        try {
+          const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": brevoApiKey,
+            },
+            body: JSON.stringify({
+              sender: { name: "Fezzy Tickets", email: "hello@fezzytickets.com" },
+              to: [{ email: recipientEmail }],
+              subject: `Your Ticket${tickets.length > 1 ? "s" : ""} - ${event.title}`,
+              htmlContent,
+            }),
+          });
+
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error("[ticket-delivery-fallback] Brevo error for", recipientEmail, errText);
+          } else {
+            sentCount++;
+          }
+        } catch (fetchErr) {
+          console.error("[ticket-delivery-fallback] Brevo fetch failed for", recipientEmail, fetchErr);
+        }
+      }
+
+      console.log(`[ticket-delivery-fallback] Sent ${sentCount}/${ticketsByEmail.size} emails via Brevo`);
     },
 
     async updateCheckoutSession(id, updates) {

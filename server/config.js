@@ -66,7 +66,7 @@ export function loadConfig(env = process.env) {
   const renderApiBaseUrl = resolvedEnv.RENDER_API_BASE_URL ?? `http://localhost:${port}`;
 
   return {
-    allowedBrowserOrigins: splitCsv(resolvedEnv.ALLOWED_BROWSER_ORIGINS ?? "http://localhost:8080"),
+    allowedBrowserOrigins: splitCsv(resolvedEnv.ALLOWED_BROWSER_ORIGINS ?? "https://fezzytickets.com"),
     enabledPaymentMethods: splitCsv(resolvedEnv.ENABLED_PAYMENT_METHODS ?? "mpesa,card"),
     mpesa: {
       baseUrl: resolvedEnv.MPESA_BASE_URL ?? "https://sandbox.safaricom.co.ke",
@@ -104,6 +104,7 @@ export function loadConfig(env = process.env) {
       serviceRoleKey: resolvedEnv.SUPABASE_SERVICE_ROLE_KEY ?? "",
       url: resolvedEnv.SUPABASE_URL ?? "",
     },
+    brevoApiKey: resolvedEnv.BREVO_API_KEY ?? "",
     ticketDeliverySecret: resolvedEnv.INTERNAL_TICKET_DELIVERY_SECRET ?? "dev-only-ticket-secret",
   };
 }

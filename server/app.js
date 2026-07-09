@@ -92,6 +92,7 @@ export function createApp(deps = {}) {
   const config = deps.config ?? loadConfig();
   const admin = deps.admin ?? createAdminClient(config);
   const store = deps.store ?? createPaymentStore(admin, {
+    brevoApiKey: config.brevoApiKey,
     ticketDeliverySecret: config.ticketDeliverySecret,
   });
   const mpesa = deps.mpesa ?? createMpesaClient(config.mpesa);
