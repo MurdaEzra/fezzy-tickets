@@ -740,9 +740,9 @@ const Checkout = () => {
                           <div className="flex items-center justify-between">
                             <span className="text-cream-dim text-sm">Paybill Number</span>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-cream">123456</span>
+                              <span className="font-mono text-cream">4322405</span>
                               <button
-                                onClick={() => copyToClipboard("123456")}
+                                onClick={() => copyToClipboard("4322405")}
                                 className="text-cream-dim hover:text-cream"
                               >
                                 <Copy className="h-4 w-4" />
@@ -769,7 +769,7 @@ const Checkout = () => {
                         <ol className="list-decimal list-inside space-y-1 text-sm text-cream-dim">
                           <li>Go to M-Pesa on your phone</li>
                           <li>Select "Pay Bill"</li>
-                          <li>Enter Paybill 123456</li>
+                          <li>Enter Paybill 4322405</li>
                           <li>Enter {mpesaMerchantRef || "FEZZY"} as account number</li>
                           <li>Enter {calc ? formatPrice(calc.total) : "..."} as amount</li>
                           <li>Confirm with your PIN</li>
