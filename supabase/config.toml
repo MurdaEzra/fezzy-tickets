@@ -1,4 +1,4 @@
-project_id = "jgwsotitssqbiyruxpaw"
+project_id = "ykoxkqiuisbmzfwflmjj"
 
 [functions.lpp-mpesa-callback]
 verify_jwt = false
@@ -13,4 +13,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.resale-verify-listing]
+verify_jwt = false
+
+[functions.send-ticket-email]
 verify_jwt = false
