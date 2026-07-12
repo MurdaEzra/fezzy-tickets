@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Loader2, XCircle, Info } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -10,10 +10,12 @@ type Status = "verifying" | "success" | "failed" | "pending";
 
 const PaymentCallback = () => {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const reference = params.get("reference") || params.get("trxref") || "";
   const [status, setStatus] = useState<Status>("verifying");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [isResale, setIsResale] = useState(false);
+  const [eventSlug, setEventSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!reference) { setStatus("failed"); return; }
@@ -32,7 +34,18 @@ const PaymentCallback = () => {
       }
       const d = data as { paymentStatus: Status; orderId?: string; resale?: boolean; listingId?: string };
       if (d.resale) setIsResale(true);
-      if (d.orderId) setOrderId(d.orderId);
+      if (d.orderId) {
+        setOrderId(d.orderId);
+        // Get event slug to allow retrying checkout
+        const { data: orderData } = await supabase
+          .from("orders")
+          .select("events(slug)")
+          .eq("id", d.orderId)
+          .single();
+        if (orderData?.events?.slug) {
+          setEventSlug(orderData.events.slug);
+        }
+      }
       if (d.paymentStatus === "success") setStatus("success");
       else if (d.paymentStatus === "failed") setStatus("failed");
       else if (attempts < 8) timer = window.setTimeout(run, 2000);
@@ -42,6 +55,14 @@ const PaymentCallback = () => {
     run();
     return () => { if (timer) window.clearTimeout(timer); };
   }, [reference]);
+
+  const goToCheckout = () => {
+    if (eventSlug) {
+      navigate(`/events/${eventSlug}#checkout`);
+    } else {
+      navigate("/events");
+    }
+  };
 
   return (
     <div className="tm-page min-h-screen bg-background">
@@ -94,8 +115,11 @@ const PaymentCallback = () => {
                 <XCircle className="h-8 w-8" />
               </div>
               <h1 className="display mt-6 text-3xl">Payment didn't go through</h1>
-              <p className="mt-2 text-muted-foreground">No worries — nothing was charged. Try again.</p>
-              <Button variant="acacia" className="mt-6" asChild><Link to="/events">Back to events</Link></Button>
+              <p className="mt-2 text-muted-foreground">No worries — nothing was charged. Would you like to try again?</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Button variant="acacia" onClick={goToCheckout}>Try paying again</Button>
+                <Button variant="outline" asChild><Link to="/events">Browse events</Link></Button>
+              </div>
             </>
           )}
           {orderId && status === "success" && (

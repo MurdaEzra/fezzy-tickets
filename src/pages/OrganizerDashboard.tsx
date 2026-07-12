@@ -7,6 +7,7 @@ import {
   Trash2, LogOut, ChevronRight, Copy, Check, Download, Share2, Link as LinkIcon,
   ShieldCheck,
   Search,
+  X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import Footer from "@/components/Footer";
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatKES, formatEventDate, type DbEvent } from "@/lib/eventsApi";
@@ -75,6 +77,8 @@ const OrganizerDashboard = () => {
   const [orgName, setOrgName] = useState("");
   const [section, setSection] = useState<Section>("overview");
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
+  const [isNewOrganizer, setIsNewOrganizer] = useState(false);
 
   const plan = (user?.user_metadata?.plan as string | undefined) || "Starter";
   const { data: userProfile } = useUserProfile();
@@ -123,6 +127,13 @@ const OrganizerDashboard = () => {
           prof = created;
           sessionStorage.removeItem("pendingOrgName");
           sessionStorage.removeItem("pendingPlan");
+          setIsNewOrganizer(true);
+          setWelcomeDialogOpen(true);
+        }
+      } else {
+        // Check if payout isn't set up and show reminder
+        if (!prof.paystack_subaccount_code && !prof.mpesa_payout_phone) {
+          setWelcomeDialogOpen(true);
         }
       }
 
@@ -222,6 +233,64 @@ const OrganizerDashboard = () => {
 
   return (
     <div className="tm-page min-h-screen bg-background">
+      {/* Welcome / Payout Reminder Dialog */}
+      <Dialog open={welcomeDialogOpen} onOpenChange={setWelcomeDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] overflow-hidden p-0">
+          <div className="relative">
+            {/* Google-style colorful header */}
+            <div className="h-2 bg-gradient-to-r from-blue-500 via-red-500 via-yellow-500 to-green-500"></div>
+            <button
+              onClick={() => setWelcomeDialogOpen(false)}
+              className="absolute right-4 top-4 rounded-full p-1 hover:bg-gray-100 transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+          <div className="p-8">
+            <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <img src={FEZZY_LOGO_URL} alt="Fezzy" className="h-12 w-auto object-contain" />
+            </div>
+            <DialogHeader className="text-center">
+              <DialogTitle className="text-2xl font-bold">
+                {isNewOrganizer ? "Welcome to Fezzy Tickets!" : "Set up your payout account"}
+              </DialogTitle>
+              <DialogDescription className="text-base mt-2">
+                {isNewOrganizer
+                  ? "Thank you for choosing Fezzy Tickets to power your events! Let's get you set up so you can receive your funds."
+                  : "You haven't set up your payout account yet. Let's fix that so you can get paid!"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-6 space-y-4">
+              <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
+                <Sparkles className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-foreground">Instant payouts</p>
+                  <p className="text-sm text-muted-foreground">Get paid as soon as tickets sell with M-Pesa or Paystack</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
+                <TicketIcon className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-foreground">Create your first event</p>
+                  <p className="text-sm text-muted-foreground">After setting up payouts, you can start selling tickets</p>
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="mt-8 flex-col sm:flex-row gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setWelcomeDialogOpen(false)}>
+                Do this later
+              </Button>
+              <Button variant="acacia" className="flex-1" onClick={() => {
+                setWelcomeDialogOpen(false);
+                setSection("payout");
+              }}>
+                Set up payouts now
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex">
         <aside className={`${mobileMenu ? "fixed inset-y-0 left-0 z-50 w-72 translate-x-0" : "hidden md:flex md:w-72 md:translate-x-0"} flex-col border-r border-border bg-card md:sticky md:top-0 md:h-screen transition-transform`}>
           <div className="flex h-20 items-center gap-3 border-b border-border px-5">
