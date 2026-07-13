@@ -159,7 +159,7 @@ const TicketCard = ({
                   marginBottom: "12px",
                   textTransform: "uppercase",
                   textShadow: "0 3px 10px rgba(0,0,0,0.8)"
-                }}>{eventTitle}</div>
+                }}>{holderName}</div>
 
                 {eventCity && (
                   <div style={{
@@ -170,7 +170,7 @@ const TicketCard = ({
                     color: greenLight,
                     textTransform: "uppercase",
                     fontWeight: "700"
-                  }}>{eventCity} · Live Tour</div>
+                  }}>{eventCity} · Kenya</div>
                 )}
               </div>
             </div>
@@ -208,7 +208,7 @@ const TicketCard = ({
               borderTop: "1px dashed #cbd5e1"
             }}>
               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Holder: <strong style={{ color: "#0f172a" }}>{holderName}</strong>
+                Event: <strong style={{ color: "#0f172a" }}>{eventTitle}</strong>
                 &nbsp;&nbsp;·&nbsp;&nbsp; 
                 Order Ref: <strong style={{ color: "#0f172a" }}>{orderRef}</strong>
                 &nbsp;&nbsp;·&nbsp;&nbsp; 
@@ -239,7 +239,7 @@ const TicketCard = ({
             textAlign: "center",
             color: "#ffffff"
           }}>
-            <div style={{ fontFamily: "'Great Vibes', 'Brittany Signature', cursive", fontSize: "28px", color: greenLight, fontWeight: "400", lineHeight: "0.9", marginBottom: "5px" }}>Fezzy</div>
+            <div style={{ fontFamily: "'Great Vibes', 'Brittany Signature', cursive", fontSize: "28px", color: greenLight, fontWeight: "400", lineHeight: "0.9", marginBottom: "5px" }}>.</div>
             <div style={{ fontFamily: "'Anton', 'Arial Narrow', sans-serif", fontSize: "12px", letterSpacing: "0.2em", color: greenPrimary, textTransform: "uppercase", marginBottom: "20px", fontWeight: "400" }}>ADMIT ONE</div>
             
             {/* QR Code */}
@@ -272,7 +272,7 @@ const TicketCard = ({
               lineHeight: "1.4",
               fontFamily: "'Courier New', monospace",
               marginBottom: "15px"
-            }}>{ticketId}</div>
+            }}>Read the Terms and Conditions Below.</div>
 
             {/* Mini date repeat */}
             <div style={{
@@ -428,7 +428,7 @@ const TicketViewer = () => {
           <div style={{ padding: "34px 32px 30px", textAlign: "center" }}>
             <img
               src={LOGO_URL}
-              alt="Fezzy"
+              alt="Fezzy Tickets"
               width="130"
               style={{
                 maxWidth: "130px",
@@ -445,7 +445,7 @@ const TicketViewer = () => {
               lineHeight: "0.9",
               marginBottom: "8px"
             }}>
-              Fezzy
+              Welcome 
             </div>
             <div style={{
               fontFamily: "'Anton', 'Arial Narrow', 'Impact', sans-serif",
@@ -481,50 +481,6 @@ const TicketViewer = () => {
             height: "1px",
             background: "linear-gradient(90deg, transparent, #1e293b, transparent)"
           }} />
-          <div style={{ padding: "14px 28px 22px", textAlign: "center" }}>
-            <span style={{
-              display: "inline-block",
-              padding: "6px 12px",
-              margin: "0 4px 6px",
-              border: "1px solid #1e293b",
-              borderRadius: "999px",
-              fontSize: "10px",
-              letterSpacing: "0.18em",
-              color: "#10B981",
-              textTransform: "uppercase",
-              fontWeight: "700"
-            }}>
-              M-Pesa
-            </span>
-            <span style={{
-              display: "inline-block",
-              padding: "6px 12px",
-              margin: "0 4px 6px",
-              border: "1px solid #1e293b",
-              borderRadius: "999px",
-              fontSize: "10px",
-              letterSpacing: "0.18em",
-              color: "#10B981",
-              textTransform: "uppercase",
-              fontWeight: "700"
-            }}>
-              Visa
-            </span>
-            <span style={{
-              display: "inline-block",
-              padding: "6px 12px",
-              margin: "0 4px 6px",
-              border: "1px solid #1e293b",
-              borderRadius: "999px",
-              fontSize: "10px",
-              letterSpacing: "0.18em",
-              color: "#10B981",
-              textTransform: "uppercase",
-              fontWeight: "700"
-            }}>
-              Paystack Secured
-            </span>
-          </div>
         </div>
       </div>
 
