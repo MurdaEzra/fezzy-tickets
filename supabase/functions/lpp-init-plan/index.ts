@@ -17,6 +17,7 @@ function json(data: unknown, status = 200) {
   });
 }
 
+
 function generateRefNo() {
   // Format FZXXXXXXXX — friendly, uppercase, no ambiguous chars
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
