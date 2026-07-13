@@ -26,7 +26,9 @@ type Ticket = {
   holder_name: string;
   holder_email: string;
   qr_token: string;
-  ticket_tiers: { name: string };
+  ticket_tiers?: {
+    name: string;
+  } | null;
 };
 
 type Order = {
@@ -48,6 +50,7 @@ type Order = {
   };
   tickets: Ticket[];
 };
+
 
 interface TicketCardProps {
   eventTitle: string;
@@ -103,10 +106,11 @@ const TicketCard = ({
       fontFeatureSettings: "'ss01', 'cv11'",
       WebkitFontSmoothing: "antialiased"
     }}>
-      <table width="100%" cellPadding="0" cellSpacing="0" border="0" style={{ borderCollapse: "collapse" }}>
-        <tr>
-          {/* ── MAIN TICKET BODY ── */}
-          <td valign="top" style={{ verticalAlign: "top" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }} cellPadding={0} cellSpacing={0} border={0}>
+        <tbody>
+          <tr>
+          
+            <td valign="top" style={{ verticalAlign: "top" }}>
             {/* Dark hero header with cover_image_url backdrop */}
             <div style={{
               position: "relative",
@@ -173,25 +177,26 @@ const TicketCard = ({
 
             {/* INFO GRID — 4 columns: Date / Time / Venue / Section */}
             <table width="100%" cellPadding="0" cellSpacing="0" border="0" style={{ borderCollapse: "collapse", background: "#ffffff" }}>
-              <tr>
-                <td width="25%" valign="top" style={{ padding: "18px 10px", borderRight: "1px solid #e2e8f0", textAlign: "center" }}>
+              <tbody>
+                <tr>
+                 <td width="25%" valign="top" style={{ padding: "18px 10px", borderRight: "1px solid #e2e8f0", textAlign: "center" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", fontWeight: "600" }}>Date</div>
                   <div style={{ fontFamily: "'Jost', 'Montserrat', sans-serif", fontSize: "16px", color: "#0f172a", fontWeight: "700", letterSpacing: "-0.035em", lineHeight: "1" }}>{dateStr}</div>
-                </td>
-                <td width="20%" valign="top" style={{ padding: "18px 10px", borderRight: "1px solid #e2e8f0", textAlign: "center" }}>
+                 </td>
+                 <td width="20%" valign="top" style={{ padding: "18px 10px", borderRight: "1px solid #e2e8f0", textAlign: "center" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", fontWeight: "600" }}>Time</div>
                   <div style={{ fontFamily: "'Jost', 'Montserrat', sans-serif", fontSize: "16px", color: "#0f172a", fontWeight: "700", letterSpacing: "-0.035em", lineHeight: "1" }}>{timeStr}</div>
-                </td>
-                <td width="30%" valign="top" style={{ padding: "18px 10px", borderRight: "1px solid #e2e8f0", textAlign: "center" }}>
+                 </td>
+                 <td width="30%" valign="top" style={{ padding: "18px 10px", borderRight: "1px solid #e2e8f0", textAlign: "center" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", fontWeight: "600" }}>Venue</div>
                   <div style={{ fontFamily: "'Jost', 'Montserrat', sans-serif", fontSize: "15px", color: "#0f172a", fontWeight: "700", letterSpacing: "-0.035em", lineHeight: "1", marginBottom: "3px" }}>{venueName || "TBA"}</div>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "#64748b", letterSpacing: "0.05em" }}>{venueLine}</div>
-                </td>
-                <td width="25%" valign="top" style={{ padding: "18px 10px", textAlign: "center" }}>
+                 </td>
+                 <td width="25%" valign="top" style={{ padding: "18px 10px", textAlign: "center" }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", fontWeight: "600" }}>Section</div>
                   <div style={{ fontFamily: "'Jost', 'Montserrat', sans-serif", fontSize: "16px", color: greenDark, fontWeight: "700", letterSpacing: "-0.035em", lineHeight: "1" }}>{tierName}</div>
-                </td>
-              </tr>
+                 </td>
+              </tbody>
             </table>
             
             {/* Order info strip */}
@@ -278,7 +283,8 @@ const TicketCard = ({
               <div style={{ fontFamily: "'Jost', 'Montserrat', sans-serif", fontSize: "14px", color: greenPrimary, letterSpacing: "-0.035em", fontWeight: "700", marginTop: "3px", lineHeight: "1" }}>{dateStr}</div>
             </div>
           </td>
-        </tr>
+         </tr>
+        </tbody>
       </table>
 
       {/* Footer notice */}
@@ -291,7 +297,7 @@ const TicketCard = ({
         letterSpacing: "0.15em",
         textTransform: "uppercase"
       }}>
-        Fully Valid Ticket Template · Screenshots Accepted
+        Fully Valid Ticket · {event.title}
       </div>
     </div>
   );
@@ -392,6 +398,14 @@ const TicketViewer = () => {
   const venueName = event.venue_name || "";
   const venueLine = [event.city, event.country].filter(Boolean).join(", ") || "TBA";
   const posterUrl = event.cover_image_url ?? event.poster_url ?? event.image_url ?? null;
+
+  if (!order.events) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      Event not found
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-[#f4ede0] py-8 px-4">
