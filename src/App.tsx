@@ -9,7 +9,6 @@ import { CookieConsentProvider } from "@/hooks/useCookieConsent";
 import { installGlobalErrorLogging } from "@/lib/activityLog";
 import { queryClient } from "@/lib/queryClient";
 import { CookieConsent } from "@/components/CookieConsent";
-import { PageLoader } from "@/components/PageLoader";
 import Index from "./pages/Index.tsx";
 import Events from "./pages/Events.tsx";
 import EventDetail from "./pages/EventDetail.tsx";
@@ -59,7 +58,6 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <ErrorLogging />
-            <PageLoader />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/events" element={<Events />} />

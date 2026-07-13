@@ -196,6 +196,7 @@ const TicketCard = ({
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", letterSpacing: "0.15em", color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", fontWeight: "600" }}>Section</div>
                   <div style={{ fontFamily: "'Jost', 'Montserrat', sans-serif", fontSize: "16px", color: greenDark, fontWeight: "700", letterSpacing: "-0.035em", lineHeight: "1" }}>{tierName}</div>
                  </td>
+                </tr>
               </tbody>
             </table>
             
@@ -297,7 +298,7 @@ const TicketCard = ({
         letterSpacing: "0.15em",
         textTransform: "uppercase"
       }}>
-        Fully Valid Ticket · {event.title}
+        Fully Valid Ticket · {eventTitle}
       </div>
     </div>
   );
