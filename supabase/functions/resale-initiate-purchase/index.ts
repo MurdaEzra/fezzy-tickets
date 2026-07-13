@@ -1,12 +1,12 @@
-// Resale purchase initiation.
+// Resale purchase initiation via M-Pesa Daraja STK Push.
 // 1. Reserve the listing via `initiate_resale_purchase` RPC (row-locked, 10 min hold).
-// 2. Create a Paystack transaction with metadata { kind: 'resale', listing_id }.
-// 3. Return the Paystack authorization_url so the buyer is redirected to checkout.
+// 2. Send M-Pesa STK push to the buyer's phone.
+// 3. Return checkoutRequestId + customerMessage so the frontend can show status.
 //
 // The heavy lifting (QR rotation, ownership transfer, audit log) happens in
-// `complete_resale_transfer` which is invoked from paystack-verify / paystack-webhook
-// once the payment is confirmed.
-import { createClient } from "npm:@supabase/supabase-js@2";
+// `resale-mpesa-callback` once M-Pesa confirms the payment.
+// deno-lint-ignore-file no-explicit-any
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +15,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
 const BUYER_FEE_RATE = 0.035;
 
 function json(data: unknown, status = 200) {
@@ -25,40 +24,99 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function normalizeKenyanPhone(raw: string): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (digits.startsWith("254") && digits.length === 12) return digits;
+  if (digits.startsWith("0") && digits.length === 10) return `254${digits.slice(1)}`;
+  if (digits.startsWith("7") && digits.length === 9) return `254${digits}`;
+  throw new Error("Enter a valid Kenyan phone number");
+}
+
+async function initiateStkPush({
+  accountReference,
+  amountKes,
+  phone,
+  callbackUrl,
+  description,
+}: {
+  accountReference: string;
+  amountKes: number;
+  phone: string;
+  callbackUrl: string;
+  description: string;
+}) {
+  const env = Deno.env.get("MPESA_ENV") ?? "sandbox";
+  const baseUrl = env === "live" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+  const shortCode = Deno.env.get("MPESA_SHORTCODE")!;
+  const passkey = Deno.env.get("MPESA_PASSKEY")!;
+  const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")!;
+  const consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET")!;
+
+  // Get OAuth token
+  const tokenRes = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
+    headers: { Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}` },
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenRes.ok || !tokenData.access_token) throw new Error("M-Pesa auth failed");
+
+  // Build STK push payload
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const timestamp =
+    `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`;
+  const password = btoa(`${shortCode}${passkey}${timestamp}`);
+
+  const payload = {
+    BusinessShortCode: Number(shortCode),
+    Password: password,
+    Timestamp: timestamp,
+    TransactionType: "CustomerPayBillOnline",
+    Amount: Math.max(1, Math.round(amountKes)),
+    PartyA: phone,
+    PartyB: Number(shortCode),
+    PhoneNumber: phone,
+    CallBackURL: callbackUrl,
+    AccountReference: accountReference,
+    TransactionDesc: description.slice(0, 60),
+  };
+
+  const stkRes = await fetch(`${baseUrl}/mpesa/stkpush/v1/processrequest`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const stkData = await stkRes.json();
+  if (!stkRes.ok) throw new Error(stkData?.errorMessage ?? "STK push failed");
+  return stkData;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!PAYSTACK_SECRET_KEY) return json({ error: "Payments not configured" }, 500);
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-    const { listingId, callbackUrl, paymentMethod } = await req.json();
+    const { listingId, phone } = await req.json();
     if (!listingId) return json({ error: "listingId is required" }, 400);
-    
-    // We strictly enforce M-Pesa only
-    if (paymentMethod !== "mpesa") {
-      return json({ error: "Only M-Pesa is supported for resale purchases" }, 400);
-    }
-    
-    const method = "mpesa";
+    if (!phone) return json({ error: "M-Pesa phone number is required" }, 400);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Authenticate the buyer.
+    // Authenticate the buyer
     const { data: userRes, error: userErr } = await admin.auth.getUser(
       authHeader.replace("Bearer ", ""),
     );
     if (userErr || !userRes.user) return json({ error: "Invalid session" }, 401);
     const buyer = userRes.user;
-    const buyerEmail = buyer.email ?? "";
-    if (!buyerEmail) return json({ error: "Your account has no email" }, 400);
 
-    // Load public listing metadata (safe view — no PII / no qr_token).
+    // Load public listing metadata (safe view — no PII / no qr_token)
     const { data: listing, error: listingErr } = await admin
       .from("ticket_resale_listings_public" as never)
       .select("*")
@@ -73,7 +131,7 @@ Deno.serve(async (req) => {
       return json({ error: "Event has already started" }, 409);
     }
 
-    // Atomically reserve the listing. RPC checks ownership, status, and prior expiry.
+    // Atomically reserve the listing
     const { data: reserved, error: reserveErr } = await admin.rpc(
       "initiate_resale_purchase",
       {
@@ -84,7 +142,6 @@ Deno.serve(async (req) => {
     );
 
     if (reserveErr) {
-      // P0001 = policy error (not available / own listing); P0002 = missing.
       const msg = reserveErr.message ?? "Unable to reserve listing";
       const status = /own listing/i.test(msg)
         ? 400
@@ -95,60 +152,58 @@ Deno.serve(async (req) => {
     }
     if (!reserved) return json({ error: "Reservation failed" }, 500);
 
+    // Calculate total with buyer fee
     const resalePrice: number = listing.resale_price_kes;
     const buyerFee = Math.round(resalePrice * BUYER_FEE_RATE);
     const total = resalePrice + buyerFee;
 
     const reference = `rz_${String(listingId).replace(/-/g, "").slice(0, 12)}_${Date.now().toString(36)}`;
 
-    const initBody: Record<string, unknown> = {
-      email: buyerEmail,
-      amount: total * 100,
-      currency: "KES",
-      reference,
-      callback_url: callbackUrl,
-      metadata: {
-        kind: "resale",
-        listing_id: listingId,
-        buyer_user_id: buyer.id,
-        seller_user_id: null, // seller identity hidden from client, resolved server-side
-        event_id: listing.event_id,
-        resale_price_kes: resalePrice,
-        buyer_fee_kes: buyerFee,
-        custom_fields: [
-          { display_name: "Event", variable_name: "event", value: listing.event_title },
-          { display_name: "Ticket", variable_name: "ticket", value: listing.tier_name },
-          { display_name: "Type", variable_name: "type", value: "Resale ticket" },
-        ],
-      },
-      customer: { email: buyerEmail, name: buyer.user_metadata?.full_name ?? buyerEmail },
-      channels: ["mobile_money"],
-    };
+    // Normalize phone
+    const normalizedPhone = normalizeKenyanPhone(phone);
 
-    const res = await fetch("https://api.paystack.co/transaction/initialize", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(initBody),
-    });
-    const data = await res.json();
-    if (!res.ok || !data?.status) {
-      // Best-effort release of the reservation is handled lazily by
-      // initiate_resale_purchase / expire_stale_resale_reservations.
-      return json({ error: data?.message ?? "Payment gateway rejected the request" }, 502);
-    }
+    // Build callback URL for M-Pesa
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const callbackUrl = `${supabaseUrl}/functions/v1/resale-mpesa-callback?listing_id=${encodeURIComponent(listingId)}&ref=${encodeURIComponent(reference)}`;
 
-    // Persist reference on the listing for later reconciliation.
+    // Persist reference on the listing
     await admin
       .from("ticket_resale_listings")
       .update({ payment_ref: reference })
       .eq("id", listingId);
 
+    // Initiate STK push
+    let stkResult: any = null;
+    try {
+      stkResult = await initiateStkPush({
+        accountReference: reference.slice(0, 12).toUpperCase(),
+        amountKes: total,
+        phone: normalizedPhone,
+        callbackUrl,
+        description: `Fezzy resale ${listing.event_title?.slice(0, 30) ?? "ticket"}`,
+      });
+    } catch (err) {
+      // STK push failed — release reservation
+      await admin
+        .from("ticket_resale_listings")
+        .update({
+          status: "active",
+          buyer_user_id: null,
+          reserved_at: null,
+          reservation_expires_at: null,
+          payment_ref: null,
+        })
+        .eq("id", listingId)
+        .eq("status", "reserved");
+
+      return json({
+        error: err instanceof Error ? err.message : "M-Pesa payment initiation failed",
+      }, 502);
+    }
+
     return json({
-      authorization_url: data.data.authorization_url,
-      access_code: data.data.access_code,
+      checkout_request_id: stkResult.CheckoutRequestID ?? null,
+      customer_message: stkResult.CustomerMessage ?? "Check your phone to authorize the M-Pesa payment.",
       reference,
       listing_id: listingId,
       total_kes: total,

@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { formatPrice } from "@/lib/eventsApi";
-import { Loader2, Search, Ticket, Calendar, MapPin } from "lucide-react";
+import { Loader2, Search, Ticket, Calendar, MapPin, Phone, CheckCircle2, XCircle } from "lucide-react";
 
 interface PublicListing {
   listing_id: string;
@@ -26,49 +27,55 @@ interface PublicListing {
   event_cover_image_url: string | null;
 }
 
+type PurchaseStep = "phone" | "waiting" | "success" | "failed";
+
+const BUYER_FEE_RATE = 0.035;
+
 const ResaleMarketplace = () => {
   const { user } = useAuth();
   const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("price_asc");
+
+  // Purchase flow state
+  const [selectedListing, setSelectedListing] = useState<PublicListing | null>(null);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [purchaseStep, setPurchaseStep] = useState<PurchaseStep>("phone");
+  const [submitting, setSubmitting] = useState(false);
+  const [customerMessage, setCustomerMessage] = useState("");
+  const pollTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchListings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
 
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, []);
+
   const fetchListings = async () => {
     try {
       setLoading(true);
-
-      const { data, error } = await supabase.rpc(
-        "get_public_resale_listings"
-      );
-
+      const { data, error } = await supabase.rpc("get_public_resale_listings");
       if (error) throw error;
 
       let listingsData = (data as PublicListing[]) ?? [];
 
       switch (sortBy) {
         case "price_asc":
-          listingsData.sort(
-            (a, b) => a.resale_price_kes - b.resale_price_kes
-          );
+          listingsData.sort((a, b) => a.resale_price_kes - b.resale_price_kes);
           break;
-
         case "price_desc":
-          listingsData.sort(
-            (a, b) => b.resale_price_kes - a.resale_price_kes
-          );
+          listingsData.sort((a, b) => b.resale_price_kes - a.resale_price_kes);
           break;
-
         case "date_asc":
           listingsData.sort(
-            (a, b) =>
-              new Date(b.listed_at).getTime() -
-              new Date(a.listed_at).getTime()
+            (a, b) => new Date(b.listed_at).getTime() - new Date(a.listed_at).getTime(),
           );
           break;
       }
@@ -76,56 +83,111 @@ const ResaleMarketplace = () => {
       setListings(listingsData);
     } catch (error) {
       console.error("Error fetching resale listings:", error);
-
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to load resale listings"
+        error instanceof Error ? error.message : "Failed to load resale listings",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePurchase = async (listingId: string) => {
+  const startPollStatus = useCallback((listingId: string) => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    let attempts = 0;
+
+    pollTimerRef.current = window.setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-check-status`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ listingId }),
+          },
+        );
+        const data = await res.json();
+        if (data.finalized) {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setPurchaseStep("success");
+          fetchListings(); // refresh marketplace
+        }
+      } catch {
+        /* ignore network blips */
+      }
+      if (attempts > 60) {
+        // 3 minutes of polling
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        setPurchaseStep("failed");
+        toast.error("Payment confirmation timed out. Check your M-Pesa messages.");
+      }
+    }, 3000);
+  }, []);
+
+  const openPurchaseDialog = (listing: PublicListing) => {
     if (!user) {
       toast.info("Please sign in to purchase tickets");
       return;
     }
+    setSelectedListing(listing);
+    setPurchaseStep("phone");
+    setPhoneInput("");
+    setCustomerMessage("");
+  };
+
+  const closePurchaseDialog = () => {
+    if (purchaseStep === "waiting") return; // don't close while waiting
+    setSelectedListing(null);
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+  };
+
+  const handleSubmitPayment = async () => {
+    if (!selectedListing || !phoneInput.trim()) {
+      toast.error("Enter your M-Pesa phone number");
+      return;
+    }
 
     try {
-      setPurchasingId(listingId);
-      const callbackUrl = `${window.location.origin}/payment/callback`;
+      setSubmitting(true);
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-initiate-purchase`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ listingId, paymentMethod: "mpesa", callbackUrl }),
+          body: JSON.stringify({
+            listingId: selectedListing.listing_id,
+            phone: phoneInput.trim(),
+          }),
         },
       );
 
       const result = await response.json();
-      if (!response.ok || !result.authorization_url) {
+      if (!response.ok || result.error) {
         throw new Error(result.error || "Purchase failed");
       }
 
-      toast.success("Redirecting to secure M-Pesa checkout…");
-      window.location.href = result.authorization_url as string;
+      setCustomerMessage(result.customer_message || "Check your phone to authorize the M-Pesa payment.");
+      setPurchaseStep("waiting");
+      startPollStatus(selectedListing.listing_id);
     } catch (error) {
       console.error("Error purchasing ticket:", error);
       toast.error(error instanceof Error ? error.message : "An error occurred");
-      setPurchasingId(null);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const filteredListings = listings.filter((listing) =>
-    listing.event_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (listing.event_city ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.tier_name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredListings = listings.filter(
+    (listing) =>
+      listing.event_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (listing.event_city ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.tier_name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const formatDate = (dateString: string | null) => {
@@ -139,6 +201,13 @@ const ResaleMarketplace = () => {
       minute: "2-digit",
     });
   };
+
+  const selectedTotal = selectedListing
+    ? selectedListing.resale_price_kes + Math.round(selectedListing.resale_price_kes * BUYER_FEE_RATE)
+    : 0;
+  const selectedFee = selectedListing
+    ? Math.round(selectedListing.resale_price_kes * BUYER_FEE_RATE)
+    : 0;
 
   return (
     <div className="fezzy-editorial min-h-screen bg-ink text-cream">
@@ -238,10 +307,10 @@ const ResaleMarketplace = () => {
                     <div className="p-5 pt-0">
                       <Button
                         className="btn-ember w-full justify-center"
-                        onClick={() => handlePurchase(listing.listing_id)}
-                        disabled={purchasingId === listing.listing_id}
+                        onClick={() => openPurchaseDialog(listing)}
                       >
-                        {purchasingId === listing.listing_id ? "Reserving..." : "Buy via M-Pesa"}
+                        <Phone className="h-4 w-4 mr-1" />
+                        Buy via M-Pesa
                       </Button>
                     </div>
                   </article>
@@ -252,6 +321,119 @@ const ResaleMarketplace = () => {
         </section>
       </main>
       <Footer />
+
+      {/* ── M-Pesa Purchase Dialog ── */}
+      <Dialog open={!!selectedListing} onOpenChange={(open) => !open && closePurchaseDialog()}>
+        <DialogContent className="bg-ink-card border-cream/20 text-cream sm:max-w-md">
+          {purchaseStep === "phone" && selectedListing && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl text-cream">
+                  Buy via M-Pesa
+                </DialogTitle>
+                <DialogDescription className="text-cream-dim">
+                  {selectedListing.event_title} — {selectedListing.tier_name}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <div className="space-y-2 border border-cream/10 bg-ink-soft p-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-cream-dim">Ticket price</span>
+                    <span className="text-cream">{formatPrice(selectedListing.resale_price_kes)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-cream-dim">Service fee (3.5%)</span>
+                    <span className="text-cream">{formatPrice(selectedFee)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-cream/10 pt-2 font-display text-lg">
+                    <span className="text-cream">Total</span>
+                    <span className="text-fezzy">{formatPrice(selectedTotal)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-mono-label text-xs text-cream-dim mb-1.5">
+                    M-Pesa phone number
+                  </label>
+                  <Input
+                    id="resale-mpesa-phone"
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    placeholder="0712 345 678"
+                    className="bg-ink-soft border-cream/15 text-cream placeholder:text-ash"
+                  />
+                  <p className="mt-1.5 text-[11px] text-ash">
+                    We'll send an STK push to this number. Enter your M-Pesa PIN when it pops up.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  className="btn-ember w-full justify-center"
+                  disabled={submitting || !phoneInput.trim()}
+                  onClick={handleSubmitPayment}
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Phone className="h-4 w-4 mr-1" />
+                  )}
+                  {submitting ? "Sending STK push…" : `Pay ${formatPrice(selectedTotal)}`}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {purchaseStep === "waiting" && (
+            <div className="py-8 text-center space-y-4">
+              <Loader2 className="mx-auto h-10 w-10 animate-spin text-fezzy" />
+              <h3 className="font-display text-2xl text-cream">Check your phone</h3>
+              <p className="text-sm text-cream-dim max-w-xs mx-auto">{customerMessage}</p>
+              <p className="text-xs text-ash">
+                Waiting for M-Pesa confirmation… this will update automatically.
+              </p>
+            </div>
+          )}
+
+          {purchaseStep === "success" && (
+            <div className="py-8 text-center space-y-4">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-green-500/15 text-green-400">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h3 className="font-display text-2xl text-cream">Ticket purchased!</h3>
+              <p className="text-sm text-cream-dim max-w-xs mx-auto">
+                Your resale ticket is now active. The previous QR code has been revoked — open your account to see the new one.
+              </p>
+              <Button
+                className="btn-ember justify-center"
+                onClick={() => (window.location.href = "/account")}
+              >
+                Open my tickets
+              </Button>
+            </div>
+          )}
+
+          {purchaseStep === "failed" && (
+            <div className="py-8 text-center space-y-4">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-red-500/15 text-red-400">
+                <XCircle className="h-8 w-8" />
+              </div>
+              <h3 className="font-display text-2xl text-cream">Payment didn't go through</h3>
+              <p className="text-sm text-cream-dim max-w-xs mx-auto">
+                No worries — the reservation has been released. Would you like to try again?
+              </p>
+              <Button
+                className="btn-ember justify-center"
+                onClick={() => setPurchaseStep("phone")}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

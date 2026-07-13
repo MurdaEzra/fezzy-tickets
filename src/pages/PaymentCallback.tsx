@@ -14,7 +14,7 @@ const PaymentCallback = () => {
   const reference = params.get("reference") || params.get("trxref") || "";
   const [status, setStatus] = useState<Status>("verifying");
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [isResale, setIsResale] = useState(false);
+
   const [eventSlug, setEventSlug] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,8 +32,7 @@ const PaymentCallback = () => {
         else timer = window.setTimeout(run, 1500);
         return;
       }
-      const d = data as { paymentStatus: Status; orderId?: string; resale?: boolean; listingId?: string };
-      if (d.resale) setIsResale(true);
+      const d = data as { paymentStatus: Status; orderId?: string };
       if (d.orderId) {
         setOrderId(d.orderId);
         // Get event slug to allow retrying checkout
@@ -89,14 +88,12 @@ const PaymentCallback = () => {
               <div className="mt-6 flex items-start gap-2 rounded-2xl bg-secondary p-4 text-left text-xs text-muted-foreground">
                 <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                 <span>
-                  {isResale
-                    ? "Your resale ticket is now active. The previous QR code has been revoked — open your account to reveal the new one."
-                    : "We've emailed your ticket(s) with QR codes. Show the QR at the gate — screenshots work too."}
+                  We've emailed your ticket(s) with QR codes. Show the QR at the gate — screenshots work too.
                 </span>
               </div>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Button variant="acacia" size="lg" asChild>
-                  <Link to={isResale ? "/account" : "/events"}>{isResale ? "Open my tickets" : "Browse more events"}</Link>
+                  <Link to="/events">Browse more events</Link>
                 </Button>
               </div>
             </>
