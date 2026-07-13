@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { buildLppCallbackUrl } from "../_shared/lppPlanState.ts";
+import { buildLppCallbackUrl } from "../shared/lppPlanState.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
