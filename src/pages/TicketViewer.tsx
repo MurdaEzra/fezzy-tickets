@@ -61,7 +61,7 @@ interface TicketCardProps {
   venueLine: string;
   venueName: string;
   orderedOn: string;
-  ref: string;
+  orderRef: string;
   holderName: string;
   tierName: string;
   ticketId: string;
@@ -77,7 +77,7 @@ const TicketCard = ({
   venueLine,
   venueName,
   orderedOn,
-  ref,
+  orderRef,
   holderName,
   tierName,
   ticketId,
@@ -210,7 +210,7 @@ const TicketCard = ({
               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Holder: <strong style={{ color: "#0f172a" }}>{holderName}</strong>
                 &nbsp;&nbsp;·&nbsp;&nbsp; 
-                Order Ref: <strong style={{ color: "#0f172a" }}>{ref}</strong>
+                Order Ref: <strong style={{ color: "#0f172a" }}>{orderRef}</strong>
                 &nbsp;&nbsp;·&nbsp;&nbsp; 
                 Ordered: <strong style={{ color: "#0f172a" }}>{orderedOn}</strong>
               </span>
@@ -540,7 +540,7 @@ const TicketViewer = () => {
           venueLine={venueLine}
           venueName={venueName}
           orderedOn={orderedOn}
-          ref={ref}
+          orderRef={ref}
           holderName={ticket.holder_name}
           tierName={ticket.ticket_tiers.name}
           ticketId={ticket.id}
