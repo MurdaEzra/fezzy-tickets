@@ -32,6 +32,7 @@ type Ticket = {
 type Order = {
   id: string;
   ref: string | null;
+  payment_ref: string | null;
   created_at: string;
   events: {
     id: string;
@@ -315,7 +316,10 @@ const TicketViewer = () => {
         const { data, error } = await supabase
           .from("orders")
           .select(`
-            *,
+            id,
+            ref,
+            payment_ref,
+            created_at,
             events(*),
             tickets(*, ticket_tiers(*))
           `)
@@ -373,7 +377,7 @@ const TicketViewer = () => {
   }
 
   const event = order.events;
-  const ref = order.ref || `FZ-${order.id.slice(0, 8).toUpperCase()}`;
+  const ref = order.payment_ref || order.ref || `FZ-${order.id.slice(0, 8).toUpperCase()}`;
   const startDate = new Date(event.starts_at);
   const endDate = event.ends_at ? new Date(event.ends_at) : null;
   const orderedOn = new Date(order.created_at).toLocaleString("en-GB", {

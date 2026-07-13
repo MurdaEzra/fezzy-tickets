@@ -373,10 +373,13 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
   if (!event) throw new Error("Order event missing for ticket delivery");
 
   const accent = event?.ticket_design?.accent ?? "#7C3AED";
-  let ref = order.ref;
+  let ref = order.payment_ref || order.ref;
   if (!ref) {
-    ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
-    await admin.from("orders").update({ ref }).eq("id", orderId);
+    ref = `FZ${orderId.slice(0, 8).toUpperCase()}`;
+    // Only save to order.ref if we're generating a fallback, not if we're using payment_ref
+    if (!order.ref) {
+      await admin.from("orders").update({ ref }).eq("id", orderId);
+    }
   }
 
   const LOGO_URL =

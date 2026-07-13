@@ -692,10 +692,13 @@ Deno.serve(async (req) => {
 
     const event = order.events;
 
-    let ref = order.ref;
+    let ref = order.payment_ref || order.ref;
     if (!ref) {
-      ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
-      await supabase.from("orders").update({ ref }).eq("id", orderId);
+      ref = `FZ${orderId.slice(0, 8).toUpperCase()}`;
+      // Only save to order.ref if we're generating a fallback, not if we're using payment_ref
+      if (!order.ref) {
+        await supabase.from("orders").update({ ref }).eq("id", orderId);
+      }
     }
 
     // Build tickets by email, but we don't need to render the cards anymore
