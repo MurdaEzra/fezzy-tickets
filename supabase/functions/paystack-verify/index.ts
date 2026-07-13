@@ -373,246 +373,18 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
   if (!event) throw new Error("Order event missing for ticket delivery");
 
   const accent = event?.ticket_design?.accent ?? "#7C3AED";
-    let ref = order.ref;
-    if (!ref) {
-      ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
-      await admin.from("orders").update({ ref }).eq("id", orderId);
-    }
-
-  // Format start date/time
-  const startDate = new Date(event.starts_at);
-  const endDate = event.ends_at ? new Date(event.ends_at) : null;
-
-  const formatDateTime = (d: Date) =>
-    d.toLocaleString("en-GB", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-
-  const dateStr = endDate
-    ? `${formatDateTime(startDate)} – ${formatDateTime(endDate)}`
-    : formatDateTime(startDate);
-
-  const orderedOn = new Date(order.created_at ?? Date.now()).toLocaleString("en-GB", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  let ref = order.ref;
+  if (!ref) {
+    ref = `FZ-${orderId.slice(0, 8).toUpperCase()}`;
+    await admin.from("orders").update({ ref }).eq("id", orderId);
+  }
 
   const LOGO_URL =
     "https://ykoxkqiuisbmzfwflmjj.supabase.co/storage/v1/object/public/logo/logo%20(1)-Photoroom.png";
 
-  const ticketHtmls: string[] = [];
-
-  for (const ticket of order.tickets ?? []) {
-    const tierName = ticket.ticket_tiers?.name ?? "General";
-    const ticketId = ticket.id ?? ref;
-    // Upload PNG to storage → get a real HTTPS URL (base64 data URLs are blocked by Gmail/Outlook)
-    const qrImageUrl = await uploadQRCode(admin, ticket.qr_token, ticketId);
-
-    ticketHtmls.push(`
-      <!-- ═══════════ TICKET CARD ═══════════ -->
-      <div style="
-        background:#ffffff;
-        border:1px solid #e2e8f0;
-        border-radius:16px;
-        overflow:hidden;
-        box-shadow:0 4px 32px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
-        margin-bottom:32px;
-        font-family:'Helvetica Neue',Arial,sans-serif;
-      ">
-
-        <!-- Top notice bar — white to accent gradient -->
-        <div style="
-          background:linear-gradient(90deg,#ffffff 0%,${accent}cc 100%);
-          border-bottom:1px solid ${accent}33;
-          padding:10px 24px;
-          text-align:center;
-          font-size:12px;
-          color:#1e293b;
-          letter-spacing:0.04em;
-          font-weight:600;
-          text-transform:uppercase;
-        ">
-          🎟️ &nbsp; Bring this ticket with you to the event
-        </div>
-
-        <!-- 3-column body -->
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-          <tr>
-
-            <!-- ── Column 1: Event poster background + attendee info ── -->
-            <td width="30%" valign="top" style="
-              border-right:1px dashed #cbd5e1;
-              padding:0;
-              vertical-align:top;
-            ">
-              <!-- Poster image as background — overlaid with dark scrim so text stays readable -->
-              <div style="
-                position:relative;
-                ${event.poster_url || event.image_url || event.cover_image
-                  ? `background-image:url('${event.poster_url ?? event.image_url ?? event.cover_image}');
-                     background-size:cover;
-                     background-position:center top;`
-                  : `background:linear-gradient(160deg,#ffffff 0%,${accent} 100%);`
-                }
-                min-height:200px;
-              ">
-                <!-- Dark gradient scrim so white text is legible over any photo -->
-                <div style="
-                  position:absolute;top:0;left:0;right:0;bottom:0;
-                  background:linear-gradient(180deg,rgba(0,0,0,0.18) 0%,rgba(0,0,0,0.62) 100%);
-                "></div>
-
-                <!-- Text sits on top of the scrim -->
-                <div style="position:relative;padding:20px 18px 16px;color:#ffffff;">
-                  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.85;margin-bottom:6px;">Event</div>
-                  <div style="font-size:14px;font-weight:800;line-height:1.3;text-shadow:0 1px 4px rgba(0,0,0,0.4);">${event.title}</div>
-                  ${event.city ? `<div style="font-size:11px;margin-top:8px;opacity:0.9;text-shadow:0 1px 3px rgba(0,0,0,0.4);">${event.city}</div>` : ""}
-                </div>
-              </div>
-
-              <!-- Attendee name + tier — clean white area below poster -->
-              <div style="padding:16px 18px 20px;background:#ffffff;">
-                <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:3px;">Name</div>
-                <div style="font-size:15px;font-weight:700;color:#1e293b;">${ticket.holder_name}</div>
-
-                <div style="margin-top:12px;">
-                  <span style="
-                    display:inline-block;
-                    background:${accent}1a;
-                    color:${accent};
-                    border:1px solid ${accent}55;
-                    border-radius:20px;
-                    padding:4px 14px;
-                    font-size:11px;
-                    font-weight:700;
-                    letter-spacing:0.04em;
-                    text-transform:uppercase;
-                  ">${tierName}</span>
-                </div>
-              </div>
-            </td>
-
-            <!-- ── Column 2: Event details ── -->
-            <td width="44%" valign="top" style="padding:22px 24px;vertical-align:top;background:#ffffff;">
-
-              ${field("Event", `<strong style="font-size:15px;color:#0f172a;">${event.title}</strong>`)}
-              ${field("Date &amp; Time", `<span style="color:#1e293b;">${dateStr}</span>`)}
-              ${field("Location", `<span style="color:#1e293b;">${[event.venue_name, event.city, event.country].filter(Boolean).join(", ") || "TBA"}</span>`)}
-              ${field(
-                "Order Info",
-                `<span style="color:#1e293b;">Ordered on <strong>${orderedOn}</strong><br>
-                 Order ID: <strong>${ref}</strong></span>`,
-              )}
-              ${field("Ticket ID", `<strong style="font-size:13px;letter-spacing:0.03em;color:#0f172a;">${ticketId}</strong>`)}
-              ${field(
-                "Ticket Status",
-                `<span style="
-                  display:inline-block;
-                  background:#dcfce7;
-                  color:#166534;
-                  border:1px solid #bbf7d0;
-                  border-radius:6px;
-                  padding:3px 12px;
-                  font-size:12px;
-                  font-weight:700;
-                  letter-spacing:0.06em;
-                  text-transform:uppercase;
-                ">ACTIVE</span>`,
-              )}
-
-            </td>
-
-            <!-- ── Column 3: Logo + QR — always white so QR stays scannable ── -->
-            <td width="26%" valign="top" style="
-              border-left:1px dashed #cbd5e1;
-              padding:20px 16px;
-              text-align:center;
-              vertical-align:top;
-              background:#ffffff;
-            ">
-              <!-- Logo -->
-              <div style="margin-bottom:16px;">
-                <img src="${LOGO_URL}"
-                     alt="Fezzy"
-                     width="90"
-                     style="max-width:90px;height:auto;display:block;margin:0 auto;" />
-              </div>
-
-              <div style="
-                font-size:8px;
-                letter-spacing:0.14em;
-                text-transform:uppercase;
-                color:#94a3b8;
-                margin-bottom:8px;
-              ">Tickets sold through</div>
-
-              <!-- Divider -->
-              <div style="border-top:1px dashed #e2e8f0;margin:12px 0;"></div>
-
-              <!-- QR Code -->
-              <div style="margin-bottom:8px;">
-                <img src="${qrImageUrl}"
-                     width="130"
-                     height="130"
-                     alt="Scan at gate"
-                     style="display:block;margin:0 auto;border-radius:8px;border:2px solid #f1f5f9;" />
-              </div>
-              <div style="font-size:9px;color:#94a3b8;letter-spacing:0.06em;">Scan at gate</div>
-            </td>
-
-          </tr>
-        </table>
-
-        <!-- Tear line -->
-        <div style="
-          border-top:1px dashed #cbd5e1;
-          margin:0 16px;
-          position:relative;
-        ">
-          <span style="
-            position:absolute;left:-16px;top:-9px;
-            width:18px;height:18px;
-            background:#f8fafc;
-            border-radius:50%;
-            border:1px solid #e2e8f0;
-            display:inline-block;
-          "></span>
-          <span style="
-            position:absolute;right:-16px;top:-9px;
-            width:18px;height:18px;
-            background:#f8fafc;
-            border-radius:50%;
-            border:1px solid #e2e8f0;
-            display:inline-block;
-          "></span>
-        </div>
-
-        <!-- Footer strip -->
-        <div style="
-          background:#f8fafc;
-          padding:10px 24px;
-          text-align:center;
-          font-size:10px;
-          color:#94a3b8;
-          letter-spacing:0.04em;
-        ">
-          Once the QR code has been scanned at the gate, it ceases to be valid. &nbsp;·&nbsp; Screenshots are accepted.
-        </div>
-
-      </div>
-    `);
-  }
+  // Use the correct domain for your app (you may want to make this an env var)
+  const appUrl = Deno.env.get("APP_URL") ?? "https://fezzytickets.com";
+  const ticketLink = `${appUrl}/tickets/${orderId}`;
 
   const emailHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -620,11 +392,15 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Your Fezzy Tickets – ${event.title}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Great+Vibes&family=Inter:wght@400;500;600;700;800&family=Jost:wght@600;700&display=swap');
+  </style>
 </head>
 <body style="
   margin:0;padding:0;
   background:#f4ede0;
-  font-family:'Helvetica Neue','Segoe UI',Arial,sans-serif;
+  font-family:'Inter','Montserrat',ui-sans-serif,system-ui,sans-serif;
+  font-feature-settings:'ss01','cv11';
   -webkit-font-smoothing:antialiased;
 ">
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -648,92 +424,53 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
                   <td style="padding:34px 32px 30px;text-align:center;">
                     <img src="${LOGO_URL}" alt="Fezzy" width="130"
                          style="max-width:130px;height:auto;display:block;margin:0 auto 20px;filter:brightness(0) invert(1);" />
-                    <div style="font-size:10px;letter-spacing:0.42em;color:#d4a24c;text-transform:uppercase;margin-bottom:10px;">
+                    <div style="font-family:'Great Vibes',cursive;font-size:34px;color:#34d399;line-height:0.9;margin-bottom:8px;">
+                      Fezzy
+                    </div>
+                    <div style="font-family:'Anton','Arial Narrow','Impact',sans-serif;font-size:14px;letter-spacing:0.42em;color:#10B981;text-transform:uppercase;margin-bottom:10px;">
                       Admit One · Confirmed
                     </div>
-                    <h1 style="margin:0 0 8px;font-family:'Playfair Display','Times New Roman',Georgia,serif;font-size:30px;font-weight:600;color:#f5e9cf;letter-spacing:0.5px;">
+                    <h1 style="margin:0 0 8px;font-family:'Anton','Arial Narrow','Impact',sans-serif;font-size:30px;font-weight:400;color:#ffffff;text-transform:uppercase;line-height:1;">
                       Your tickets are ready.
                     </h1>
                     <p style="margin:0;font-size:13px;color:#a9a3a0;line-height:1.6;">
-                      A curated confirmation for <strong style="color:#f5e9cf;">${event.title}</strong>.<br>
-                      Booking reference <strong style="color:#d4a24c;letter-spacing:0.08em;">${ref}</strong>
+                      Booking reference <strong style="color:#10B981;letter-spacing:0.05em;">${ref}</strong>
                     </p>
                   </td>
                 </tr>
                 <tr>
-                  <td style="height:1px;background:linear-gradient(90deg,transparent,#3a3226,transparent);"></td>
+                  <td style="height:1px;background:linear-gradient(90deg,transparent,#1e293b,transparent);"></td>
                 </tr>
                 <tr>
                   <td style="padding:14px 28px 22px;text-align:center;">
-                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #3a3226;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#d4a24c;text-transform:uppercase;">M-Pesa</span>
-                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #3a3226;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#d4a24c;text-transform:uppercase;">Visa</span>
-                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #3a3226;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#d4a24c;text-transform:uppercase;">Paystack Secured</span>
+                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #1e293b;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#10B981;text-transform:uppercase;font-weight:700;">M-Pesa</span>
+                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #1e293b;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#10B981;text-transform:uppercase;font-weight:700;">Visa</span>
+                    <span style="display:inline-block;padding:6px 12px;margin:0 4px 6px;border:1px solid #1e293b;border-radius:999px;font-size:10px;letter-spacing:0.18em;color:#10B981;text-transform:uppercase;font-weight:700;">Paystack Secured</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-
-          <!-- ── Tickets ── -->
+          <!-- ── View/Download Tickets Button ── -->
           <tr>
-            <td>
-              ${ticketHtmls.join("")}
-            </td>
-          </tr>
-
-          <!-- ── Terms & Support ── -->
-          <tr>
-            <td>
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                overflow:hidden;
+            <td style="text-align:center;">
+              <a href="${ticketLink}" style="
+                display:inline-block;
+                background:linear-gradient(135deg,#10B981 0%,#34d399 100%);
+                color:white;
+                padding:16px 40px;
+                border-radius:999px;
+                font-family:'Anton','Arial Narrow','Impact',sans-serif;
+                font-size:18px;
+                letter-spacing:0.05em;
+                text-decoration:none;
+                text-transform:uppercase;
+                box-shadow:0 10px 25px rgba(16,185,129,0.3);
                 margin-bottom:24px;
               ">
-                <tr>
-                  <!-- Terms -->
-                  <td width="55%" valign="top" style="padding:20px 22px;border-right:1px solid #e2e8f0;">
-                    <div style="font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#0f172a;margin-bottom:10px;">
-                      Terms &amp; Conditions
-                    </div>
-                    <ul style="margin:0;padding-left:16px;font-size:11px;color:#64748b;line-height:1.7;">
-                      <li>Management reserves the right of admission at the event.</li>
-                      <li>Only tickets purchased directly through Fezzy are deemed valid.</li>
-                      <li>We are not responsible for tickets re-sold through third parties.</li>
-                      <li>All sales are final. No cancellations, refunds, or exchanges.</li>
-                      <li>You may print your ticket or present it on your mobile phone.</li>
-                      <li>Once the QR code is scanned, it ceases to be valid. Keep it safe and do not share it.</li>
-                      <li>The ticket holder voluntarily assumes all risks incident to the event.</li>
-                    </ul>
-                  </td>
-                  <!-- Support -->
-                  <td width="45%" valign="top" style="padding:20px 22px;">
-                    <div style="font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#0f172a;margin-bottom:10px;">
-                      Support
-                    </div>
-                    <div style="font-size:12px;color:#475569;line-height:2;">
-                      <div>📧 <a href="mailto:support@fezzytickets.com" style="color:${accent};text-decoration:none;">support@fezzytickets.com</a></div>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- ── Footer ── -->
-          <tr>
-            <td style="text-align:center;padding-top:8px;padding-bottom:32px;">
-              <p style="margin:0;font-size:11px;color:#94a3b8;">
-                © ${new Date().getFullYear()} Fezzy Tickets &nbsp;·&nbsp; All rights reserved
-              </p>
-              <p style="margin:16px 0 4px 0;font-size:11px;color:#94a3b8;">
-                Along Karen Rd, Langata P.O. BOX 00502-00502, Karen Nairobi, Kenya
-              </p>
-              <p style="margin:4px 0;font-size:11px;color:#94a3b8;">
-                Phone: +254728135200
-              </p>
+                View / Download Tickets
+              </a>
             </td>
           </tr>
 
@@ -744,18 +481,21 @@ async function sendTicketDelivery(admin: AdminClient, orderId: string) {
 </body>
 </html>`;
 
-  await sendBrevoEmail({
-    recipientEmail: order.guest_email,
-    subject: `Your Tickets – ${event.title}`,
-    htmlContent: emailHtml,
-  });
+  // Send emails to all ticket holders (grouped by email)
+  const ticketsByEmail = new Map<string, { name: string }>();
+  for (const ticket of order.tickets ?? []) {
+    ticketsByEmail.set(ticket.holder_email, { name: ticket.holder_name });
+  }
+  for (const [recipientEmail] of ticketsByEmail.entries()) {
+    await sendBrevoEmail({
+      recipientEmail,
+      subject: `Your Tickets – ${event.title}`,
+      htmlContent: emailHtml,
+    });
+  }
 
   // ── SMS: send download link to guest's phone ──────────────────────────────
-  // The download page lives at /tickets/{orderId} and shows all tickets for the order.
-  // Guests can open it on their phone and screenshot/download the PDF.
-  const appUrl = Deno.env.get("APP_URL") ?? "https://fezzytickets.com";
   const ticketPageUrl = `${appUrl}/tickets/${orderId}`;
-
   const smsMessage =
     `🎟️ Your ${event.title} ticket is confirmed!\n` +
     `Ref: ${ref}\n` +

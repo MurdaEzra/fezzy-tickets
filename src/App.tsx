@@ -25,6 +25,7 @@ import Privacy from "./pages/Privacy.tsx";
 import Help from "./pages/Help.tsx";
 import AcceptableUse from "./pages/AcceptableUse.tsx";
 import TicketDelivery from "./pages/TicketDelivery.tsx";
+import TicketViewer from "./pages/TicketViewer.tsx";
 import Refunds from "./pages/Refunds.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import PaymentCallback from "./pages/PaymentCallback.tsx";
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/acceptable-use" element={<AcceptableUse />} />
               <Route path="/ticket-delivery" element={<TicketDelivery />} />
+              <Route path="/tickets/:orderId" element={<TicketViewer />} />
               <Route path="/refunds" element={<Refunds />} />
               <Route path="/help" element={<Help />} />
               <Route path="/payment/callback" element={<PaymentCallback />} />
