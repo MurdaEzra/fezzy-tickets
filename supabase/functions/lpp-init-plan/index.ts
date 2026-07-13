@@ -1,12 +1,37 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { buildLppCallbackUrl } from "../shared/lppPlanState.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+function encodeBase64Url(value: string): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(value).toString("base64url");
+  }
+  if (typeof btoa === "function") {
+    return btoa(
+      encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, (_match, p1) =>
+        String.fromCharCode(Number.parseInt(p1, 16)),
+      ),
+    );
+  }
+  throw new Error("Base64 encoding is not available");
+}
+
+function encodeLppInitPayload(payload: any): string {
+  return encodeBase64Url(JSON.stringify(payload));
+}
+
+function buildLppCallbackUrl(baseUrl: string, refNo: string, payload: any): string {
+  const url = new URL(baseUrl);
+  url.searchParams.set("ref", refNo);
+  url.searchParams.set("seq", "0");
+  url.searchParams.set("state", encodeLppInitPayload(payload));
+  return url.toString();
+}
 
 const BUYER_FEE_RATE = 0.035;
 

@@ -1,11 +1,32 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { decodeLppInitPayload } from "../shared/lppPlanState.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+function decodeBase64Url(value: string): string {
+  if (typeof atob === "function") {
+    const binary = atob(value);
+    return decodeURIComponent(
+      binary
+        .split("")
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join(""),
+    );
+  }
+  throw new Error("Base64 decoding is not available");
+}
+
+function decodeLppInitPayload(state: string | null | undefined) {
+  if (!state) return null;
+  try {
+    return JSON.parse(decodeBase64Url(state));
+  } catch {
+    return null;
+  }
+}
 
 const BUYER_FEE_RATE = 0.035;
 
