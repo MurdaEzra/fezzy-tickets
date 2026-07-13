@@ -51,8 +51,13 @@ export type LppConfigPlan = {
 export async function lppGetPlan(refNo: string) {
   const { data, error } = await supabase.functions.invoke("lpp-get-plan", { body: { refNo } });
   if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as { plan: LppPlan; installments: LppInstallment[]; event: any; tier: any };
+  if ((data as any)?.error) {
+    if ((data as any).error === "No plan found for that ref no.") {
+      return { plan: null, installments: [], event: null, tier: null, pendingDeposit: true } as { plan: LppPlan | null; installments: LppInstallment[]; event: any; tier: any; pendingDeposit: boolean };
+    }
+    throw new Error((data as any).error);
+  }
+  return data as { plan: LppPlan | null; installments: LppInstallment[]; event: any; tier: any; pendingDeposit: boolean };
 }
 
 export async function lppInitPlan(body: {

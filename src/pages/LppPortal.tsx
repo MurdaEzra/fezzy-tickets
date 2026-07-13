@@ -21,6 +21,7 @@ const LppPortal = () => {
   const [event, setEvent] = useState<any>(null);
   const [tier, setTier] = useState<any>(null);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const [pendingDeposit, setPendingDeposit] = useState(false);
 
   const loadPlan = async (ref: string) => {
     // Normalize ref by removing any non-alphanumeric characters
@@ -28,16 +29,18 @@ const LppPortal = () => {
     setLoading(true);
     try {
       const res = await lppGetPlan(normalizedRef);
-      setPlan(res.plan);
+      setPlan(res.plan ?? null);
       setInstallments(res.installments);
       setEvent(res.event);
       setTier(res.tier);
       setRefNo(normalizedRef);
       setRefInput(normalizedRef);
+      setPendingDeposit(Boolean(res.pendingDeposit));
       setParams({ ref: normalizedRef });
     } catch (err) {
       toast.error("Plan not found", { description: (err as Error).message });
       setPlan(null);
+      setPendingDeposit(false);
     } finally {
       setLoading(false);
     }
@@ -50,21 +53,30 @@ const LppPortal = () => {
 
   // Poll while awaiting payment
   useEffect(() => {
-    if (!awaitingPayment || !refNo) return;
+    if ((!awaitingPayment && !pendingDeposit) || !refNo) return;
     let attempts = 0;
     const timer = setInterval(async () => {
       attempts++;
       try {
         const res = await lppGetPlan(refNo);
-        const paidBefore = plan?.paid_kes ?? 0;
-        if ((res.plan.paid_kes ?? 0) > paidBefore) {
-          setPlan(res.plan);
-          setInstallments(res.installments);
-          setAwaitingPayment(false);
-          toast.success("Payment received");
-          if (res.plan.status === "completed") {
-            toast.success("You're fully paid — ticket on the way!", { duration: 6000 });
+        if (res.plan) {
+          const paidBefore = plan?.paid_kes ?? 0;
+          if ((res.plan.paid_kes ?? 0) > paidBefore) {
+            setPlan(res.plan);
+            setInstallments(res.installments);
+            setAwaitingPayment(false);
+            setPendingDeposit(false);
+            toast.success("Payment received");
+            if (res.plan.status === "completed") {
+              toast.success("You're fully paid — ticket on the way!", { duration: 6000 });
+            }
+          } else {
+            setPlan(res.plan);
+            setInstallments(res.installments);
+            setPendingDeposit(false);
           }
+        } else {
+          setPendingDeposit(true);
         }
       } catch { /* ignore */ }
       if (attempts > 40) {
@@ -74,7 +86,7 @@ const LppPortal = () => {
       }
     }, 3000);
     return () => clearInterval(timer);
-  }, [awaitingPayment, refNo, plan?.paid_kes]);
+  }, [awaitingPayment, pendingDeposit, refNo, plan?.paid_kes]);
 
   const pay = async () => {
     if (!refNo || !phone) {
@@ -130,6 +142,15 @@ const LppPortal = () => {
               </div>
               <p className="mt-3 text-xs text-ash">Check your inbox for your ref no. — it's on the schedule we sent when you started your plan.</p>
             </div>
+
+            {pendingDeposit && !plan && (
+              <div className="mt-10 border border-fezzy/20 bg-fezzy/10 p-6 md:p-8">
+                <p className="font-mono-label text-fezzy">Deposit payment pending</p>
+                <p className="mt-2 text-sm text-cream-dim">
+                  The deposit STK push has been sent. Once that payment is confirmed, your LPP plan will be created automatically here.
+                </p>
+              </div>
+            )}
 
             {/* Plan detail */}
             {plan && (

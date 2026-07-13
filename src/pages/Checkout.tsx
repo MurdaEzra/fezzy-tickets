@@ -589,7 +589,7 @@ const Checkout = () => {
                             phone: normalized[0].phone,
                             holders: normalized,
                           });
-                          toast.success(`Plan created: ${res.ref_no}`, { description: "Check your phone for the M-Pesa prompt." });
+                          toast.success("Deposit payment started", { description: `Reference ${res.ref_no}. We’ll create your LPP plan once the deposit payment is confirmed.` });
                           navigate(`/lpp?ref=${encodeURIComponent(res.ref_no)}`);
                         } catch (err) {
                           toast.error("Couldn't start plan", { description: (err as Error).message });

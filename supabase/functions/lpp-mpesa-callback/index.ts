@@ -1,11 +1,14 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { decodeLppInitPayload } from "../_shared/lppPlanState.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const BUYER_FEE_RATE = 0.035;
 
 async function sendInstallmentReceiptEmail({ plan, installment, event, receipt, isDeposit, isFinal }: { plan: any; installment: any; event: any; receipt: string | null; isDeposit: boolean; isFinal: boolean }) {
   const apiKey = Deno.env.get("BREVO_API_KEY");
@@ -65,6 +68,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const refNo = url.searchParams.get("ref");
     const seq = Number(url.searchParams.get("seq") ?? "0");
+    const initPayload = decodeLppInitPayload(url.searchParams.get("state"));
     const payload = await req.json().catch(() => ({}));
 
     const cb = payload?.Body?.stkCallback;
@@ -80,7 +84,94 @@ Deno.serve(async (req) => {
     if (!refNo) return new Response(JSON.stringify({ ok: true }), { headers: cors });
 
     const { data: plan } = await admin.from("payment_plans").select("*").eq("ref_no", refNo).maybeSingle();
-    if (!plan) return new Response(JSON.stringify({ ok: true }), { headers: cors });
+    if (!plan) {
+      if (resultCode !== 0 || seq !== 0 || !initPayload) {
+        return new Response(JSON.stringify({ ok: true }), { headers: cors });
+      }
+
+      const [{ data: event }, { data: tier }] = await Promise.all([
+        admin.from("events").select("id, title, status, starts_at, lpp_enabled, lpp_config").eq("id", initPayload.eventId).maybeSingle(),
+        admin.from("ticket_tiers").select("id, event_id, price_kes, quantity, sold, name").eq("id", initPayload.tierId).maybeSingle(),
+      ]);
+
+      if (!event || event.status !== "published" || !event.lpp_enabled || !tier || tier.event_id !== event.id) {
+        return new Response(JSON.stringify({ ok: true }), { headers: cors });
+      }
+
+      const plans = (event.lpp_config?.plans ?? []) as any[];
+      const selectedPlan = plans.find((p) => p.id === initPayload.planKey);
+      if (!selectedPlan) return new Response(JSON.stringify({ ok: true }), { headers: cors });
+
+      const q = Number(initPayload.quantity);
+      if (!Number.isInteger(q) || q < 1 || tier.sold + q > tier.quantity) {
+        return new Response(JSON.stringify({ ok: true }), { headers: cors });
+      }
+
+      const subtotal = tier.price_kes * q;
+      const buyerFee = Math.round(subtotal * BUYER_FEE_RATE);
+      const total = subtotal + buyerFee;
+      const depositPct = Number(selectedPlan.deposit_pct);
+      const deposit = Math.round(total * (depositPct / 100));
+      const remaining = total - deposit;
+      const installmentsCount = Number(selectedPlan.installments);
+      const perInstallment = Math.floor(remaining / installmentsCount);
+      const lastInstallment = remaining - perInstallment * (installmentsCount - 1);
+      const intervalDays = Number(selectedPlan.interval_days);
+      const startsAt = new Date(event.starts_at);
+      const finalDueLimit = new Date(startsAt.getTime() - 24 * 60 * 60 * 1000);
+      const now = new Date();
+
+      const { data: createdPlan, error: createErr } = await admin.from("payment_plans").insert({
+        ref_no: refNo,
+        event_id: event.id,
+        tier_id: tier.id,
+        quantity: q,
+        guest_name: initPayload.name,
+        guest_email: initPayload.email,
+        guest_phone: initPayload.phone,
+        plan_key: initPayload.planKey,
+        plan_label: selectedPlan.label,
+        deposit_pct: depositPct,
+        installments_count: installmentsCount,
+        interval_days: intervalDays,
+        subtotal_kes: subtotal,
+        buyer_fee_kes: buyerFee,
+        total_kes: total,
+        deposit_kes: deposit,
+        paid_kes: deposit,
+        balance_kes: remaining,
+        ticket_holders: initPayload.holders ?? [],
+        event_starts_at: event.starts_at,
+        final_due_at: finalDueLimit.toISOString(),
+        status: "reserved",
+        reserved_at: now.toISOString(),
+      }).select().single();
+
+      if (createErr || !createdPlan) {
+        return new Response(JSON.stringify({ ok: true }), { headers: cors });
+      }
+
+      const installmentsRows: any[] = [
+        { plan_id: createdPlan.id, sequence: 0, kind: "deposit", amount_kes: deposit, due_at: now.toISOString(), status: "paid", paid_at: now.toISOString(), provider_receipt: receipt },
+      ];
+      for (let i = 0; i < installmentsCount; i++) {
+        const dueDate = new Date(now.getTime() + intervalDays * (i + 1) * 24 * 60 * 60 * 1000);
+        const capped = dueDate > finalDueLimit ? finalDueLimit : dueDate;
+        installmentsRows.push({
+          plan_id: createdPlan.id,
+          sequence: i + 1,
+          kind: "installment",
+          amount_kes: i === installmentsCount - 1 ? lastInstallment : perInstallment,
+          due_at: capped.toISOString(),
+          status: "pending",
+        });
+      }
+      await admin.from("payment_plan_installments").insert(installmentsRows);
+
+      const { data: createdInst } = await admin.from("payment_plan_installments").select("*").eq("plan_id", createdPlan.id).eq("sequence", 0).maybeSingle();
+      sendInstallmentReceiptEmail({ plan: createdPlan, installment: createdInst ?? installmentsRows[0], event, receipt, isDeposit: true, isFinal: false });
+      return new Response(JSON.stringify({ ok: true }), { headers: cors });
+    }
 
     if (resultCode !== 0) {
       // Log failure but keep pending so buyer can retry

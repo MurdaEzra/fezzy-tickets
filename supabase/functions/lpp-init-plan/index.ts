@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { buildLppCallbackUrl } from "../_shared/lppPlanState.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -209,75 +210,24 @@ Deno.serve(async (req) => {
 
     const normalizedPhone = normalizeKenyanPhone(phone);
 
-    let userId: string | null = null;
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const userClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        { global: { headers: { Authorization: authHeader } } },
-      );
-      const { data } = await userClient.auth.getUser();
-      userId = data?.user?.id ?? null;
-    }
-
     const holdersArr = Array.isArray(holders) && holders.length === q
       ? holders
       : Array.from({ length: q }).map(() => ({ name, email, phone }));
 
-    const { data: created, error: createErr } = await admin
-      .from("payment_plans")
-      .insert({
-        ref_no: refNo,
-        event_id: event.id,
-        tier_id: tier.id,
-        quantity: q,
-        user_id: userId,
-        guest_name: name,
-        guest_email: email,
-        guest_phone: normalizedPhone,
-        plan_key: planKey,
-        plan_label: plan.label,
-        deposit_pct: depositPct,
-        installments_count: installmentsCount,
-        interval_days: intervalDays,
-        subtotal_kes: subtotal,
-        buyer_fee_kes: buyerFee,
-        total_kes: total,
-        deposit_kes: deposit,
-        balance_kes: total,
-        ticket_holders: holdersArr,
-        event_starts_at: event.starts_at,
-        final_due_at: finalDueLimit.toISOString(),
-        status: "pending",
-      })
-      .select()
-      .single();
-    if (createErr || !created) return json({ error: createErr?.message ?? "Failed to create plan" }, 500);
+    const initPayload = {
+      eventId: event.id,
+      tierId: tier.id,
+      quantity: q,
+      planKey,
+      name,
+      email,
+      phone: normalizedPhone,
+      holders: holdersArr,
+    };
 
-    // Build installment rows (deposit + N installments)
-    const installmentsRows: any[] = [
-      { plan_id: created.id, sequence: 0, kind: "deposit", amount_kes: deposit, due_at: now.toISOString(), status: "pending" },
-    ];
-    for (let i = 0; i < installmentsCount; i++) {
-      const dueDate = new Date(now.getTime() + intervalDays * (i + 1) * 24 * 60 * 60 * 1000);
-      const capped = dueDate > finalDueLimit ? finalDueLimit : dueDate;
-      installmentsRows.push({
-        plan_id: created.id,
-        sequence: i + 1,
-        kind: "installment",
-        amount_kes: i === installmentsCount - 1 ? lastInstallment : perInstallment,
-        due_at: capped.toISOString(),
-        status: "pending",
-      });
-    }
-    const { data: instRows, error: instErr } = await admin.from("payment_plan_installments").insert(installmentsRows).select();
-    if (instErr) return json({ error: instErr.message }, 500);
-
-    // Fire STK push for deposit
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
-    const callbackUrl = `${supabaseUrl}/functions/v1/lpp-mpesa-callback?ref=${encodeURIComponent(refNo)}&seq=0`;
+    const callbackUrl = buildLppCallbackUrl(`${supabaseUrl}/functions/v1/lpp-mpesa-callback`, refNo, initPayload);
 
     let stkResult: any = null;
     try {
@@ -289,23 +239,19 @@ Deno.serve(async (req) => {
         description: `LPP deposit ${refNo}`,
       });
     } catch (err) {
-      // Plan still exists; user can retry from portal
       return json({
         ref_no: refNo,
-        plan: created,
-        installments: instRows,
+        plan: null,
+        installments: [],
         deposit_stk: null,
         error_stk: err instanceof Error ? err.message : String(err),
       });
     }
 
-    // Send schedule email (non-blocking)
-    sendScheduleEmail({ plan: created, installments: instRows ?? installmentsRows });
-
     return json({
       ref_no: refNo,
-      plan: created,
-      installments: instRows,
+      plan: null,
+      installments: [],
       deposit_stk: {
         checkoutRequestId: stkResult.CheckoutRequestID ?? null,
         customerMessage: stkResult.CustomerMessage ?? "Check your phone to authorize the M-Pesa payment.",
