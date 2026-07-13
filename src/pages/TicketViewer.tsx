@@ -66,6 +66,7 @@ interface TicketCardProps {
   tierName: string;
   ticketId: string;
   qrImageUrl: string;
+  paymentRef: string;
 }
 
 const TicketCard = ({
@@ -82,6 +83,7 @@ const TicketCard = ({
   tierName,
   ticketId,
   qrImageUrl,
+  paymentRef,
 }: TicketCardProps) => {
   const dateStr = formatTicketDate(startDate);
   const timeStr = formatTicketTime(startDate);
@@ -148,7 +150,7 @@ const TicketCard = ({
                   marginBottom: "24px"
                 }}>ADMIT ONE</div>
 
-                {/* Artist / Event name */}
+                
                 <div style={{
                   fontFamily: "'Anton', 'Arial Narrow', ui-sans-serif, sans-serif",
                   fontSize: "42px",
@@ -210,7 +212,7 @@ const TicketCard = ({
               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Event: <strong style={{ color: "#0f172a" }}>{eventTitle}</strong>
                 &nbsp;&nbsp;·&nbsp;&nbsp; 
-                Order Ref: <strong style={{ color: "#0f172a" }}>{orderRef}</strong>
+                Order Ref: <strong style={{ color: "#0f172a" }}>{paymentRef}</strong>
                 &nbsp;&nbsp;·&nbsp;&nbsp; 
                 Ordered: <strong style={{ color: "#0f172a" }}>{orderedOn}</strong>
               </span>
