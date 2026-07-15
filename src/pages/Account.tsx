@@ -49,6 +49,11 @@ interface Listing {
       max_resale_percentage: number;
     };
   };
+  resale_transfers?: {
+    id: string;
+    payout_status: string;
+    seller_payout_phone: string | null;
+  }[];
 }
 
 type AccountView = "tickets" | "listings" | "marketplace" | "settings";
@@ -74,6 +79,8 @@ const Account = () => {
   const [isListingDialogOpen, setIsListingDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [payoutPhone, setPayoutPhone] = useState("");
+  const [submittingPhoneListingId, setSubmittingPhoneListingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth?mode=signin", { replace: true });
@@ -100,7 +107,7 @@ const Account = () => {
       setListingsLoading(true);
       const { data, error } = await supabase
         .from("ticket_resale_listings")
-        .select(`*, tickets(*, ticket_tiers(*), events(*))`)
+        .select(`*, tickets(*, ticket_tiers(*), events(*)), resale_transfers(id, payout_status, seller_payout_phone)`)
         .eq("seller_user_id", user!.id)
         .order("listed_at", { ascending: false });
       if (error) throw error;
@@ -133,6 +140,30 @@ const Account = () => {
     if (!selectedTicket || !resalePrice) return;
     setIsListingDialogOpen(false);
     setIsConfirmDialogOpen(true);
+  };
+
+  const handleSubmitPayoutPhone = async (listingId: string) => {
+    setIsSubmitting(true);
+    setSubmittingPhoneListingId(listingId);
+    try {
+       const transfer = listings.find(l => l.id === listingId)?.resale_transfers?.[0];
+       if (!transfer) throw new Error("Transfer not found");
+       
+       const { error } = await supabase.rpc("update_resale_payout_phone", {
+         _transfer_id: transfer.id,
+         _phone: payoutPhone
+       });
+       if (error) throw error;
+       
+       toast.success("Phone number saved! You will receive your payout soon.");
+       setPayoutPhone("");
+       fetchListings(); // refetch to update UI
+    } catch (err) {
+       toast.error((err as Error).message);
+    } finally {
+       setIsSubmitting(false);
+       setSubmittingPhoneListingId(null);
+    }
   };
 
   const confirmListing = async () => {
@@ -385,8 +416,48 @@ const Account = () => {
                                 </Button>
                               )}
                               {listing.status === "sold" && (
-                                <div className="flex items-center gap-1 px-4 text-xs text-emerald-600">
-                                  <CheckCircle2 className="h-4 w-4" /> Sold
+                                <div className="flex flex-col gap-2 p-4 pt-2 bg-secondary/50">
+                                  <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">
+                                    <CheckCircle2 className="h-4 w-4" /> Sold (Invalidated for you)
+                                  </div>
+                                  
+                                  {listing.resale_transfers?.[0] && (
+                                    <>
+                                      {listing.resale_transfers[0].payout_status === "paid" ? (
+                                        <div className="text-sm font-medium text-emerald-500 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                                          Payout completed to: {listing.resale_transfers[0].seller_payout_phone}
+                                        </div>
+                                      ) : listing.resale_transfers[0].seller_payout_phone ? (
+                                        <div className="text-sm font-medium text-amber-500 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                                          Payout pending to: {listing.resale_transfers[0].seller_payout_phone}
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col gap-2">
+                                          <p className="text-xs text-muted-foreground">Please provide your M-Pesa phone number to receive your payout.</p>
+                                          <div className="flex gap-2">
+                                            <Input
+                                              className="h-8 text-xs bg-background"
+                                              placeholder="07XX XXX XXX"
+                                              value={submittingPhoneListingId === listing.id ? payoutPhone : undefined}
+                                              onChange={(e) => {
+                                                if (submittingPhoneListingId !== listing.id) setSubmittingPhoneListingId(listing.id);
+                                                setPayoutPhone(e.target.value);
+                                              }}
+                                            />
+                                            <Button 
+                                              size="sm" 
+                                              variant="acacia" 
+                                              className="h-8 text-xs"
+                                              onClick={() => handleSubmitPayoutPhone(listing.id)}
+                                              disabled={isSubmitting || submittingPhoneListingId !== listing.id || !payoutPhone}
+                                            >
+                                              {isSubmitting && submittingPhoneListingId === listing.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -102,7 +102,7 @@ const SuperAdminDashboard = () => {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
-  const [organizers, setOrganizers] = useState<{ id: string; org_name: string; events_published_count: number; contact_email: string | null; fee_locked_pct: number | null; paystack_subaccount_code: string | null }[]>([]);
+  const [organizers, setOrganizers] = useState<{ id: string; org_name: string; events_published_count: number; contact_email: string | null; fee_locked_pct: number | null; paystack_subaccount_code: string | null; contact_phone: string | null; mpesa_till: string | null; payout_method: string | null }[]>([]);
   const [resaleListings, setResaleListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -191,14 +191,10 @@ const SuperAdminDashboard = () => {
       const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }, { data: resale }, settings] = await Promise.all([
         supabase.from("events").select("id, title, tagline, description, category, status, slug, starts_at, ends_at, venue_name, venue_address, city, country, cover_image_url, poster_url, is_stream, stream_url, organizer_id, created_at").order("created_at", { ascending: false }).limit(100),
         supabase.from("orders").select("id, total_kes, buyer_fee_kes, platform_fee_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
-        supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code").order("created_at", { ascending: false }),
+        supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code, contact_phone, mpesa_till, payout_method").order("created_at", { ascending: false }),
         supabase.from("organizer_approval_requests").select("id, application_details, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
         supabase.from("platform_logs").select("id, level, action, message, metadata, created_at").order("created_at", { ascending: false }).limit(200),
-        supabase.from("ticket_resale_listings").select(`
-          id, resale_price_kes, status, listed_at, sold_at, payment_ref, buyer_user_id, seller_user_id,
-          events(id, title, starts_at),
-          resale_transfers(payout_status)
-        `).in("status", ["pending_approval", "sold"]).order("created_at", { ascending: false }),
+        supabase.rpc("admin_get_resale_listings"),
         fetchHomepageSettings(),
       ]);
       setEvents((evts ?? []) as EventRow[]);
@@ -294,7 +290,7 @@ const SuperAdminDashboard = () => {
       if (action === "approve") {
         const { data: orgs } = await supabase
           .from("organizer_profiles")
-          .select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code")
+          .select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code, contact_phone, mpesa_till, payout_method")
           .order("created_at", { ascending: false });
         setOrganizers((orgs ?? []) as typeof organizers);
       }
@@ -634,7 +630,8 @@ const SuperAdminDashboard = () => {
                                 <tr className="border-b border-border text-muted-foreground">
                                   <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Action</th>
                                   <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Event</th>
-                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Starts</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Seller Info</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Buyer Info</th>
                                   <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Price (KES)</th>
                                   <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Status</th>
                                 </tr>
@@ -642,11 +639,11 @@ const SuperAdminDashboard = () => {
                               <tbody className="divide-y divide-border">
                                 {resaleListings.map((listing) => {
                                   const isPendingApproval = listing.status === "pending_approval";
-                                  const eventStarted = new Date(listing.events?.starts_at) < new Date();
-                                  const payoutPending = listing.status === "sold" && listing.resale_transfers?.[0]?.payout_status === "pending";
+                                  const eventStarted = new Date(listing.event_starts_at) < new Date();
+                                  const payoutPending = listing.status === "sold" && listing.payout_status === "pending";
 
                                   return (
-                                    <tr key={listing.id} className="group">
+                                    <tr key={listing.listing_id} className="group">
                                       <td className="py-4 pr-4">
                                         {isPendingApproval && (
                                           <Button
@@ -657,12 +654,12 @@ const SuperAdminDashboard = () => {
                                               const toastId = toast.loading("Approving resale...");
                                               try {
                                                 const res = await supabase.functions.invoke("resale-admin-action", {
-                                                  body: { listingId: listing.id, action: "approve" }
+                                                  body: { listingId: listing.listing_id, action: "approve" }
                                                 });
                                                 if (res.error) throw new Error(res.error.message || res.data?.error);
                                                 
                                                 toast.success("Ticket approved and buyer notified!", { id: toastId });
-                                                setResaleListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: "sold" } : l));
+                                                setResaleListings(prev => prev.map(l => l.listing_id === listing.listing_id ? { ...l, status: "sold" } : l));
                                               } catch (err) {
                                                 toast.error((err as Error).message, { id: toastId });
                                               }
@@ -671,21 +668,21 @@ const SuperAdminDashboard = () => {
                                             <Check className="h-4 w-4 mr-1" /> Approve
                                           </Button>
                                         )}
-                                        {payoutPending && eventStarted && (
+                                        {payoutPending && eventStarted && listing.seller_payout_phone && (
                                           <Button
                                             size="sm"
                                             className="bg-[#10ff8a] hover:bg-[#10ff8a]/90 text-[#04130a] font-bold"
                                             onClick={async () => {
-                                              if (!window.confirm("Disburse B2C payout to the seller?")) return;
+                                              if (!window.confirm("Disburse B2C payout to the seller via M-Pesa?")) return;
                                               const toastId = toast.loading("Sending B2C payout...");
                                               try {
                                                 const res = await supabase.functions.invoke("resale-admin-action", {
-                                                  body: { listingId: listing.id, action: "payout" }
+                                                  body: { listingId: listing.listing_id, action: "payout" }
                                                 });
                                                 if (res.error) throw new Error(res.error.message || res.data?.error);
                                                 
                                                 toast.success("B2C Payout processed via M-Pesa!", { id: toastId });
-                                                setResaleListings(prev => prev.map(l => l.id === listing.id ? { ...l, resale_transfers: [{ payout_status: "paid" }] } : l));
+                                                setResaleListings(prev => prev.map(l => l.listing_id === listing.listing_id ? { ...l, payout_status: "paid" } : l));
                                               } catch (err) {
                                                 toast.error((err as Error).message, { id: toastId });
                                               }
@@ -694,29 +691,38 @@ const SuperAdminDashboard = () => {
                                             <ShieldCheck className="h-4 w-4 mr-1" /> Send B2C
                                           </Button>
                                         )}
+                                        {payoutPending && eventStarted && !listing.seller_payout_phone && (
+                                          <span className="text-[10px] text-amber-500 uppercase px-2 py-1 bg-amber-500/20 rounded-full">
+                                            Missing Phone
+                                          </span>
+                                        )}
                                         {payoutPending && !eventStarted && (
                                           <span className="text-[10px] text-muted-foreground uppercase px-2 py-1 bg-secondary rounded-full">
                                             Awaiting Event
                                           </span>
                                         )}
-                                        {listing.status === "sold" && listing.resale_transfers?.[0]?.payout_status === "paid" && (
+                                        {listing.status === "sold" && listing.payout_status === "paid" && (
                                           <span className="text-[10px] text-primary uppercase px-2 py-1 bg-primary/20 rounded-full font-bold">
                                             Payout Complete
                                           </span>
                                         )}
                                       </td>
                                       <td className="py-4 pr-4">
-                                        <p className="font-semibold">{listing.events?.title}</p>
-                                        <p className="text-xs text-muted-foreground">ID: {listing.id.split('-')[0]}</p>
+                                        <p className="font-semibold">{listing.event_title}</p>
+                                        <p className="text-xs text-muted-foreground">ID: {listing.listing_id.split('-')[0]}</p>
                                       </td>
-                                      <td className="py-4 pr-4 whitespace-nowrap">
-                                        {listing.events?.starts_at ? new Date(listing.events.starts_at).toLocaleDateString() : "TBA"}
+                                      <td className="py-4 pr-4 text-xs whitespace-nowrap">
+                                        <p className="font-semibold">{listing.seller_email ?? "Unknown"}</p>
+                                        <p className="text-muted-foreground">{listing.seller_payout_phone || "No phone"}</p>
+                                      </td>
+                                      <td className="py-4 pr-4 text-xs whitespace-nowrap">
+                                        <p className="font-semibold">{listing.buyer_email ?? (listing.status === "sold" ? "Unknown" : "—")}</p>
                                       </td>
                                       <td className="py-4 pr-4 font-mono font-semibold">
                                         {formatKES(listing.resale_price_kes)}
                                       </td>
                                       <td className="py-4 pr-4">
-                                        <span className={`rounded-full px-2 py-1 text-[10px] uppercase font-bold \${
+                                        <span className={`rounded-full px-2 py-1 text-[10px] uppercase font-bold ${
                                           isPendingApproval ? 'bg-amber-500/20 text-amber-500' : 'bg-primary/20 text-primary'
                                         }`}>
                                           {isPendingApproval ? "Pending Escrow" : "Sold"}
@@ -1424,9 +1430,10 @@ const SuperAdminDashboard = () => {
                           <tr>
                             <th className="px-4 py-3 text-left">Organization</th>
                             <th className="px-4 py-3 text-left">Email</th>
-                            <th className="px-4 py-3 text-left">Payout</th>
-                            <th className="px-4 py-3 text-right">Platform fee</th>
+                            <th className="px-4 py-3 text-left">Method</th>
+                            <th className="px-4 py-3 text-left">Payout Detail</th>
                             <th className="px-4 py-3 text-right">Published</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1436,11 +1443,36 @@ const SuperAdminDashboard = () => {
                                 <Link to={`/organizer/${o.id}`} className="hover:underline">{o.org_name}</Link>
                               </td>
                               <td className="px-4 py-3 text-muted-foreground">{o.contact_email ?? "—"}</td>
-                              <td className="px-4 py-3 text-xs">
-                                {o.paystack_subaccount_code ? <span className="text-primary">Connected</span> : <span className="text-muted-foreground">—</span>}
-                              </td>
-                              <td className="px-4 py-3 text-right">{o.fee_locked_pct ?? PLATFORM_FEE_PCT}%</td>
+                              <td className="px-4 py-3 text-xs uppercase font-medium text-primary">{o.payout_method || 'mpesa'}</td>
+                              <td className="px-4 py-3 text-muted-foreground font-mono">{o.payout_method === 'till' ? (o.mpesa_till || 'No Till') : (o.contact_phone || 'No Phone')}</td>
                               <td className="px-4 py-3 text-right">{o.events_published_count}</td>
+                              <td className="px-4 py-3 text-right">
+                                <Button size="sm" className="bg-[#10ff8a] hover:bg-[#10ff8a]/90 text-[#04130a] font-bold" onClick={async () => {
+                                  const method = o.payout_method || 'mpesa';
+                                  const target = method === 'till' ? o.mpesa_till : o.contact_phone;
+                                  if (!target) {
+                                    toast.error(`Missing ${method === 'till' ? 'Till Number' : 'Phone Number'} for payout`);
+                                    return;
+                                  }
+                                  const amountStr = window.prompt(`Enter amount to pay ${o.org_name} via ${method.toUpperCase()} (${target}):`);
+                                  if (!amountStr) return;
+                                  const amount = parseInt(amountStr);
+                                  if (isNaN(amount) || amount <= 0) { toast.error("Invalid amount"); return; }
+
+                                  const toastId = toast.loading("Processing payout...");
+                                  try {
+                                    const res = await supabase.functions.invoke("organizer-payout-action", {
+                                      body: { organizerId: o.id, amount }
+                                    });
+                                    if (res.error) throw new Error(res.error.message || res.data?.error);
+                                    toast.success("Payout processed successfully!", { id: toastId });
+                                  } catch (err) {
+                                    toast.error((err as Error).message, { id: toastId });
+                                  }
+                                }}>
+                                  <ShieldCheck className="h-4 w-4 mr-1" /> Send Payout
+                                </Button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
