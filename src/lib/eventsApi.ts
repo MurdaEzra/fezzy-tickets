@@ -60,6 +60,7 @@ export type AccountTicket = {
   status: "valid" | "used" | "refunded" | "cancelled";
   created_at: string;
   holder_name: string;
+  holder_email: string;
   events: DbEvent | null;
   ticket_tiers: DbTier | null;
   orders: {
@@ -176,7 +177,7 @@ export async function fetchOrganizerProfile(id: string) {
 export async function fetchAccountTickets() {
   const { data, error } = await supabase
     .from("tickets")
-    .select("id, status, created_at, holder_name, events(*), ticket_tiers(*), orders(id, status, total_kes, payment_ref)")
+    .select("id, status, created_at, holder_email, events(*), ticket_tiers(*), orders(id, status, total_kes, payment_ref)")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
