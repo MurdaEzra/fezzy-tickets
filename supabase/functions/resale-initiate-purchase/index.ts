@@ -32,6 +32,17 @@ function normalizeKenyanPhone(raw: string): string {
   throw new Error("Enter a valid Kenyan phone number");
 }
 
+async function parseJsonSafely(response: Response): Promise<any> {
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 async function initiateStkPush({
   accountReference,
   amountKes,
@@ -56,8 +67,10 @@ async function initiateStkPush({
   const tokenRes = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}` },
   });
-  const tokenData = await tokenRes.json();
-  if (!tokenRes.ok || !tokenData.access_token) throw new Error("M-Pesa auth failed");
+  const tokenData = await parseJsonSafely(tokenRes);
+  if (!tokenRes.ok || !tokenData?.access_token) {
+    throw new Error(tokenData?.errorMessage ?? "M-Pesa auth failed");
+  }
 
   // Build STK push payload
   const now = new Date();
@@ -88,8 +101,13 @@ async function initiateStkPush({
     },
     body: JSON.stringify(payload),
   });
-  const stkData = await stkRes.json();
-  if (!stkRes.ok) throw new Error(stkData?.errorMessage ?? "STK push failed");
+  const stkData = await parseJsonSafely(stkRes);
+  if (!stkRes.ok) {
+    throw new Error(stkData?.errorMessage ?? `STK push failed (${stkRes.status})`);
+  }
+  if (!stkData) {
+    throw new Error("M-Pesa returned an empty response");
+  }
   return stkData;
 }
 
@@ -211,6 +229,8 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("[resale-initiate-purchase]", err);
-    return json({ error: err instanceof Error ? err.message : "Internal error" }, 500);
+    const message = err instanceof Error ? err.message : "Internal error";
+    const status = /M-Pesa|auth failed|STK push failed|empty response/i.test(message) ? 502 : 500;
+    return json({ error: message }, status);
   }
 });

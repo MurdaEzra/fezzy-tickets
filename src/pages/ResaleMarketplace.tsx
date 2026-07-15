@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { formatPrice } from "@/lib/eventsApi";
+import { parseJsonResponse } from "@/lib/safeJson";
 import { Loader2, Search, Ticket, Calendar, MapPin, Phone, CheckCircle2, XCircle } from "lucide-react";
 
 interface PublicListing {
@@ -167,12 +168,12 @@ const ResaleMarketplace = () => {
         },
       );
 
-      const result = await response.json();
-      if (!response.ok || result.error) {
-        throw new Error(result.error || "Purchase failed");
+      const result = await parseJsonResponse<{ error?: string; customer_message?: string }>(response);
+      if (!response.ok || result?.error) {
+        throw new Error(result?.error || "Purchase failed");
       }
 
-      setCustomerMessage(result.customer_message || "Check your phone to authorize the M-Pesa payment.");
+      setCustomerMessage(result?.customer_message || "Check your phone to authorize the M-Pesa payment.");
       setPurchaseStep("waiting");
       startPollStatus(selectedListing.listing_id);
     } catch (error) {
