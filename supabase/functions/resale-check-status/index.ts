@@ -28,6 +28,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    await admin.rpc("expire_stale_resale_reservations");
+
     const { data: listing, error } = await admin
       .from("ticket_resale_listings")
       .select("id, status, payment_ref")

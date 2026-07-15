@@ -107,8 +107,8 @@ const ResaleMarketplace = () => {
             body: JSON.stringify({ listingId }),
           },
         );
-        const data = await res.json();
-        if (data.finalized) {
+        const data = await parseJsonResponse<{ finalized?: boolean }>(res);
+        if (data?.finalized) {
           if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           setPurchaseStep("success");
           fetchListings(); // refresh marketplace
@@ -116,11 +116,11 @@ const ResaleMarketplace = () => {
       } catch {
         /* ignore network blips */
       }
-      if (attempts > 60) {
-        // 3 minutes of polling
+      if (attempts > 100) {
+        // 5 minutes of polling
         if (pollTimerRef.current) clearInterval(pollTimerRef.current);
         setPurchaseStep("failed");
-        toast.error("Payment confirmation timed out. Check your M-Pesa messages.");
+        toast.error("Payment confirmation timed out. Your listing will become available again shortly if no payment was completed.");
       }
     }, 3000);
   }, []);

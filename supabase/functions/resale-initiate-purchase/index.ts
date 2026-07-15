@@ -16,6 +16,7 @@ const corsHeaders = {
 };
 
 const BUYER_FEE_RATE = 0.035;
+const RESALE_HOLD_MINUTES = 5;
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -32,14 +33,37 @@ function normalizeKenyanPhone(raw: string): string {
   throw new Error("Enter a valid Kenyan phone number");
 }
 
-async function parseJsonSafely(response: Response): Promise<any> {
+async function parseResponseBody(response: Response): Promise<any> {
   const text = await response.text();
   if (!text) return null;
 
   try {
     return JSON.parse(text);
   } catch {
-    return null;
+    return text;
+  }
+}
+
+function getMpesaErrorMessage(payload: any, fallback: string): string {
+  if (typeof payload === "string" && payload.trim()) return payload;
+  if (payload && typeof payload === "object") {
+    return (
+      payload.errorMessage ??
+      payload.error_description ??
+      payload.error_description ??
+      payload.error ??
+      payload.message ??
+      fallback
+    );
+  }
+  return fallback;
+}
+
+async function expireStaleReservations(admin: any) {
+  try {
+    await admin.rpc("expire_stale_resale_reservations");
+  } catch (err) {
+    console.warn("[resale-initiate-purchase] stale reservation cleanup failed", err);
   }
 }
 
@@ -58,6 +82,13 @@ async function initiateStkPush({
 }) {
   const env = Deno.env.get("MPESA_ENV") ?? "sandbox";
   const baseUrl = env === "live" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+  const missingConfig = ["MPESA_SHORTCODE", "MPESA_PASSKEY", "MPESA_CONSUMER_KEY", "MPESA_CONSUMER_SECRET"].filter(
+    (key) => !Deno.env.get(key),
+  );
+  if (missingConfig.length) {
+    throw new Error(`Missing M-Pesa config: ${missingConfig.join(", ")}`);
+  }
+
   const shortCode = Deno.env.get("MPESA_SHORTCODE")!;
   const passkey = Deno.env.get("MPESA_PASSKEY")!;
   const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")!;
@@ -67,9 +98,10 @@ async function initiateStkPush({
   const tokenRes = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}` },
   });
-  const tokenData = await parseJsonSafely(tokenRes);
+  const tokenData = await parseResponseBody(tokenRes);
   if (!tokenRes.ok || !tokenData?.access_token) {
-    throw new Error(tokenData?.errorMessage ?? "M-Pesa auth failed");
+    const detail = getMpesaErrorMessage(tokenData, "M-Pesa auth failed");
+    throw new Error(`M-Pesa auth failed: ${detail}`);
   }
 
   // Build STK push payload
@@ -101,9 +133,10 @@ async function initiateStkPush({
     },
     body: JSON.stringify(payload),
   });
-  const stkData = await parseJsonSafely(stkRes);
+  const stkData = await parseResponseBody(stkRes);
   if (!stkRes.ok) {
-    throw new Error(stkData?.errorMessage ?? `STK push failed (${stkRes.status})`);
+    const detail = getMpesaErrorMessage(stkData, `STK push failed (${stkRes.status})`);
+    throw new Error(`STK push failed: ${detail}`);
   }
   if (!stkData) {
     throw new Error("M-Pesa returned an empty response");
@@ -134,6 +167,8 @@ Deno.serve(async (req) => {
     if (userErr || !userRes.user) return json({ error: "Invalid session" }, 401);
     const buyer = userRes.user;
 
+    await expireStaleReservations(admin);
+
     // Load public listing metadata (safe view — no PII / no qr_token)
     const { data: listing, error: listingErr } = await admin
       .from("ticket_resale_listings_public" as never)
@@ -155,7 +190,7 @@ Deno.serve(async (req) => {
       {
         _listing_id: listingId,
         _buyer_user_id: buyer.id,
-        _expires_minutes: 10,
+        _expires_minutes: RESALE_HOLD_MINUTES,
       },
     );
 
@@ -207,12 +242,12 @@ Deno.serve(async (req) => {
         .update({
           status: "active",
           buyer_user_id: null,
-          reserved_at: null,
-          reservation_expires_at: null,
+          payment_expires_at: null,
           payment_ref: null,
         })
         .eq("id", listingId)
-        .eq("status", "reserved");
+        .eq("status", "pending_payment")
+        .eq("buyer_user_id", buyer.id);
 
       return json({
         error: err instanceof Error ? err.message : "M-Pesa payment initiation failed",

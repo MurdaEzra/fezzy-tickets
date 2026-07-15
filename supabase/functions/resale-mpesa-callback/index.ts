@@ -53,12 +53,11 @@ Deno.serve(async (req) => {
         .update({
           status: "active",
           buyer_user_id: null,
-          reserved_at: null,
-          reservation_expires_at: null,
+          payment_expires_at: null,
           payment_ref: null,
         })
         .eq("id", listingId)
-        .eq("status", "reserved");
+        .eq("status", "pending_payment");
 
       return new Response(JSON.stringify({ ok: true }), { headers: cors });
     }

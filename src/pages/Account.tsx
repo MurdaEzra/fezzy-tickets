@@ -12,6 +12,7 @@ import {
   fetchAccountTickets,
   formatEventDate,
   formatPrice,
+  getTicketStatusDisplay,
   type AccountTicket,
 } from "@/lib/eventsApi";
 import { supabase } from "@/integrations/supabase/client";
@@ -304,6 +305,7 @@ const Account = () => {
                       {tickets.map((ticket) => {
                         const event = ticket.events;
                         const tier = ticket.ticket_tiers;
+                        const ticketStatus = getTicketStatusDisplay(ticket.status);
                         const isListed = listings.some(l => l.ticket_id === ticket.id && (l.status === "active" || l.status === "pending"));
                         const listingStatus = listings.find(l => l.ticket_id === ticket.id)?.status;
                         return (
@@ -319,11 +321,7 @@ const Account = () => {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <h3 className="font-display text-lg font-bold leading-tight text-foreground">{event?.title ?? "Event unavailable"}</h3>
-                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                    ticket.status === "valid" ? "bg-primary/15 text-primary" :
-                                    ticket.status === "used" ? "bg-secondary text-muted-foreground" :
-                                    "bg-destructive/15 text-destructive"
-                                  }`}>{ticket.status}</span>
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ticketStatus.className}`}>{ticketStatus.label}</span>
                                 </div>
                                 <p className="mt-1 text-xs text-muted-foreground">{event ? formatEventDate(event.starts_at) : ""}</p>
                                 <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">

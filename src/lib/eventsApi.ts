@@ -57,7 +57,7 @@ export type DbEventWithTiers = DbEvent & {
 
 export type AccountTicket = {
   id: string;
-  status: "valid" | "used" | "refunded" | "cancelled";
+  status: "valid" | "used" | "refunded" | "cancelled" | "invalid";
   created_at: string;
   holder_name: string;
   holder_email: string;
@@ -78,6 +78,24 @@ export const formatPrice = (n: number) => formatKES(n);
 
 export const formatEventDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+
+export function getTicketStatusDisplay(status: string) {
+  const normalized = String(status ?? "").toLowerCase();
+  switch (normalized) {
+    case "valid":
+      return { label: "Valid", className: "bg-primary/15 text-primary" };
+    case "used":
+      return { label: "Used", className: "bg-secondary text-muted-foreground" };
+    case "invalid":
+      return { label: "Invalid", className: "bg-destructive/15 text-destructive" };
+    case "refunded":
+      return { label: "Refunded", className: "bg-secondary text-muted-foreground" };
+    case "cancelled":
+      return { label: "Cancelled", className: "bg-secondary text-muted-foreground" };
+    default:
+      return { label: normalized.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()), className: "bg-secondary text-muted-foreground" };
+  }
+}
 
 export const formatEventDateLong = (iso: string) =>
   new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
