@@ -77,6 +77,7 @@ Deno.serve(async (req) => {
         
       if (transferError || !transfer) return json({ error: "Transfer not found" }, 404);
       if (transfer.payout_status === "paid") return json({ error: "Payout already processed" }, 400);
+      if (!transfer.seller_payout_phone) return json({ error: "Seller has not provided a payout phone number" }, 400);
       
       const { data: eventInfo } = await admin.from("events").select("starts_at").eq("id", transfer.ticket_resale_listings.event_id).single();
       
@@ -84,8 +85,18 @@ Deno.serve(async (req) => {
          return json({ error: "Cannot payout before the event has started" }, 400);
       }
 
-      // Execute B2C logic here (Stubbed). You would call Daraja / M-Pesa B2C endpoint here to send the money to the seller.
-      console.log(`Initiating B2C payout for KES ${transfer.sale_price_kes} to seller ${transfer.seller_user_id}`);
+      console.log(`Initiating B2C payout for KES ${transfer.sale_price_kes} to seller phone ${transfer.seller_payout_phone}`);
+      
+      try {
+        await initiateB2CPayout(
+          transfer.sale_price_kes,
+          transfer.seller_payout_phone,
+          `Fezzy Resale Payout for listing ${listingId}`
+        );
+      } catch (payoutErr: any) {
+        console.error("B2C Payout Error:", payoutErr);
+        return json({ error: payoutErr.message || "M-Pesa B2C payout failed" }, 502);
+      }
       
       // Update payout_status to paid
       await admin.from("resale_transfers").update({ payout_status: "paid" }).eq("id", transfer.id);
@@ -100,6 +111,66 @@ Deno.serve(async (req) => {
     return json({ error: err instanceof Error ? err.message : "Internal error" }, 500);
   }
 });
+
+async function initiateB2CPayout(amountKes: number, phone: string, remarks: string) {
+  const env = Deno.env.get("MPESA_ENV") ?? "sandbox";
+  const baseUrl = env === "live" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+  const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")!;
+  const consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET")!;
+  const shortCode = Deno.env.get("MPESA_SHORTCODE")!;
+  const initiatorName = Deno.env.get("MPESA_INITIATOR_NAME")!;
+  const securityCredential = Deno.env.get("MPESA_SECURITY_CREDENTIAL")!;
+
+  if (!initiatorName || !securityCredential) {
+    throw new Error("M-Pesa B2C credentials (initiator name or security credential) are missing from the environment");
+  }
+
+  // Get OAuth token
+  const tokenRes = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
+    headers: { Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}` },
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenRes.ok || !tokenData.access_token) throw new Error("M-Pesa auth failed");
+
+  function normalizeKenyanPhone(raw: string): string {
+    const digits = String(raw ?? "").replace(/\D/g, "");
+    if (digits.startsWith("254") && digits.length === 12) return digits;
+    if (digits.startsWith("0") && digits.length === 10) return `254${digits.slice(1)}`;
+    if (digits.startsWith("7") && digits.length === 9) return `254${digits}`;
+    throw new Error("Enter a valid Kenyan phone number");
+  }
+
+  const normalizedPhone = normalizeKenyanPhone(phone);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+
+  const payload = {
+    InitiatorName: initiatorName,
+    SecurityCredential: securityCredential,
+    CommandID: "BusinessPayment",
+    Amount: Math.max(1, Math.round(amountKes)),
+    PartyA: shortCode,
+    PartyB: normalizedPhone,
+    Remarks: remarks.slice(0, 100),
+    QueueTimeOutURL: `${supabaseUrl}/functions/v1/resale-mpesa-callback`,
+    ResultURL: `${supabaseUrl}/functions/v1/resale-mpesa-callback`,
+    Occasion: "Resale Payout"
+  };
+
+  const b2cRes = await fetch(`${baseUrl}/mpesa/b2c/v1/paymentrequest`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  
+  const b2cData = await b2cRes.json();
+  if (!b2cRes.ok || (b2cData.ResponseCode && b2cData.ResponseCode !== "0")) {
+    throw new Error(b2cData?.errorMessage ?? b2cData?.ResponseDescription ?? "B2C request failed");
+  }
+  return b2cData;
+}
 
 async function notifyResaleBuyer(admin: any, listingId: string) {
   const { data: listing } = await admin
