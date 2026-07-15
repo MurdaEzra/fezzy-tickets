@@ -87,10 +87,10 @@ const Account = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.email) return;
     let cancelled = false;
     setTicketsLoading(true);
-    fetchAccountTickets()
+    fetchAccountTickets(user.email)
       .then((rows) => { if (!cancelled) setTickets(rows); })
       .catch(() => { if (!cancelled) { setTickets([]); toast.error("Could not load tickets"); } })
       .finally(() => { if (!cancelled) setTicketsLoading(false); });
@@ -181,7 +181,7 @@ const Account = () => {
       setIsConfirmDialogOpen(false);
       setIsListingDialogOpen(false);
       fetchListings();
-      fetchAccountTickets().then(setTickets);
+      if (user?.email) fetchAccountTickets(user.email).then(setTickets);
     } catch (error) {
       console.error("Error listing ticket:", error);
       toast.error(error instanceof Error ? error.message : "Failed to list ticket");
@@ -199,7 +199,7 @@ const Account = () => {
       if (!response.ok) throw new Error(result.error || "Failed to cancel listing");
       toast.success("Your listing has been cancelled");
       fetchListings();
-      fetchAccountTickets().then(setTickets);
+      if (user?.email) fetchAccountTickets(user.email).then(setTickets);
     } catch (error) {
       console.error("Error cancelling listing:", error);
       toast.error(error instanceof Error ? error.message : "Failed to cancel listing");

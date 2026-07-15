@@ -174,12 +174,17 @@ export async function fetchOrganizerProfile(id: string) {
   return data;
 }
 
-export async function fetchAccountTickets() {
-  const { data, error } = await supabase
+export async function fetchAccountTickets(holderEmail?: string) {
+  let q = supabase
     .from("tickets")
     .select("id, status, created_at, holder_email, events(*), ticket_tiers(*), orders(id, status, total_kes, payment_ref)")
     .order("created_at", { ascending: false });
 
+  if (holderEmail) {
+    q = q.eq("holder_email", holderEmail);
+  }
+
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as AccountTicket[];
 }
