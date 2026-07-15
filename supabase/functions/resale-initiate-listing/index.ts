@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     const { data: ticket, error: ticketErr } = await admin
       .from("tickets")
       .select(`
-        id, event_id, current_owner_user_id, checked_in_at, revoked_at, status,
+        id, event_id, current_owner_user_id, holder_email, checked_in_at, revoked_at, status,
         ticket_tiers(id, name, price_kes),
         events(id, title, starts_at, resale_enabled, min_resale_percentage, max_resale_percentage),
         orders(user_id)
@@ -57,11 +57,12 @@ Deno.serve(async (req) => {
 
     if (ticketErr || !ticket) return json({ error: "Ticket not found" }, 404);
 
-    // Check ownership: current_owner_user_id (set after resale transfers) OR
-    // fall back to orders.user_id for original ticket purchasers whose
-    // current_owner_user_id was never backfilled.
+    // Check ownership: current_owner_user_id (set after resale transfers),
+    // the ticket holder email for guest checkout accounts, or
+    // orders.user_id for original registered purchasers.
     const isOwner =
       ticket.current_owner_user_id === user.id ||
+      ticket.holder_email === user.email ||
       (!ticket.current_owner_user_id && ticket.orders?.user_id === user.id);
 
     if (!isOwner) {
