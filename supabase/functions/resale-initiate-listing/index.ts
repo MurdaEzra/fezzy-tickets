@@ -3,6 +3,26 @@
 // listing status defaults to 'active', min/max % enforced against tier price.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+interface ResaleTicketRow {
+  id: string;
+  event_id: string;
+  current_owner_user_id: string | null;
+  holder_email: string | null;
+  checked_in_at: string | null;
+  revoked_at: string | null;
+  status: string;
+  ticket_tiers: { id: string; name: string; price_kes: number } | null;
+  events: {
+    id: string;
+    title: string;
+    starts_at: string;
+    resale_enabled: boolean;
+    min_resale_percentage: number | null;
+    max_resale_percentage: number | null;
+  } | null;
+  orders: { user_id: string | null } | null;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -17,6 +37,14 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function normalizeKenyanPhone(raw: string): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (digits.startsWith("254") && digits.length === 12) return digits;
+  if (digits.startsWith("0") && digits.length === 10) return `254${digits.slice(1)}`;
+  if (digits.startsWith("7") && digits.length === 9) return `254${digits}`;
+  throw new Error("Enter a valid Kenyan M-Pesa payout phone number");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -24,14 +52,15 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-    const { ticketId, resalePriceKes } = await req.json();
-    if (!ticketId || !resalePriceKes) {
-      return json({ error: "ticketId and resalePriceKes are required" }, 400);
+    const { ticketId, resalePriceKes, sellerPayoutPhone } = await req.json();
+    if (!ticketId || !resalePriceKes || !sellerPayoutPhone) {
+      return json({ error: "ticketId, resalePriceKes and sellerPayoutPhone are required" }, 400);
     }
     const price = Number(resalePriceKes);
     if (!Number.isFinite(price) || price <= 0) {
       return json({ error: "Invalid resale price" }, 400);
     }
+    const normalizedPayoutPhone = normalizeKenyanPhone(sellerPayoutPhone);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -53,7 +82,7 @@ Deno.serve(async (req) => {
         orders(user_id)
       `)
       .eq("id", ticketId)
-      .maybeSingle<any>();
+      .maybeSingle<ResaleTicketRow>();
 
     if (ticketErr || !ticket) return json({ error: "Ticket not found" }, 404);
 
@@ -100,6 +129,7 @@ Deno.serve(async (req) => {
         ticket_id: ticketId,
         event_id: ev.id,
         seller_user_id: user.id,
+        seller_payout_phone: normalizedPayoutPhone,
         resale_price_kes: price,
         status: "active",
       })
@@ -111,6 +141,8 @@ Deno.serve(async (req) => {
     return json({ ok: true, listing });
   } catch (err) {
     console.error("[resale-initiate-listing]", err);
-    return json({ error: err instanceof Error ? err.message : "Internal error" }, 500);
+    const message = err instanceof Error ? err.message : "Internal error";
+    const status = /phone|price|required|disabled|started|listed|own/i.test(message) ? 400 : 500;
+    return json({ error: message }, status);
   }
 });

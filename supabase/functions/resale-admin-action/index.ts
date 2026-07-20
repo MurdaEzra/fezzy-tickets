@@ -1,13 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import QRCode from "npm:qrcode";
+
+type SupabaseAdmin = ReturnType<typeof createClient>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -20,6 +19,36 @@ function escapeHtml(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string
   ));
+}
+
+async function parseResponseBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function getMpesaErrorMessage(payload: unknown, fallback: string): string {
+  if (typeof payload === "string" && payload.trim()) return payload;
+  if (payload && typeof payload === "object") {
+    const body = payload as Record<string, unknown>;
+    return (
+      stringValue(body.errorMessage) ??
+      stringValue(body.error_description) ??
+      stringValue(body.error) ??
+      stringValue(body.message) ??
+      stringValue(body.ResponseDescription) ??
+      fallback
+    );
+  }
+  return fallback;
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 Deno.serve(async (req) => {
@@ -42,9 +71,9 @@ Deno.serve(async (req) => {
     
     // Check if super admin
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userRes.user.id);
-    const hasAdmin = roles?.some(r => r.role === "super_admin" || r.role === "admin");
+    const hasAdmin = roles?.some((r) => r.role === "admin");
     
-    if (!hasAdmin) return json({ error: "Forbidden: Super Admin only" }, 403);
+    if (!hasAdmin) return json({ error: "Forbidden: Admin only" }, 403);
 
     if (action === "approve") {
       // 1) Generate a fresh strong qr_token
@@ -53,7 +82,8 @@ Deno.serve(async (req) => {
       const newQrToken = Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
 
       // 2) Call approve_resale_transfer
-      const { data: transfer, error } = await admin.rpc("approve_resale_transfer", {
+      const { error } = await admin.rpc("approve_resale_transfer", {
+        _admin_user_id: userRes.user.id,
         _listing_id: listingId,
         _new_qr_token: newQrToken,
       });
@@ -77,6 +107,7 @@ Deno.serve(async (req) => {
         
       if (transferError || !transfer) return json({ error: "Transfer not found" }, 404);
       if (transfer.payout_status === "paid") return json({ error: "Payout already processed" }, 400);
+      if (transfer.payout_status === "processing") return json({ error: "Payout is already processing" }, 409);
       if (!transfer.seller_payout_phone) return json({ error: "Seller has not provided a payout phone number" }, 400);
       
       const { data: eventInfo } = await admin.from("events").select("starts_at").eq("id", transfer.ticket_resale_listings.event_id).single();
@@ -88,20 +119,29 @@ Deno.serve(async (req) => {
       console.log(`Initiating B2C payout for KES ${transfer.sale_price_kes} to seller phone ${transfer.seller_payout_phone}`);
       
       try {
-        await initiateB2CPayout(
+        const payout = await initiateB2CPayout(
           transfer.sale_price_kes,
           transfer.seller_payout_phone,
+          transfer.id,
           `Fezzy Resale Payout for listing ${listingId}`
         );
-      } catch (payoutErr: any) {
+        const { error: payoutUpdateError } = await admin
+          .from("resale_transfers")
+          .update({
+            payout_status: "processing",
+            payout_ref: payout.originatorConversationId ?? payout.conversationId ?? null,
+            payout_started_at: new Date().toISOString(),
+            payout_error: null,
+          })
+          .eq("id", transfer.id)
+          .neq("payout_status", "paid");
+        if (payoutUpdateError) throw payoutUpdateError;
+      } catch (payoutErr: unknown) {
         console.error("B2C Payout Error:", payoutErr);
-        return json({ error: payoutErr.message || "M-Pesa B2C payout failed" }, 502);
+        return json({ error: payoutErr instanceof Error ? payoutErr.message : "M-Pesa B2C payout failed" }, 502);
       }
-      
-      // Update payout_status to paid
-      await admin.from("resale_transfers").update({ payout_status: "paid" }).eq("id", transfer.id);
-      
-      return json({ success: true, message: "Seller payout initiated via B2C" });
+
+      return json({ success: true, message: "Seller payout sent to M-Pesa for processing" });
     }
 
     return json({ error: "Invalid action" }, 400);
@@ -112,7 +152,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function initiateB2CPayout(amountKes: number, phone: string, remarks: string) {
+async function initiateB2CPayout(amountKes: number, phone: string, transferId: string, remarks: string) {
   const env = Deno.env.get("MPESA_ENV") ?? "sandbox";
   const baseUrl = env === "live" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
   const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")!;
@@ -121,16 +161,19 @@ async function initiateB2CPayout(amountKes: number, phone: string, remarks: stri
   const initiatorName = Deno.env.get("MPESA_INITIATOR_NAME")!;
   const securityCredential = Deno.env.get("MPESA_SECURITY_CREDENTIAL")!;
 
-  if (!initiatorName || !securityCredential) {
-    throw new Error("M-Pesa B2C credentials (initiator name or security credential) are missing from the environment");
+  if (!consumerKey || !consumerSecret || !shortCode || !initiatorName || !securityCredential) {
+    throw new Error("M-Pesa B2C credentials are not fully configured");
   }
 
   // Get OAuth token
   const tokenRes = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}` },
   });
-  const tokenData = await tokenRes.json();
-  if (!tokenRes.ok || !tokenData.access_token) throw new Error("M-Pesa auth failed");
+  const tokenData = await parseResponseBody(tokenRes);
+  const token = tokenData && typeof tokenData === "object" ? stringValue((tokenData as Record<string, unknown>).access_token) : null;
+  if (!tokenRes.ok || !token) {
+    throw new Error(`M-Pesa auth failed: ${getMpesaErrorMessage(tokenData, "Unable to authenticate")}`);
+  }
 
   function normalizeKenyanPhone(raw: string): string {
     const digits = String(raw ?? "").replace(/\D/g, "");
@@ -142,6 +185,7 @@ async function initiateB2CPayout(amountKes: number, phone: string, remarks: stri
 
   const normalizedPhone = normalizeKenyanPhone(phone);
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const callbackUrl = `${supabaseUrl}/functions/v1/resale-b2c-result-callback?transfer_id=${encodeURIComponent(transferId)}`;
 
   const payload = {
     InitiatorName: initiatorName,
@@ -151,28 +195,33 @@ async function initiateB2CPayout(amountKes: number, phone: string, remarks: stri
     PartyA: shortCode,
     PartyB: normalizedPhone,
     Remarks: remarks.slice(0, 100),
-    QueueTimeOutURL: `${supabaseUrl}/functions/v1/resale-mpesa-callback`,
-    ResultURL: `${supabaseUrl}/functions/v1/resale-mpesa-callback`,
+    QueueTimeOutURL: `${callbackUrl}&timeout=1`,
+    ResultURL: callbackUrl,
     Occasion: "Resale Payout"
   };
 
   const b2cRes = await fetch(`${baseUrl}/mpesa/b2c/v1/paymentrequest`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${tokenData.access_token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
   
-  const b2cData = await b2cRes.json();
-  if (!b2cRes.ok || (b2cData.ResponseCode && b2cData.ResponseCode !== "0")) {
-    throw new Error(b2cData?.errorMessage ?? b2cData?.ResponseDescription ?? "B2C request failed");
+  const b2cData = await parseResponseBody(b2cRes);
+  const b2cBody = b2cData && typeof b2cData === "object" ? b2cData as Record<string, unknown> : {};
+  const responseCode = stringValue(b2cBody.ResponseCode);
+  if (!b2cRes.ok || (responseCode && responseCode !== "0")) {
+    throw new Error(getMpesaErrorMessage(b2cData, "B2C request failed"));
   }
-  return b2cData;
+  return {
+    originatorConversationId: stringValue(b2cBody.OriginatorConversationID),
+    conversationId: stringValue(b2cBody.ConversationID),
+  };
 }
 
-async function notifyResaleBuyer(admin: any, listingId: string) {
+async function notifyResaleBuyer(admin: SupabaseAdmin, listingId: string) {
   const { data: listing } = await admin
     .from("ticket_resale_listings_public")
     .select("event_title, event_starts_at, event_venue_name, event_city, tier_name, resale_price_kes")

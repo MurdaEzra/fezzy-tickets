@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLppCallbackUrl, decodeLppInitPayload, encodeLppInitPayload } from "../../../supabase/functions/_shared/lppPlanState.ts";
+import { buildLppCallbackUrl, decodeLppInitPayload, encodeLppInitPayload } from "../../../supabase/functions/shared/lppPlanState.ts";
 
 describe("LPP plan state", () => {
   it("round-trips the init payload for the deposit callback", () => {
@@ -11,6 +11,7 @@ describe("LPP plan state", () => {
       name: "Jane Doe",
       email: "jane@example.com",
       phone: "0712345678",
+      depositPhone: "0712345678",
       holders: [{ name: "Jane Doe", email: "jane@example.com", phone: "0712345678" }],
     };
 

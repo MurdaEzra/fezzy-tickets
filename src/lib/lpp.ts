@@ -68,6 +68,7 @@ export async function lppInitPlan(body: {
   name: string;
   email: string;
   phone: string;
+  depositPhone: string;
   holders?: { name: string; email: string; phone: string }[];
 }) {
   const { data, error } = await supabase.functions.invoke("lpp-init-plan", { body });

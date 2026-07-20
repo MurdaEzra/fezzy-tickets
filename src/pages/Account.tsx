@@ -31,6 +31,7 @@ interface Listing {
   status: string;
   listed_at: string;
   payment_expires_at: string | null;
+  seller_payout_phone: string | null;
   tickets: {
     id: string;
     holder_name: string;
@@ -77,6 +78,7 @@ const Account = () => {
   const [listingsLoading, setListingsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<AccountTicket | null>(null);
   const [resalePrice, setResalePrice] = useState("");
+  const [listingPayoutPhone, setListingPayoutPhone] = useState("");
   const [isListingDialogOpen, setIsListingDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,11 +136,16 @@ const Account = () => {
   const handleListTicket = (ticket: AccountTicket) => {
     setSelectedTicket(ticket);
     setResalePrice(ticket.ticket_tiers?.price_kes.toString() || "");
+    setListingPayoutPhone("");
     setIsListingDialogOpen(true);
   };
 
   const submitListing = async () => {
     if (!selectedTicket || !resalePrice) return;
+    if (!listingPayoutPhone.trim()) {
+      toast.error("Enter the M-Pesa payout number for this resale.");
+      return;
+    }
     setIsListingDialogOpen(false);
     setIsConfirmDialogOpen(true);
   };
@@ -174,11 +181,16 @@ const Account = () => {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-initiate-listing`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
-        body: JSON.stringify({ ticketId: selectedTicket.id, resalePriceKes: parseInt(resalePrice) }),
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          resalePriceKes: parseInt(resalePrice),
+          sellerPayoutPhone: listingPayoutPhone.trim(),
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to list ticket");
       toast.success("Your ticket is now listed for resale!");
+      setListingPayoutPhone("");
       setIsConfirmDialogOpen(false);
       setIsListingDialogOpen(false);
       fetchListings();
@@ -306,7 +318,7 @@ const Account = () => {
                         const event = ticket.events;
                         const tier = ticket.ticket_tiers;
                         const ticketStatus = getTicketStatusDisplay(ticket.status);
-                        const isListed = listings.some(l => l.ticket_id === ticket.id && (l.status === "active" || l.status === "pending"));
+                        const isListed = listings.some(l => l.ticket_id === ticket.id && ["active", "pending", "pending_payment", "pending_approval"].includes(l.status));
                         const listingStatus = listings.find(l => l.ticket_id === ticket.id)?.status;
                         return (
                           <div key={ticket.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft transition-all hover:-translate-y-0.5 hover:shadow-soft">
@@ -392,7 +404,13 @@ const Account = () => {
                                     listing.status === "sold" ? "bg-emerald-500/15 text-emerald-600" :
                                     "bg-secondary text-muted-foreground"
                                   }`}>
-                                    {listing.status === "pending" ? "Pending Verification" : listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
+                                    {listing.status === "pending"
+                                      ? "Pending Verification"
+                                      : listing.status === "pending_payment"
+                                        ? "Buyer Paying"
+                                        : listing.status === "pending_approval"
+                                          ? "Admin Review"
+                                          : listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
                                   </span>
                                 </div>
                                 <p className="mt-1 text-xs text-muted-foreground">{event ? formatEventDate(event.starts_at) : ""}</p>
@@ -408,10 +426,15 @@ const Account = () => {
                               <div className="flex-1 px-4 py-2.5 font-display text-base font-bold text-primary">
                                 {formatPrice(listing.resale_price_kes)}
                               </div>
-                              {(listing.status === "active" || listing.status === "pending") && (
+                              {listing.status === "active" && (
                                 <Button variant="ghost" className="rounded-none border-l border-border px-4 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleCancelListing(listing.id)}>
                                   <Trash2 className="h-4 w-4" /> Cancel
                                 </Button>
+                              )}
+                              {listing.status === "pending_approval" && (
+                                <div className="border-l border-border px-4 py-2 text-xs text-amber-600">
+                                  Payment received. Awaiting fraud review before ticket transfer.
+                                </div>
                               )}
                               {listing.status === "sold" && (
                                 <div className="flex flex-col gap-2 p-4 pt-2 bg-secondary/50">
@@ -424,6 +447,14 @@ const Account = () => {
                                       {listing.resale_transfers[0].payout_status === "paid" ? (
                                         <div className="text-sm font-medium text-emerald-500 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
                                           Payout completed to: {listing.resale_transfers[0].seller_payout_phone}
+                                        </div>
+                                      ) : listing.resale_transfers[0].payout_status === "processing" ? (
+                                        <div className="text-sm font-medium text-blue-500 bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
+                                          Payout processing to: {listing.resale_transfers[0].seller_payout_phone}
+                                        </div>
+                                      ) : listing.resale_transfers[0].payout_status === "failed" ? (
+                                        <div className="text-sm font-medium text-red-500 bg-red-500/10 p-2 rounded-lg border border-red-500/20">
+                                          Payout failed. Support will review the destination: {listing.resale_transfers[0].seller_payout_phone}
                                         </div>
                                       ) : listing.resale_transfers[0].seller_payout_phone ? (
                                         <div className="text-sm font-medium text-amber-500 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
@@ -556,6 +587,19 @@ const Account = () => {
                 <Label htmlFor="resalePrice">Resale Price (KES)</Label>
                 <Input id="resalePrice" type="number" value={resalePrice} onChange={(e) => setResalePrice(e.target.value)} />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="listingPayoutPhone">M-Pesa payout number</Label>
+                <Input
+                  id="listingPayoutPhone"
+                  inputMode="tel"
+                  value={listingPayoutPhone}
+                  onChange={(e) => setListingPayoutPhone(e.target.value)}
+                  placeholder="0712 345 678"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This is where your seller payout will be sent after admin approval and M-Pesa B2C processing.
+                </p>
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -581,6 +625,9 @@ const Account = () => {
               <p className="font-display text-lg">{selectedTicket.events?.title}</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {selectedTicket.ticket_tiers?.name} - Resale price: {formatPrice(parseInt(resalePrice || "0"))}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Seller payout number: {listingPayoutPhone}
               </p>
             </div>
           )}

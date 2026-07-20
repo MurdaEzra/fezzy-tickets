@@ -42,6 +42,7 @@ const Checkout = () => {
   const [holders, setHolders] = useState<TicketHolder[]>(Array.from({ length: qty }, emptyHolder));
   const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card" | "lpp">("mpesa");
   const [lppPlanKey, setLppPlanKey] = useState<string>("");
+  const [lppDepositPhone, setLppDepositPhone] = useState("");
   const [lppSubmitting, setLppSubmitting] = useState(false);
   const lppPlans = ((dbEvent as any)?.lpp_config?.plans ?? []) as Array<{ id: string; label: string; deposit_pct: number; installments: number; interval_days: number }>;
   const lppEnabled = Boolean((dbEvent as any)?.lpp_enabled) && lppPlans.length > 0;
@@ -563,6 +564,19 @@ const Checkout = () => {
                         );
                       })}
                     </div>
+                    <div>
+                      <label className="font-mono-label text-cream-dim">M-Pesa number for deposit STK</label>
+                      <input
+                        value={lppDepositPhone}
+                        onChange={(e) => setLppDepositPhone(e.target.value)}
+                        placeholder="0712 345 678"
+                        inputMode="tel"
+                        className="mt-2 w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash"
+                      />
+                      <p className="mt-2 text-xs text-ash">
+                        We will send the deposit prompt to this number. Ticket holder phone numbers can be different.
+                      </p>
+                    </div>
                     <button
                       type="button"
                       className="btn-ember mt-2 w-full justify-center"
@@ -573,7 +587,7 @@ const Checkout = () => {
                           toast.error("Enter each ticket holder's name and email.");
                           return;
                         }
-                        if (!normalized[0].phone) {
+                        if (!lppDepositPhone.trim()) {
                           toast.error("Add your M-Pesa phone number for the deposit.");
                           return;
                         }
@@ -587,6 +601,7 @@ const Checkout = () => {
                             name: normalized[0].name,
                             email: normalized[0].email,
                             phone: normalized[0].phone,
+                            depositPhone: lppDepositPhone.trim(),
                             holders: normalized,
                           });
                           toast.success("Deposit payment started", { description: `Reference ${res.ref_no}. We’ll create your LPP plan once the deposit payment is confirmed.` });

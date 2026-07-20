@@ -417,6 +417,7 @@ export type Database = {
           id: string
           installments_count: number
           interval_days: number
+          order_id: string | null
           paid_kes: number
           plan_key: string
           plan_label: string
@@ -447,6 +448,7 @@ export type Database = {
           id?: string
           installments_count: number
           interval_days: number
+          order_id?: string | null
           paid_kes?: number
           plan_key: string
           plan_label: string
@@ -477,6 +479,7 @@ export type Database = {
           id?: string
           installments_count?: number
           interval_days?: number
+          order_id?: string | null
           paid_kes?: number
           plan_key?: string
           plan_label?: string
@@ -505,6 +508,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ticket_resale_listings_public"
             referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "payment_plans_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payment_plans_tier_id_fkey"
@@ -608,8 +618,14 @@ export type Database = {
           listing_id: string
           payment_provider: string | null
           payment_ref: string | null
+          payout_completed_at: string | null
+          payout_error: string | null
+          payout_ref: string | null
+          payout_started_at: string | null
+          payout_status: string
           previous_qr_token_hash: string
           sale_price_kes: number
+          seller_payout_phone: string | null
           seller_user_id: string
           ticket_id: string
         }
@@ -621,8 +637,14 @@ export type Database = {
           listing_id: string
           payment_provider?: string | null
           payment_ref?: string | null
+          payout_completed_at?: string | null
+          payout_error?: string | null
+          payout_ref?: string | null
+          payout_started_at?: string | null
+          payout_status?: string
           previous_qr_token_hash: string
           sale_price_kes: number
+          seller_payout_phone?: string | null
           seller_user_id: string
           ticket_id: string
         }
@@ -634,8 +656,14 @@ export type Database = {
           listing_id?: string
           payment_provider?: string | null
           payment_ref?: string | null
+          payout_completed_at?: string | null
+          payout_error?: string | null
+          payout_ref?: string | null
+          payout_started_at?: string | null
+          payout_status?: string
           previous_qr_token_hash?: string
           sale_price_kes?: number
+          seller_payout_phone?: string | null
           seller_user_id?: string
           ticket_id?: string
         }
@@ -674,6 +702,7 @@ export type Database = {
           payment_expires_at: string | null
           payment_ref: string | null
           resale_price_kes: number
+          seller_payout_phone: string | null
           seller_user_id: string
           sold_at: string | null
           status: Database["public"]["Enums"]["resale_listing_status"]
@@ -690,6 +719,7 @@ export type Database = {
           payment_expires_at?: string | null
           payment_ref?: string | null
           resale_price_kes: number
+          seller_payout_phone?: string | null
           seller_user_id: string
           sold_at?: string | null
           status?: Database["public"]["Enums"]["resale_listing_status"]
@@ -706,6 +736,7 @@ export type Database = {
           payment_expires_at?: string | null
           payment_ref?: string | null
           resale_price_kes?: number
+          seller_payout_phone?: string | null
           seller_user_id?: string
           sold_at?: string | null
           status?: Database["public"]["Enums"]["resale_listing_status"]
@@ -919,25 +950,7 @@ export type Database = {
           _payment_provider: string
           _payment_ref: string
         }
-        Returns: {
-          buyer_user_id: string
-          completed_at: string
-          created_at: string
-          id: string
-          listing_id: string
-          payment_provider: string | null
-          payment_ref: string | null
-          previous_qr_token_hash: string
-          sale_price_kes: number
-          seller_user_id: string
-          ticket_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "resale_transfers"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: undefined
       }
       create_organizer_admin_invite: {
         Args: {
@@ -993,12 +1006,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "organizer" | "attendee" | "super_admin"
+      app_role: "admin" | "organizer" | "attendee"
       event_status: "draft" | "published" | "cancelled" | "completed"
       order_status: "pending" | "paid" | "failed" | "refunded"
       resale_listing_status:
         | "active"
         | "pending_payment"
+        | "pending_approval"
         | "sold"
         | "cancelled"
         | "expired"
@@ -1130,12 +1144,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "organizer", "attendee", "super_admin"],
+      app_role: ["admin", "organizer", "attendee"],
       event_status: ["draft", "published", "cancelled", "completed"],
       order_status: ["pending", "paid", "failed", "refunded"],
       resale_listing_status: [
         "active",
         "pending_payment",
+        "pending_approval",
         "sold",
         "cancelled",
         "expired",

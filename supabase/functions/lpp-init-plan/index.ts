@@ -178,8 +178,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const body = await req.json();
-    const { eventId, tierId, quantity, planKey, name, email, phone, holders } = body;
-    if (!eventId || !tierId || !quantity || !planKey || !name || !email || !phone) {
+    const { eventId, tierId, quantity, planKey, name, email, phone, depositPhone, holders } = body;
+    if (!eventId || !tierId || !quantity || !planKey || !name || !email || !depositPhone) {
       return json({ error: "Missing required fields" }, 400);
     }
 
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
       refNo = generateRefNo();
     }
 
-    const normalizedPhone = normalizeKenyanPhone(phone);
+    const normalizedDepositPhone = normalizeKenyanPhone(depositPhone);
 
     const holdersArr = Array.isArray(holders) && holders.length === q
       ? holders
@@ -247,7 +247,8 @@ Deno.serve(async (req) => {
       planKey,
       name,
       email,
-      phone: normalizedPhone,
+      phone: normalizedDepositPhone,
+      depositPhone: normalizedDepositPhone,
       holders: holdersArr,
     };
 
@@ -260,7 +261,7 @@ Deno.serve(async (req) => {
       stkResult = await initiateStkPush({
         accountReference: refNo,
         amountKes: deposit,
-        phone: normalizedPhone,
+        phone: normalizedDepositPhone,
         callbackUrl,
         description: `LPP deposit ${refNo}`,
       });

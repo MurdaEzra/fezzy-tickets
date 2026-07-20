@@ -93,7 +93,7 @@ const OrganizerDashboard = () => {
     (async () => {
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
       const roleList = (roles ?? []).map((r) => r.role);
-      if (roleList.includes("super_admin") || roleList.includes("admin")) return;
+      if (roleList.includes("admin")) return;
 
       const access = await getOrganizerAccessStatus(user.id);
       if (access === "pending" || access === "rejected") {
@@ -1084,4 +1084,3 @@ const PromosPanel = ({ profile, events }: { profile: OrgProfile; events: DbEvent
 };
 
 export default OrganizerDashboard;
-

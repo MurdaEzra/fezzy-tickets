@@ -130,6 +130,7 @@ function renderTicketCardHtml(params: {
   tierName: string;
   ticketId: string;
   qrImageUrl: string;
+  paymentRef: string;
 }) {
   const {
     eventTitle,
@@ -145,6 +146,7 @@ function renderTicketCardHtml(params: {
     tierName,
     ticketId,
     qrImageUrl,
+    paymentRef,
   } = params;
 
   const dateStr = formatTicketDate(startDate);
@@ -157,216 +159,7 @@ function renderTicketCardHtml(params: {
   const darkBg = "#0b0b0d";
   const darkBg2 = "#171821";
 
-  return `
-    <!-- ═══════════ CONCERT TICKET TEMPLATE ═══════════ -->
-    <div style="
-      background:#ffffff;
-      border:1px solid #e2e8f0;
-      border-radius:8px;
-      overflow:hidden;
-      box-shadow:0 10px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.05);
-      margin:0 auto 32px;
-      max-width:680px;
-      font-family: 'Inter', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
-      font-feature-settings: 'ss01', 'cv11';
-      -webkit-font-smoothing: antialiased;
-    ">
-
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-
-        <tr>
-          <!-- ── MAIN TICKET BODY ── -->
-          <td valign="top" style="vertical-align:top;">
-
-            <!-- Dark hero header with cover_image_url backdrop -->
-            <div style="
-              position:relative;
-              background:${darkBg};
-              padding:40px 30px;
-              color:#ffffff;
-              text-align:center;
-            ">
-              ${posterUrl ? `
-                <div style="
-                  position:absolute;top:0;left:0;right:0;bottom:0;
-                  background-image:url('${posterUrl}');
-                  background-size:cover;
-                  background-position:center;
-                  opacity:0.35;
-                "></div>
-              ` : ""}
-
-              <div style="position:relative;">
-                <!-- ADMIT ONE Header -->
-                <div style="
-                  font-family: 'Anton', 'Arial Narrow', ui-sans-serif, sans-serif;
-                  color:${greenPrimary};
-                  padding-bottom: 10px;
-                  font-size:18px;
-                  letter-spacing: 0;
-                  font-weight: 400;
-                  text-transform: uppercase;
-                  border-bottom: 2px solid ${greenPrimary};
-                  display: inline-block;
-                  margin-bottom: 24px;
-                ">ADMIT ONE</div>
-
-                <!-- Artist / Event name -->
-                <div style="
-                  font-family: 'Anton', 'Arial Narrow', ui-sans-serif, sans-serif;
-                  font-size: 42px;
-                  font-weight: 400;
-                  line-height: 1;
-                  letter-spacing: 0;
-                  color:#ffffff;
-                  margin-bottom: 12px;
-                  text-transform: uppercase;
-                  text-shadow:0 3px 10px rgba(0,0,0,0.8);
-                ">${eventTitle}</div>
-
-                ${eventCity ? `
-                  <div style="
-                    font-family: 'Jost', 'Montserrat', ui-sans-serif, sans-serif;
-                    font-size: 14px;
-                    letter-spacing: -0.035em;
-                    line-height: 1;
-                    color: ${greenLight};
-                    text-transform: uppercase;
-                    font-weight: 700;
-                  ">${eventCity} · Live Tour</div>
-                ` : ""}
-              </div>
-            </div>
-
-            <!-- INFO GRID — 4 columns: Date / Time / Venue / Section -->
-            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background:#ffffff;">
-              <tr>
-                <td width="25%" valign="top" style="padding:18px 10px; border-right:1px solid #e2e8f0; text-align:center;">
-                  <div style="font-family:'Inter', sans-serif; font-size:9px; letter-spacing:0.15em; color:#94a3b8; text-transform:uppercase; margin-bottom:8px; font-weight:600;">Date</div>
-                  <div style="font-family: 'Jost', 'Montserrat', sans-serif; font-size:16px; color:#0f172a; font-weight:700; letter-spacing:-0.035em; line-height:1;">${dateStr}</div>
-                </td>
-                <td width="20%" valign="top" style="padding:18px 10px; border-right:1px solid #e2e8f0; text-align:center;">
-                  <div style="font-family:'Inter', sans-serif; font-size:9px; letter-spacing:0.15em; color:#94a3b8; text-transform:uppercase; margin-bottom:8px; font-weight:600;">Time</div>
-                  <div style="font-family: 'Jost', 'Montserrat', sans-serif; font-size:16px; color:#0f172a; font-weight:700; letter-spacing:-0.035em; line-height:1;">${timeStr}</div>
-                </td>
-                <td width="30%" valign="top" style="padding:18px 10px; border-right:1px solid #e2e8f0; text-align:center;">
-                  <div style="font-family:'Inter', sans-serif; font-size:9px; letter-spacing:0.15em; color:#94a3b8; text-transform:uppercase; margin-bottom:8px; font-weight:600;">Venue</div>
-                  <div style="font-family: 'Jost', 'Montserrat', sans-serif; font-size:15px; color:#0f172a; font-weight:700; letter-spacing:-0.035em; line-height:1; margin-bottom:3px;">${venueName || "TBA"}</div>
-                  <div style="font-family:'Inter', sans-serif; font-size:10px; color:#64748b; letter-spacing:0.05em;">${venueLine}</div>
-                </td>
-                <td width="25%" valign="top" style="padding:18px 10px; text-align:center;">
-                  <div style="font-family:'Inter', sans-serif; font-size:9px; letter-spacing:0.15em; color:#94a3b8; text-transform:uppercase; margin-bottom:8px; font-weight:600;">Section</div>
-                  <div style="font-family: 'Jost', 'Montserrat', sans-serif; font-size:16px; color:${greenDark}; font-weight:700; letter-spacing:-0.035em; line-height:1;">${tierName}</div>
-                </td>
-              </tr>
-            </table>
-            
-            <!-- Order info strip -->
-            <div style="
-              background:#f8fafc;
-              padding:12px 30px;
-              text-align:center;
-              border-top:1px dashed #cbd5e1;
-            ">
-              <span style="font-family:'Inter', sans-serif; font-size:10px; color:#64748b; letter-spacing:0.08em; text-transform:uppercase;">
-                Holder: <strong style="color:#0f172a;">${holderName}</strong>
-                &nbsp;&nbsp;·&nbsp;&nbsp; 
-                Order Ref: <strong style="color:#0f172a;">${ref}</strong>
-                &nbsp;&nbsp;·&nbsp;&nbsp; 
-                Ordered: <strong style="color:#0f172a;">${orderedOn}</strong>
-              </span>
-            </div>
-
-          </td>
-
-          <!-- ── PERFORATED DIVIDER ── -->
-          <td width="1" style="
-            background:repeating-linear-gradient(
-              to bottom,
-              #cbd5e1 0,
-              #cbd5e1 4px,
-              transparent 4px,
-              transparent 10px
-            );
-            width:2px;
-            padding:0;
-          "></td>
-
-          <!-- ── TICKET STUB ── -->
-          <td width="180" valign="top" style="
-            vertical-align:top;
-            background:linear-gradient(180deg,${darkBg} 0%,${darkBg2} 100%);
-            padding:25px 15px;
-            text-align:center;
-            color:#ffffff;
-          ">
-            <div style="font-family: 'Great Vibes', 'Brittany Signature', cursive; font-size: 28px; color: ${greenLight}; font-weight: 400; line-height: 0.9; margin-bottom: 5px;">Fezzy</div>
-            <div style="font-family: 'Anton', 'Arial Narrow', sans-serif; font-size:12px; letter-spacing:0.2em; color:${greenPrimary}; text-transform:uppercase; margin-bottom:20px; font-weight:400;">ADMIT ONE</div>
-            
-            <!-- QR Code -->
-            <div style="
-              background:#ffffff;
-              padding:8px;
-              border-radius:4px;
-              display:inline-block;
-              margin-bottom:12px;
-            ">
-              <img src="${qrImageUrl}"
-                   width="110"
-                   height="110"
-                   alt="Scan at gate"
-                   style="display:block;margin:0 auto;" />
-            </div>
-
-            <div style="
-              font-family:'Inter', sans-serif;
-              font-size:9px;
-              letter-spacing:0.15em;
-              color:#a9a3a0;
-              text-transform:uppercase;
-              margin-bottom:15px;
-              font-weight:600;
-            ">Scan at gate</div>
-
-            <!-- Ticket ID -->
-            <div style="
-              font-size:9px;
-              color:#f1f5f9;
-              letter-spacing:0.05em;
-              word-break:break-all;
-              line-height:1.4;
-              font-family:'Courier New',monospace;
-              margin-bottom:15px;
-            ">${ticketId}</div>
-
-            <!-- Mini date repeat -->
-            <div style="
-              margin-top:10px;
-              padding-top:10px;
-              border-top:1px dashed #334155;
-            ">
-              <div style="font-family:'Inter', sans-serif; font-size:9px; color:#94a3b8; letter-spacing:0.15em; text-transform:uppercase; font-weight:600;">Date</div>
-              <div style="font-family: 'Jost', 'Montserrat', sans-serif; font-size:14px; color:${greenPrimary}; letter-spacing:-0.035em; font-weight:700; margin-top:3px; line-height:1;">${dateStr}</div>
-            </div>
-          </td>
-        </tr>
-      </table>
-
-      <!-- Footer notice -->
-      <div style="
-        background:${darkBg};
-        padding:10px 24px;
-        text-align:center;
-        font-size:9px;
-        color:#a9a3a0;
-        letter-spacing:0.15em;
-        text-transform:uppercase;
-      ">
-        Fully Valid Ticket · Screenshots Accepted
-      </div>
-
-    </div>
-  `;
+  return
 }
 
 function renderEmailHtml(params: {
@@ -374,12 +167,14 @@ function renderEmailHtml(params: {
   ref: string;
   holderName: string;
   orderId: string;
+  paymentRef: string;
 }) {
   const {
     eventTitle,
     ref,
     holderName,
     orderId,
+    paymentRef,
   } = params;
 
   const greenPrimary = "#10B981";
@@ -529,7 +324,7 @@ function renderEmailHtml(params: {
                 color:${greenPrimary};
                 letter-spacing:.05em;
               ">
-                ${ref}
+                ${paymentRef}
               </strong>
             </p>
 
@@ -546,60 +341,6 @@ function renderEmailHtml(params: {
               transparent
             );
           ">
-          </td>
-        </tr>
-
-        <tr>
-          <td style="
-            padding:14px 28px 22px;
-            text-align:center;
-          ">
-
-            <span style="
-              display:inline-block;
-              padding:6px 12px;
-              margin:0 4px 6px;
-              border:1px solid #1e293b;
-              border-radius:999px;
-              font-size:10px;
-              letter-spacing:.18em;
-              color:${greenPrimary};
-              text-transform:uppercase;
-              font-weight:700;
-            ">
-              M-Pesa
-            </span>
-
-            <span style="
-              display:inline-block;
-              padding:6px 12px;
-              margin:0 4px 6px;
-              border:1px solid #1e293b;
-              border-radius:999px;
-              font-size:10px;
-              letter-spacing:.18em;
-              color:${greenPrimary};
-              text-transform:uppercase;
-              font-weight:700;
-            ">
-              Visa
-            </span>
-
-            <span style="
-              display:inline-block;
-              padding:6px 12px;
-              margin:0 4px 6px;
-              border:1px solid #1e293b;
-              border-radius:999px;
-              font-size:10px;
-              letter-spacing:.18em;
-              color:${greenPrimary};
-              text-transform:uppercase;
-              font-weight:700;
-            ">
-              Paystack Secured
-            </span>
-
           </td>
         </tr>
 
@@ -693,13 +434,6 @@ Deno.serve(async (req) => {
     const event = order.events;
 
     let ref = order.payment_ref || order.ref;
-    if (!ref) {
-      ref = `FZ${orderId.slice(0, 8).toUpperCase()}`;
-      // Only save to order.ref if we're generating a fallback, not if we're using payment_ref
-      if (!order.ref) {
-        await supabase.from("orders").update({ ref }).eq("id", orderId);
-      }
-    }
 
     // Build tickets by email, but we don't need to render the cards anymore
     const ticketsByEmail = new Map<string, { name: string }>();
@@ -716,6 +450,7 @@ Deno.serve(async (req) => {
         ref,
         holderName,
         orderId,
+        paymentRef: order.payment_ref,
       });
 
       try {

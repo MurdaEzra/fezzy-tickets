@@ -31,11 +31,11 @@ Deno.serve(async (req) => {
     const { data: userRes, error: userErr } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
     if (userErr || !userRes.user) return json({ error: "Invalid session" }, 401);
     
-    // Check if super admin
+    // Check if admin
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userRes.user.id);
-    const hasAdmin = roles?.some(r => r.role === "super_admin" || r.role === "admin");
+    const hasAdmin = roles?.some(r => r.role === "admin");
     
-    if (!hasAdmin) return json({ error: "Forbidden: Super Admin only" }, 403);
+    if (!hasAdmin) return json({ error: "Forbidden: Admin only" }, 403);
 
     // Fetch organizer profile
     const { data: organizer, error: orgError } = await admin

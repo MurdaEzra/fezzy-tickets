@@ -199,12 +199,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true }), { headers: cors });
     }
 
+    const { data: currentInst } = await admin
+      .from("payment_plan_installments")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .eq("sequence", seq)
+      .maybeSingle();
+
+    if (!currentInst || currentInst.status === "paid") {
+      return new Response(JSON.stringify({ ok: true }), { headers: cors });
+    }
+
     // Mark installment paid
     const { data: inst } = await admin
       .from("payment_plan_installments")
       .update({ status: "paid", paid_at: new Date().toISOString(), provider_receipt: receipt })
       .eq("plan_id", plan.id)
       .eq("sequence", seq)
+      .eq("status", "pending")
       .select()
       .single();
 
@@ -241,6 +253,10 @@ Deno.serve(async (req) => {
 
     // When fully paid → issue tickets
     if (isFinal) {
+      if (isFinal && plan.order_id) {
+        return new Response(JSON.stringify({ ok: true }), { headers: cors });
+      }
+
       // Create order and tickets so the standard delivery pipeline can email them
       const holders = (plan.ticket_holders as any[]) ?? [];
       const { data: order } = await admin.from("orders").insert({
@@ -256,6 +272,7 @@ Deno.serve(async (req) => {
       }).select().single();
 
       if (order) {
+        await admin.from("payment_plans").update({ order_id: order.id }).eq("id", plan.id).is("order_id", null);
         const rows = Array.from({ length: plan.quantity }).map((_, i) => ({
           order_id: order.id,
           event_id: plan.event_id,

@@ -185,7 +185,7 @@ const SuperAdminDashboard = () => {
         .select("role")
         .eq("user_id", user.id);
       const roles = (data ?? []).map((r) => r.role);
-      const ok = roles.includes("super_admin") || roles.includes("admin");
+      const ok = roles.includes("admin");
       setAuthorized(ok);
       if (!ok) return;
       const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }, { data: resale }, settings] = await Promise.all([
@@ -343,7 +343,10 @@ const SuperAdminDashboard = () => {
 
   const pendingOrgCount = approvals.filter((a) => a.status === "pending").length;
   const pendingEventCount = events.filter((e) => e.status === "pending_approval").length;
-  const pendingResaleCount = resaleListings.filter((l) => l.status === "pending_approval" || (l.status === "sold" && l.resale_transfers?.[0]?.payout_status === "pending" && new Date(l.events?.starts_at) < new Date())).length;
+  const pendingResaleCount = resaleListings.filter((l) => (
+    l.status === "pending_approval"
+    || (l.status === "sold" && ["pending", "failed"].includes(l.payout_status) && new Date(l.event_starts_at) < new Date())
+  )).length;
   const errorCount = logs.filter((l) => l.level === "error").length;
   const totalPlatformRev = orders.reduce((s, o) => s + (o.platform_fee_kes ?? o.organizer_fee_kes ?? 0), 0);
   const totalBuyerFees = orders.reduce((s, o) => s + (o.buyer_fee_kes ?? 0), 0);
@@ -358,7 +361,7 @@ const SuperAdminDashboard = () => {
         <main className="container-px mx-auto max-w-md py-24 text-center">
           <Shield className="mx-auto h-12 w-12 text-[#8a8fa3]" />
           <h1 className="display mt-4 text-3xl text-white">Access denied</h1>
-          <p className="mt-2 text-[#8a8fa3]">You don't have super admin permissions.</p>
+          <p className="mt-2 text-[#8a8fa3]">You don't have admin permissions.</p>
         </main>
         <Footer />
       </div>
@@ -410,7 +413,7 @@ const SuperAdminDashboard = () => {
           <div className="flex items-center gap-3 border-b border-border px-5 py-4">
             <UserAvatar className="h-10 w-10 shadow-acacia" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-foreground">Super admin</p>
+              <p className="truncate text-sm font-bold text-foreground">Admin</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                 Platform control
@@ -521,7 +524,7 @@ const SuperAdminDashboard = () => {
               <LayoutDashboard className="h-4 w-4" />
             </button>
             <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Super admin</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Admin</p>
               <p className="font-display text-base font-bold text-foreground">
                 {view === "homepage" ? "Homepage" : view === "approvals" ? "Approvals" : view.charAt(0).toUpperCase() + view.slice(1)}
               </p>
@@ -538,7 +541,7 @@ const SuperAdminDashboard = () => {
                   <Shield className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#10ff8a]">Super admin</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#10ff8a]">Admin</p>
                   <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">Platform control</h1>
                 </div>
               </div>
@@ -640,7 +643,8 @@ const SuperAdminDashboard = () => {
                                 {resaleListings.map((listing) => {
                                   const isPendingApproval = listing.status === "pending_approval";
                                   const eventStarted = new Date(listing.event_starts_at) < new Date();
-                                  const payoutPending = listing.status === "sold" && listing.payout_status === "pending";
+                                  const payoutPending = listing.status === "sold" && ["pending", "failed"].includes(listing.payout_status);
+                                  const payoutProcessing = listing.status === "sold" && listing.payout_status === "processing";
 
                                   return (
                                     <tr key={listing.listing_id} className="group">
@@ -657,9 +661,10 @@ const SuperAdminDashboard = () => {
                                                   body: { listingId: listing.listing_id, action: "approve" }
                                                 });
                                                 if (res.error) throw new Error(res.error.message || res.data?.error);
+                                                if (res.data?.error) throw new Error(res.data.error);
                                                 
                                                 toast.success("Ticket approved and buyer notified!", { id: toastId });
-                                                setResaleListings(prev => prev.map(l => l.listing_id === listing.listing_id ? { ...l, status: "sold" } : l));
+                                                setResaleListings(prev => prev.map(l => l.listing_id === listing.listing_id ? { ...l, status: "sold", payout_status: "pending" } : l));
                                               } catch (err) {
                                                 toast.error((err as Error).message, { id: toastId });
                                               }
@@ -680,9 +685,10 @@ const SuperAdminDashboard = () => {
                                                   body: { listingId: listing.listing_id, action: "payout" }
                                                 });
                                                 if (res.error) throw new Error(res.error.message || res.data?.error);
+                                                if (res.data?.error) throw new Error(res.data.error);
                                                 
-                                                toast.success("B2C Payout processed via M-Pesa!", { id: toastId });
-                                                setResaleListings(prev => prev.map(l => l.listing_id === listing.listing_id ? { ...l, payout_status: "paid" } : l));
+                                                toast.success("B2C payout sent to M-Pesa for processing.", { id: toastId });
+                                                setResaleListings(prev => prev.map(l => l.listing_id === listing.listing_id ? { ...l, payout_status: "processing" } : l));
                                               } catch (err) {
                                                 toast.error((err as Error).message, { id: toastId });
                                               }
@@ -699,6 +705,11 @@ const SuperAdminDashboard = () => {
                                         {payoutPending && !eventStarted && (
                                           <span className="text-[10px] text-muted-foreground uppercase px-2 py-1 bg-secondary rounded-full">
                                             Awaiting Event
+                                          </span>
+                                        )}
+                                        {payoutProcessing && (
+                                          <span className="text-[10px] text-blue-500 uppercase px-2 py-1 bg-blue-500/20 rounded-full font-bold">
+                                            Processing
                                           </span>
                                         )}
                                         {listing.status === "sold" && listing.payout_status === "paid" && (

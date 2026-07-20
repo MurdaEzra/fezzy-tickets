@@ -65,7 +65,7 @@ const Navbar = () => {
       .eq("user_id", user.id)
       .then(({ data }) => {
         const roles = (data ?? []).map((role) => role.role);
-        setIsAdmin(roles.includes("super_admin") || roles.includes("admin"));
+        setIsAdmin(roles.includes("admin"));
       });
 
     getOrganizerAccessStatus(user.id).then((status) => {
@@ -90,7 +90,7 @@ const Navbar = () => {
         <div className="mx-auto max-w-1440 px-5 lg:px-8">
           <div className="flex h-20 items-center justify-between gap-6">
             <Link to="/" className="group flex shrink-0 items-center gap-2" aria-label="Fezzy home">
-              <img src="/uploads/fezzy-logo-header.png" alt="FEZZY" className="h-9 w-auto lg:h-11" />
+              <img src="https://res.cloudinary.com/dgfmhyebp/image/upload/v1781945211/logo_2_-Photoroom_ibnhk5.png" alt="FEZZY" className="h-9 w-auto lg:h-11" />
               <span className="hidden font-mono-label text-fezzy sm:inline">.KE</span>
               <span className="ml-1 inline-block h-2 w-2 rounded-full bg-lime transition-transform group-hover:scale-150" />
             </Link>
@@ -152,7 +152,7 @@ const Navbar = () => {
                     )}
                     {isAdmin && (
                       <DropdownMenuItem onClick={() => navigate("/admin")}>
-                        <Shield className="mr-2 h-4 w-4" /> Super admin
+                        <Shield className="mr-2 h-4 w-4" /> Admin
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />

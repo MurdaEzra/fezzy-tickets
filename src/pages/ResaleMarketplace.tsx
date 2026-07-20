@@ -28,7 +28,7 @@ interface PublicListing {
   event_cover_image_url: string | null;
 }
 
-type PurchaseStep = "phone" | "waiting" | "success" | "failed";
+type PurchaseStep = "phone" | "waiting" | "review" | "success" | "failed";
 
 const BUYER_FEE_RATE = 0.035;
 
@@ -65,7 +65,7 @@ const ResaleMarketplace = () => {
       const { data, error } = await supabase.rpc("get_public_resale_listings");
       if (error) throw error;
 
-      let listingsData = (data as PublicListing[]) ?? [];
+      const listingsData = (data as PublicListing[]) ?? [];
 
       switch (sortBy) {
         case "price_asc":
@@ -107,11 +107,15 @@ const ResaleMarketplace = () => {
             body: JSON.stringify({ listingId }),
           },
         );
-        const data = await parseJsonResponse<{ finalized?: boolean }>(res);
+        const data = await parseJsonResponse<{ finalized?: boolean; status?: string }>(res);
         if (data?.finalized) {
           if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           setPurchaseStep("success");
           fetchListings(); // refresh marketplace
+        } else if (data?.status === "pending_approval") {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setPurchaseStep("review");
+          fetchListings();
         }
       } catch {
         /* ignore network blips */
@@ -412,6 +416,24 @@ const ResaleMarketplace = () => {
                 onClick={() => (window.location.href = "/account")}
               >
                 Open my tickets
+              </Button>
+            </div>
+          )}
+
+          {purchaseStep === "review" && (
+            <div className="py-8 text-center space-y-4">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-500/15 text-amber-400">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h3 className="font-display text-2xl text-cream">Payment received</h3>
+              <p className="text-sm text-cream-dim max-w-xs mx-auto">
+                Your resale purchase is now under admin review. Once approved, the old QR code will be revoked and your ticket will be emailed to you.
+              </p>
+              <Button
+                className="btn-ember justify-center"
+                onClick={() => (window.location.href = "/account")}
+              >
+                Open my account
               </Button>
             </div>
           )}

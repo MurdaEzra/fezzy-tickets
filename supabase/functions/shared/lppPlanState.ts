@@ -6,6 +6,7 @@ export type LppInitPayload = {
   name: string;
   email: string;
   phone: string;
+  depositPhone?: string;
   holders?: Array<{ name: string; email: string; phone: string }>;
 };
 

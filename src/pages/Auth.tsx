@@ -66,7 +66,7 @@ const Auth = () => {
     (async () => {
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
       const roleList = (roles ?? []).map((r) => r.role);
-      if (roleList.includes("super_admin") || roleList.includes("admin")) {
+      if (roleList.includes("admin")) {
         navigate(redirect === "/dashboard" ? "/admin" : redirect, { replace: true });
         return;
       }

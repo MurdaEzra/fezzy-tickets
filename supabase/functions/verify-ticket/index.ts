@@ -303,7 +303,7 @@ Deno.serve(async (req) => {
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .in('role', ['admin', 'super_admin'])
+      .eq('role', 'admin')
       .maybeSingle();
 
     if (!organizer && !role) {
@@ -446,4 +446,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
