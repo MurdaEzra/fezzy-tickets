@@ -59,6 +59,17 @@ function getMpesaErrorMessage(payload: any, fallback: string): string {
   return fallback;
 }
 
+function getMpesaBaseUrl() {
+  const explicitBaseUrl = Deno.env.get("MPESA_BASE_URL")?.trim().replace(/\/+$/, "");
+  if (explicitBaseUrl) return explicitBaseUrl;
+
+  const env = Deno.env.get("MPESA_ENV")?.trim().toLowerCase();
+  if (env === "live") return "https://api.safaricom.co.ke";
+  if (env === "sandbox") return "https://sandbox.safaricom.co.ke";
+
+  throw new Error("Missing M-Pesa config: MPESA_ENV or MPESA_BASE_URL");
+}
+
 async function expireStaleReservations(admin: any) {
   try {
     await admin.rpc("expire_stale_resale_reservations");
@@ -80,8 +91,7 @@ async function initiateStkPush({
   callbackUrl: string;
   description: string;
 }) {
-  const env = Deno.env.get("MPESA_ENV") ?? "sandbox";
-  const baseUrl = env === "live" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+  const baseUrl = getMpesaBaseUrl();
   const missingConfig = ["MPESA_SHORTCODE", "MPESA_PASSKEY", "MPESA_CONSUMER_KEY", "MPESA_CONSUMER_SECRET"].filter(
     (key) => !Deno.env.get(key),
   );
@@ -100,7 +110,7 @@ async function initiateStkPush({
   });
   const tokenData = await parseResponseBody(tokenRes);
   if (!tokenRes.ok || !tokenData?.access_token) {
-    const detail = getMpesaErrorMessage(tokenData, "M-Pesa auth failed");
+    const detail = getMpesaErrorMessage(tokenData, "Unable to authenticate");
     throw new Error(`M-Pesa auth failed: ${detail}`);
   }
 
