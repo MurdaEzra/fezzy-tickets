@@ -32,16 +32,22 @@ Deno.serve(async (req) => {
 
     const { data: listing, error } = await admin
       .from("ticket_resale_listings")
-      .select("id, status, payment_ref")
+      .select("id, status, payment_ref, buyer_user_id")
       .eq("id", listingId)
       .maybeSingle();
 
     if (error || !listing) return json({ error: "Listing not found" }, 404);
 
+    const paymentFailed =
+      listing.status === "active" &&
+      listing.buyer_user_id === null &&
+      (listing.payment_ref == null || listing.payment_ref === "");
+
     return json({
       listing_id: listing.id,
       status: listing.status,
       finalized: listing.status === "sold",
+      payment_failed: paymentFailed,
     });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "Internal error" }, 500);

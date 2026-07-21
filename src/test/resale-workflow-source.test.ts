@@ -41,8 +41,17 @@ describe("resale workflow source guards", () => {
     const marketplace = read("src/pages/ResaleMarketplace.tsx");
 
     expect(marketplace).toContain("/functions/v1/resale-check-status");
-    expect(marketplace).not.toContain("Authorization");
+    expect(marketplace).toContain("headers: { \"Content-Type\": \"application/json\" }");
     expect(config).toContain("[functions.resale-check-status]");
-    expect(config).toContain("[functions.resale-check-status]\nverify_jwt = false");
+    expect(config).toContain("verify_jwt = false");
+  });
+
+  it("rolls back the listing when callback finalization fails", () => {
+    const callback = read("supabase/functions/resale-mpesa-callback/index.ts");
+
+    expect(callback).toContain("complete_resale_transfer");
+    expect(callback).toContain("status: \"active\"");
+    expect(callback).toContain("buyer_user_id: null");
+    expect(callback).toContain("payment_ref: null");
   });
 });

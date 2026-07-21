@@ -107,11 +107,16 @@ const ResaleMarketplace = () => {
             body: JSON.stringify({ listingId }),
           },
         );
-        const data = await parseJsonResponse<{ finalized?: boolean; status?: string }>(res);
+        const data = await parseJsonResponse<{ finalized?: boolean; status?: string; payment_failed?: boolean }>(res);
         if (data?.finalized) {
           if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           setPurchaseStep("success");
           fetchListings(); // refresh marketplace
+        } else if (data?.payment_failed) {
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          setPurchaseStep("failed");
+          fetchListings();
+          toast.error("We couldn't complete this purchase and your reservation has been released. Please try again.");
         } else if (data?.status === "pending_approval") {
           if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           setPurchaseStep("review");

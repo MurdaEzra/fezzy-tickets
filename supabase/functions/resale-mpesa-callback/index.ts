@@ -10,6 +10,19 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function releaseReservation(admin: any, listingId: string) {
+  await admin
+    .from("ticket_resale_listings")
+    .update({
+      status: "active",
+      buyer_user_id: null,
+      payment_expires_at: null,
+      payment_ref: null,
+    })
+    .eq("id", listingId)
+    .eq("status", "pending_payment");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -37,20 +50,11 @@ Deno.serve(async (req) => {
     }
 
     if (resultCode !== 0) {
-      // Payment failed / cancelled — release the reservation
+      // Payment failed / cancelled — release the reservation so the buyer can retry.
       console.log(`[resale-mpesa-callback] Payment failed for listing ${listingId}, code=${resultCode}`);
-      await admin
-        .from("ticket_resale_listings")
-        .update({
-          status: "active",
-          buyer_user_id: null,
-          payment_expires_at: null,
-          payment_ref: null,
-        })
-        .eq("id", listingId)
-        .eq("status", "pending_payment");
+      await releaseReservation(admin, listingId);
 
-      return new Response(JSON.stringify({ ok: true }), { headers: cors });
+      return new Response(JSON.stringify({ ok: true, payment_failed: true }), { headers: cors });
     }
 
     // Store M-Pesa receipt on the listing
@@ -67,8 +71,13 @@ Deno.serve(async (req) => {
       _new_qr_token: "deferred-until-admin-approval",
     });
 
-    if (error && !/not finalizable/i.test(error.message ?? "")) {
+    if (error) {
       console.error("[resale-mpesa-callback] complete_resale_transfer failed:", error);
+      await releaseReservation(admin, listingId);
+      return new Response(JSON.stringify({ ok: false, payment_failed: true, error: error.message }), {
+        status: 200,
+        headers: cors,
+      });
     }
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });

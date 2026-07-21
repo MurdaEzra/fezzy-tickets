@@ -15,5 +15,8 @@ verify_jwt = false
 [functions.resale-verify-listing]
 verify_jwt = false
 
+[functions.resale-check-status]
+verify_jwt = false
+
 [functions.send-ticket-email]
 verify_jwt = false
