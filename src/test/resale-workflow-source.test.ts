@@ -35,4 +35,14 @@ describe("resale workflow source guards", () => {
     expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.approve_resale_transfer(uuid, uuid, text) TO service_role");
     expect(migration).not.toContain("GRANT EXECUTE ON FUNCTION public.approve_resale_transfer(uuid, uuid, text) TO authenticated");
   });
+
+  it("allows unauthenticated browser polling for resale check status preflight", () => {
+    const config = read("supabase/config.toml");
+    const marketplace = read("src/pages/ResaleMarketplace.tsx");
+
+    expect(marketplace).toContain("/functions/v1/resale-check-status");
+    expect(marketplace).not.toContain("Authorization");
+    expect(config).toContain("[functions.resale-check-status]");
+    expect(config).toContain("[functions.resale-check-status]\nverify_jwt = false");
+  });
 });
