@@ -99,11 +99,19 @@ const ResaleMarketplace = () => {
     pollTimerRef.current = window.setInterval(async () => {
       attempts++;
       try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resale-check-status`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({ listingId }),
           },
         );
