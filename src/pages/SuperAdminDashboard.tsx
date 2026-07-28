@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Loader2, Shield, Users, Calendar, Ticket, ExternalLink, ClipboardCheck, ScrollText,
   Megaphone, LayoutDashboard, ListChecks, ReceiptText, Building2, FileText, Save,
-  LogOut, ChevronRight, X, MapPin, Clock, ArrowLeft, Check, XCircle, ShieldCheck,
+  LogOut, ChevronRight, X, MapPin, Clock, ArrowLeft, Check, XCircle, ShieldCheck, RotateCcw,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ const SuperAdminDashboard = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<null | boolean>(null);
-  const [view, setView] = useState<"overview" | "homepage" | "approvals" | "events" | "orders" | "organizers" | "logs" | "resale">("overview");
+  const [view, setView] = useState<"overview" | "homepage" | "approvals" | "events" | "orders" | "organizers" | "logs" | "resale" | "reversals">("overview");
   const [homepageSubView, setHomepageSubView] = useState<"general" | "trending" | "calendar" | "artists" | "venues">("general");
   const [homepageMenuOpen, setHomepageMenuOpen] = useState(false);
   const homepageMenuRef = useRef<HTMLDivElement>(null);
@@ -104,6 +104,7 @@ const SuperAdminDashboard = () => {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [organizers, setOrganizers] = useState<{ id: string; org_name: string; events_published_count: number; contact_email: string | null; fee_locked_pct: number | null; paystack_subaccount_code: string | null; contact_phone: string | null; mpesa_till: string | null; payout_method: string | null }[]>([]);
   const [resaleListings, setResaleListings] = useState<any[]>([]);
+  const [failedTransactions, setFailedTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [savingHomepage, setSavingHomepage] = useState(false);
@@ -188,13 +189,14 @@ const SuperAdminDashboard = () => {
       const ok = roles.includes("admin");
       setAuthorized(ok);
       if (!ok) return;
-      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }, { data: resale }, settings] = await Promise.all([
+      const [{ data: evts }, { data: ords }, { data: orgs }, { data: pending }, { data: logRows }, { data: resale }, { data: failedTxns }, settings] = await Promise.all([
         supabase.from("events").select("id, title, tagline, description, category, status, slug, starts_at, ends_at, venue_name, venue_address, city, country, cover_image_url, poster_url, is_stream, stream_url, organizer_id, created_at").order("created_at", { ascending: false }).limit(100),
         supabase.from("orders").select("id, total_kes, buyer_fee_kes, platform_fee_kes, organizer_fee_kes, status, payment_method, created_at, guest_name").eq("status", "paid").order("created_at", { ascending: false }).limit(50),
         supabase.from("organizer_profiles").select("id, org_name, events_published_count, contact_email, fee_locked_pct, paystack_subaccount_code, contact_phone, mpesa_till, payout_method").order("created_at", { ascending: false }),
         supabase.from("organizer_approval_requests").select("id, application_details, org_name, full_name, email, country, status, created_at").order("created_at", { ascending: false }),
         supabase.from("platform_logs").select("id, level, action, message, metadata, created_at").order("created_at", { ascending: false }).limit(200),
         supabase.rpc("admin_get_resale_listings"),
+        supabase.rpc("admin_get_failed_mpesa_transactions"),
         fetchHomepageSettings(),
       ]);
       setEvents((evts ?? []) as EventRow[]);
@@ -202,6 +204,7 @@ const SuperAdminDashboard = () => {
       setOrganizers((orgs ?? []) as typeof organizers);
       setApprovals((pending ?? []) as ApprovalRow[]);
       setResaleListings(resale ?? []);
+      setFailedTransactions(failedTxns ?? []);
       setLogs((logRows ?? []) as LogRow[]);
       setLiveBarText(settings.live_bar_items.join("\n"));
       setHeadlinerEventId(settings.headliner_event_id ?? "");
@@ -428,6 +431,7 @@ const SuperAdminDashboard = () => {
               ["approvals", ListChecks, "Approvals", pendingOrgCount],
               ["events", Calendar, "Events", pendingEventCount],
               ["resale", ShieldCheck, "Resale Escrow", pendingResaleCount],
+              ["reversals", RotateCcw, "Reversals", failedTransactions.filter(t => !t.reversal_status || t.reversal_status === "failed").length || null],
               ["orders", ReceiptText, "Orders", null],
               ["organizers", Building2, "Organizers", null],
               ["logs", FileText, "Logs", errorCount],
@@ -1570,6 +1574,136 @@ const SuperAdminDashboard = () => {
                             <div className="p-8 text-center text-muted-foreground">No logs in this time range.</div>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {view === "reversals" && (
+                    <div className="space-y-6">
+                      <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft">
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="grid h-10 w-10 place-items-center rounded-full bg-red-500/20">
+                            <RotateCcw className="h-5 w-5 text-red-400" />
+                          </div>
+                          <div>
+                            <h2 className="font-display text-xl font-bold text-foreground">M-Pesa Reversals</h2>
+                            <p className="text-sm text-muted-foreground">Reverse failed M-Pesa transactions where money was collected but tickets/confirmations were not delivered.</p>
+                          </div>
+                        </div>
+
+                        {failedTransactions.length === 0 ? (
+                          <div className="py-12 text-center border border-dashed border-border rounded-xl">
+                            <RotateCcw className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
+                            <p className="text-muted-foreground">No failed M-Pesa transactions found.</p>
+                            <p className="text-xs text-muted-foreground/60 mt-1">All transactions are completing successfully.</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm table-auto border-collapse">
+                              <thead>
+                                <tr className="border-b border-border text-muted-foreground">
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Action</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Type</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Customer</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Event</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Amount</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Receipt</th>
+                                  <th className="pb-3 pr-4 font-semibold uppercase tracking-wider text-[10px]">Paid</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {failedTransactions.map((txn) => {
+                                  const canReverse = !txn.reversal_status || txn.reversal_status === "failed";
+                                  const isProcessing = txn.reversal_status === "processing";
+                                  const isCompleted = txn.reversal_status === "completed";
+
+                                  const typeLabel = txn.payment_type === "primary" ? "Ticket Purchase" : txn.payment_type === "lpp" ? "LPP Installment" : "Resale";
+                                  const typeBadgeClass = txn.payment_type === "primary" ? "bg-blue-500/20 text-blue-400" : txn.payment_type === "lpp" ? "bg-orange-500/20 text-orange-400" : "bg-purple-500/20 text-purple-400";
+
+                                  return (
+                                    <tr key={`${txn.payment_type}-${txn.reference_id}`} className="group">
+                                      <td className="py-4 pr-4">
+                                        {canReverse && (
+                                          <Button
+                                            size="sm"
+                                            className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                                            onClick={async () => {
+                                              if (!window.confirm(`Reverse KES ${Number(txn.amount_kes).toLocaleString()} back to ${txn.guest_phone || txn.guest_email || "customer"}?\n\nM-Pesa receipt: ${txn.mpesa_receipt}\nThis will refund the money to the customer's M-Pesa.`)) return;
+                                              const toastId = toast.loading("Initiating M-Pesa reversal...");
+                                              try {
+                                                const res = await supabase.functions.invoke("mpesa-reversal-action", {
+                                                  body: {
+                                                    paymentType: txn.payment_type,
+                                                    referenceId: txn.reference_id,
+                                                    mpesaReceipt: txn.mpesa_receipt,
+                                                    amountKes: txn.amount_kes,
+                                                    guestPhone: txn.guest_phone,
+                                                    guestEmail: txn.guest_email,
+                                                    guestName: txn.guest_name,
+                                                    eventTitle: txn.event_title,
+                                                  },
+                                                });
+                                                if (res.error) throw new Error(res.error.message || res.data?.error);
+                                                if (res.data?.error) throw new Error(res.data.error);
+                                                toast.success("Reversal sent to M-Pesa for processing", { id: toastId });
+                                                setFailedTransactions(prev => prev.map(t =>
+                                                  t.reference_id === txn.reference_id && t.payment_type === txn.payment_type
+                                                    ? { ...t, reversal_status: "processing", reversal_id: res.data?.reversal_id }
+                                                    : t
+                                                ));
+                                              } catch (err) {
+                                                toast.error((err as Error).message, { id: toastId });
+                                              }
+                                            }}
+                                          >
+                                            <RotateCcw className="h-4 w-4 mr-1" /> Reverse
+                                          </Button>
+                                        )}
+                                        {isProcessing && (
+                                          <span className="text-[10px] text-blue-400 uppercase px-2 py-1 bg-blue-500/20 rounded-full font-bold flex items-center gap-1 w-fit">
+                                            <Loader2 className="h-3 w-3 animate-spin" /> Processing
+                                          </span>
+                                        )}
+                                        {isCompleted && (
+                                          <span className="text-[10px] text-primary uppercase px-2 py-1 bg-primary/20 rounded-full font-bold">
+                                            Reversed
+                                          </span>
+                                        )}
+                                        {txn.reversal_status === "failed" && (
+                                          <span className="text-[10px] text-red-400 uppercase px-2 py-1 bg-red-500/20 rounded-full font-bold mt-1 block w-fit">
+                                            Prev. Failed
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-4 pr-4">
+                                        <span className={`rounded-full px-2 py-1 text-[10px] uppercase font-bold ${typeBadgeClass}`}>
+                                          {typeLabel}
+                                        </span>
+                                      </td>
+                                      <td className="py-4 pr-4 text-xs whitespace-nowrap">
+                                        <p className="font-semibold">{txn.guest_name || txn.guest_email || "Unknown"}</p>
+                                        <p className="text-muted-foreground">{txn.guest_phone || "No phone"}</p>
+                                        {txn.guest_email && <p className="text-muted-foreground">{txn.guest_email}</p>}
+                                      </td>
+                                      <td className="py-4 pr-4 text-xs">
+                                        <p className="font-semibold">{txn.event_title || "—"}</p>
+                                      </td>
+                                      <td className="py-4 pr-4 font-mono font-semibold">
+                                        {formatKES(txn.amount_kes)}
+                                      </td>
+                                      <td className="py-4 pr-4 font-mono text-xs">
+                                        {txn.mpesa_receipt}
+                                      </td>
+                                      <td className="py-4 pr-4 text-xs text-muted-foreground whitespace-nowrap">
+                                        {txn.paid_at ? new Date(txn.paid_at).toLocaleString() : "—"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
