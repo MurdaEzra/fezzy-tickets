@@ -28,7 +28,19 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const payload = await req.json().catch(() => ({}));
+    
+    // Read raw text first to avoid Deno's strict Content-Type requirements for req.json()
+    // because Safaricom Daraja is known to casually omit application/json.
+    const bodyText = await req.text().catch(() => "");
+    let payload: any = {};
+    if (bodyText) {
+      try {
+        payload = JSON.parse(bodyText);
+      } catch (err) {
+        console.error("[resale-mpesa-callback] Invalid JSON payload:", bodyText);
+      }
+    }
+    
     const cb = payload?.Body?.stkCallback;
     const checkoutRequestId = cb?.CheckoutRequestID;
     const resultCode = Number(cb?.ResultCode ?? -1);
