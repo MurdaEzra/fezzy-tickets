@@ -264,6 +264,15 @@ Deno.serve(async (req) => {
       }, 502);
     }
 
+    // Safaricom Daraja can strip URL parameters from the callback,
+    // so we must save the CheckoutRequestID as the payment reference to look it up later.
+    if (stkResult?.CheckoutRequestID) {
+      await admin
+        .from("ticket_resale_listings")
+        .update({ payment_ref: stkResult.CheckoutRequestID })
+        .eq("id", listingId);
+    }
+
     return json({
       checkout_request_id: stkResult.CheckoutRequestID ?? null,
       customer_message: stkResult.CustomerMessage ?? "Check your phone to authorize the M-Pesa payment.",

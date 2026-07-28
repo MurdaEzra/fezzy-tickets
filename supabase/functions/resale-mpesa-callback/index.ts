@@ -28,26 +28,42 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const listingId = url.searchParams.get("listing_id");
-    const reference = url.searchParams.get("ref");
-
     const payload = await req.json().catch(() => ({}));
     const cb = payload?.Body?.stkCallback;
+    const checkoutRequestId = cb?.CheckoutRequestID;
     const resultCode = Number(cb?.ResultCode ?? -1);
-    const items = cb?.CallbackMetadata?.Item ?? [];
-    const meta: Record<string, unknown> = {};
-    for (const it of items) meta[it.Name] = it.Value;
-    const receipt = typeof meta.MpesaReceiptNumber === "string" ? meta.MpesaReceiptNumber : null;
+    
+    // Safaricom Daraja is known for stripping query parameters from callbacks.
+    // Try to use Daraja's CheckoutRequestID, fallback to URL parameters if missing.
+    const fallbackListingId = url.searchParams.get("listing_id");
+    const fallbackReference = url.searchParams.get("ref");
+    
+    const reference = checkoutRequestId || fallbackReference;
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    let listingId = fallbackListingId;
+    if (!listingId && checkoutRequestId) {
+      const { data: dbRes } = await admin
+        .from("ticket_resale_listings")
+        .select("id")
+        .eq("payment_ref", checkoutRequestId)
+        .maybeSingle();
+      if (dbRes?.id) listingId = dbRes.id;
+    }
+
     if (!listingId || !reference) {
-      console.error("[resale-mpesa-callback] Missing listing_id or ref in URL params");
+      console.error("[resale-mpesa-callback] Missing listing_id or ref for callback. CheckoutRequestID:", checkoutRequestId);
       return new Response(JSON.stringify({ ok: true }), { headers: cors });
     }
+
+    const items = cb?.CallbackMetadata?.Item ?? [];
+    const meta: Record<string, unknown> = {};
+    for (const it of items) meta[it.Name] = it.Value;
+    const receipt = typeof meta.MpesaReceiptNumber === "string" ? meta.MpesaReceiptNumber : null;
 
     if (resultCode !== 0) {
       // Payment failed / cancelled — release the reservation so the buyer can retry.
