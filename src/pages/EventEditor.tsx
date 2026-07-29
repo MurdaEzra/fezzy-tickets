@@ -57,6 +57,7 @@ const EventEditor = () => {
   const [lineupText, setLineupText] = useState("");
   const [isStream, setIsStream] = useState(false);
   const [streamUrl, setStreamUrl] = useState("");
+  const [originalStatus, setOriginalStatus] = useState<"draft" | "pending_approval" | "published" | "cancelled" | "completed">("draft");
   const [accent, setAccent] = useState("#1FAD66");
   const [theme, setTheme] = useState("savannah");
   const [pattern, setPattern] = useState("none");
@@ -111,6 +112,7 @@ const EventEditor = () => {
         setMaxResalePercentage(ev.max_resale_percentage ?? 120);
         setResaleFeePercentage(ev.resale_fee_percentage ?? 10);
         setResaleCloseHoursBeforeEvent(ev.resale_close_hours_before_event ?? 24);
+        if (ev.status) setOriginalStatus(ev.status as any);
         const { data: ts } = await supabase.from("ticket_tiers").select("*").eq("event_id", id).order("sort_order");
         if (ts && ts.length) {
           setTiers(ts.map((t) => ({
@@ -155,9 +157,18 @@ const EventEditor = () => {
 
   const save = async (publish = false): Promise<string | null> => {
     if (!organizerId) return null;
-    if (!title.trim() || !startsAt) {
-      toast.error("Title and start date are required"); setTab("details"); return null;
+    const cleanTitle = title.trim();
+    if (!cleanTitle || !startsAt) {
+      toast.error("Valid title and start date are required"); setTab("details"); return null;
     }
+    const cleanVenue = venueName.trim();
+    const cleanAddress = venueAddress.trim();
+    
+    // Tiers validation
+    if (tiers.some(t => !t.name.trim())) {
+      toast.error("Ticket tiers must have valid names"); setTab("tickets"); return null;
+    }
+
     const explicitDates = eventDates.length ? eventDates : [startsAt.slice(0, 10)].filter(Boolean);
     const lineup = lineupText.split("\n").map((item) => item.trim()).filter(Boolean);
     setSaving(true);
@@ -175,7 +186,9 @@ const EventEditor = () => {
         is_stream: isStream, stream_url: isStream ? streamUrl : null,
         ticket_design: { theme, accent, pattern, seatLabel, seatArrangement, showLogo, showQR, showDate },
         fee_waived: false,
-        status: publish ? "pending_approval" as const : "draft" as const,
+        status: (originalStatus === "published" || originalStatus === "cancelled" || originalStatus === "completed")
+          ? originalStatus 
+          : (publish ? "pending_approval" as const : "draft" as const),
         allow_resale: allowResale,
         resale_enabled: allowResale,
         min_resale_percentage: minResalePercentage,
@@ -274,10 +287,10 @@ const EventEditor = () => {
               <Card title="Basics">
                 <div className="grid gap-4">
                   <Field label="Event title">
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sol Fest Naivasha" />
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} pattern=".*\S+.*" required placeholder="e.g. Sol Fest Naivasha" />
                   </Field>
                   <Field label="Tagline">
-                    <Input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Three days. Lake views. Endless sound." />
+                    <Input value={tagline} onChange={(e) => setTagline(e.target.value)} pattern=".*\S+.*" placeholder="Three days. Lake views. Endless sound." />
                   </Field>
                   <Field label="Description">
                     <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
@@ -481,10 +494,10 @@ const EventEditor = () => {
           {tab === "location" && (
             <Card title="Where's it happening?">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Venue name"><Input value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="e.g. Ngong Racecourse" /></Field>
-                <Field label="Address"><Input value={venueAddress} onChange={(e) => setVenueAddress(e.target.value)} /></Field>
-                <Field label="City"><Input value={city} onChange={(e) => setCity(e.target.value)} /></Field>
-                <Field label="Country"><Input value={country} onChange={(e) => setCountry(e.target.value)} /></Field>
+                <Field label="Venue name"><Input value={venueName} onChange={(e) => setVenueName(e.target.value)} pattern=".*\S+.*" placeholder="e.g. Ngong Racecourse" /></Field>
+                <Field label="Address"><Input value={venueAddress} onChange={(e) => setVenueAddress(e.target.value)} pattern=".*\S+.*" /></Field>
+                <Field label="City"><Input value={city} onChange={(e) => setCity(e.target.value)} pattern=".*\S+.*" /></Field>
+                <Field label="Country"><Input value={country} onChange={(e) => setCountry(e.target.value)} pattern=".*\S+.*" /></Field>
               </div>
               <div className="mt-6">
                 <Label>Pin the exact spot</Label>
@@ -505,14 +518,14 @@ const EventEditor = () => {
                   {tiers.map((t, i) => (
                     <div key={i} className="space-y-3 rounded-2xl border border-border bg-background p-4">
                       <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px_auto]">
-                        <Input value={t.name} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="e.g. Early Bird" />
-                        <Input type="number" value={t.price_kes} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, price_kes: Number(e.target.value) } : x))} placeholder="Price KES" />
-                        <Input type="number" value={t.quantity} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))} placeholder="Qty" />
+                        <Input value={t.name} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} pattern=".*\S+.*" required placeholder="e.g. Early Bird" />
+                        <Input type="number" value={t.price_kes} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, price_kes: Number(e.target.value) } : x))} min={0} placeholder="Price KES" />
+                        <Input type="number" value={t.quantity} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, quantity: Number(e.target.value) } : x))} min={1} placeholder="Qty" />
                         <Button type="button" variant="ghost" size="icon" onClick={() => setTiers((arr) => arr.filter((_, j) => j !== i))} disabled={tiers.length === 1}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
-                      <Input value={t.description} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} placeholder="Tier notes (optional)" />
+                      <Input value={t.description} onChange={(e) => setTiers((arr) => arr.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} pattern=".*\S+.*" placeholder="Tier notes (optional)" />
                       {eventDates.length > 0 && (
                         <div>
                           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valid dates</p>
@@ -625,7 +638,7 @@ const EventEditor = () => {
                     <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-10 w-20 rounded border border-border bg-background" />
                   </Field>
                   <Field label="Seat label">
-                    <Input value={seatLabel} onChange={(e) => setSeatLabel(e.target.value)} placeholder="GA / VIP / A1" />
+                    <Input value={seatLabel} onChange={(e) => setSeatLabel(e.target.value)} pattern=".*\S+.*" placeholder="GA / VIP / A1" />
                   </Field>
                   <Field label="Seat arrangement">
                     <div className="flex flex-wrap gap-2">
@@ -696,22 +709,24 @@ const EventEditor = () => {
           )}
 
           {tab === "publish" && (
-            <Card title="Ready to submit for review?">
+            <Card title={originalStatus === "published" ? "Live event updates" : "Ready to submit for review?"}>
               <ul className="space-y-2 text-sm">
-                <Bullet ok={!!title}>Title</Bullet>
+                <Bullet ok={!!title.trim()}>Title</Bullet>
                 <Bullet ok={!!startsAt}>Start date</Bullet>
                 <Bullet ok={!!coverUrl}>Cover image (recommended)</Bullet>
                 <Bullet ok={lat !== null && lng !== null}>Location pin</Bullet>
-                <Bullet ok={tiers.every((t) => t.name && t.price_kes >= 0)}>Ticket tiers</Bullet>
+                <Bullet ok={tiers.every((t) => t.name.trim() && t.price_kes >= 0)}>Ticket tiers</Bullet>
               </ul>
-              <div className="mt-6 rounded-2xl bg-amber-500/[0.08] border border-amber-500/20 p-4 text-sm">
-                <p className="font-semibold text-foreground">
-                  ⏳ Your event will be reviewed by our team before going live.
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Events are typically approved within a few hours. You'll see the status update on your dashboard.
-                </p>
-              </div>
+              {originalStatus !== "published" && (
+                <div className="mt-6 rounded-2xl bg-amber-500/[0.08] border border-amber-500/20 p-4 text-sm">
+                  <p className="font-semibold text-foreground">
+                    ⏳ Your event will be reviewed by our team before going live.
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Events are typically approved within a few hours. You'll see the status update on your dashboard.
+                  </p>
+                </div>
+              )}
               <div className="mt-4 rounded-2xl bg-primary/[0.07] p-4 text-sm">
                 <p className="font-semibold text-foreground">
                   Buyer service fee: <span className="text-primary">3.5% of each ticket order</span>
@@ -725,7 +740,7 @@ const EventEditor = () => {
                 if (ok) navigate("/dashboard");
               }}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                Submit for approval
+                {originalStatus === "published" ? "Update Event" : "Submit for approval"}
               </Button>
             </Card>
           )}

@@ -54,6 +54,28 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState<number>(0);
+
+  // Rehydrate cooldown from localStorage on mount
+  useEffect(() => {
+    const lastAttempt = localStorage.getItem("fezzyAuthRateLimit");
+    if (lastAttempt) {
+      const elapsed = (Date.now() - parseInt(lastAttempt, 10)) / 1000;
+      if (elapsed < 60) setCooldownTime(Math.floor(60 - elapsed));
+    }
+  }, []);
+
+  // Cooldown countdown tick
+  useEffect(() => {
+    if (cooldownTime <= 0) return;
+    const t = setInterval(() => setCooldownTime((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownTime]);
+
+  const enforceCooldown = () => {
+    localStorage.setItem("fezzyAuthRateLimit", Date.now().toString());
+    setCooldownTime(60);
+  };
 
   useEffect(() => {
     if (mode === "signup" && !pendingOrgName && !isInviteSignup) {
@@ -100,6 +122,15 @@ const Auth = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldownTime > 0) {
+      toast.error(`Please wait ${cooldownTime} seconds before requesting another email.`);
+      return;
+    }
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      toast.error("Valid email is required");
+      return;
+    }
     setLoading(true);
     try {
       if (!turnstileToken) {
@@ -119,11 +150,12 @@ const Auth = () => {
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/auth?mode=reset-password`,
       });
       if (error) throw error;
       setResetEmailSent(true);
+      enforceCooldown();
       toast.success("Password reset email sent! Check your inbox.");
     } catch (err) {
       const e = err as { message?: string };
@@ -162,10 +194,35 @@ const Auth = () => {
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanFullName = fullName.trim();
+    const cleanCountry = country.trim();
+    const cleanEmail = email.trim();
+    
+    if (mode === "signup") {
+      if (cleanFullName.length < 3) {
+        toast.error("Please provide your real full name.");
+        return;
+      }
+      if (!cleanCountry) {
+        toast.error("Country is required.");
+        return;
+      }
+    }
+    if (!cleanEmail) {
+      toast.error("Valid email is required");
+      return;
+    }
+
     if (mode === "signup" && !acceptedTerms) {
       toast.error("Please accept the Terms and Privacy Policy to continue.");
       return;
     }
+    
+    if (mode === "signup" && cooldownTime > 0) {
+      toast.error(`Please wait ${cooldownTime} seconds before submitting again.`);
+      return;
+    }
+
     setLoading(true);
     try {
       // Verify Turnstile token
@@ -206,7 +263,7 @@ const Auth = () => {
 
         // Now sign in the user
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
+          email: cleanEmail,
           password,
         });
 
@@ -217,12 +274,13 @@ const Auth = () => {
       }
 
       if (mode === "signup") {
+        enforceCooldown();
         const { data, error } = await supabase.functions.invoke("send-account-verification-email", {
           body: {
-            email,
+            email: cleanEmail,
             password,
-            fullName,
-            country,
+            fullName: cleanFullName,
+            country: cleanCountry,
             marketingOptIn,
             orgName: pendingOrgName,
             applicationDetails: readPendingOrganizerApplication(),
@@ -234,13 +292,13 @@ const Auth = () => {
 
         sessionStorage.removeItem("pendingOrgName");
         sessionStorage.removeItem("pendingOrganizerApplication");
-        await logActivity("organizer.application.submitted", { message: pendingOrgName, metadata: { email } });
+        await logActivity("organizer.application.submitted", { message: pendingOrgName, metadata: { email: cleanEmail } });
         toast.success("Application submitted! We'll email you once approved.");
         navigate("/application-pending?submitted=1");
         return;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       if (error) throw error;
       toast.success("Welcome back!");
     } catch (err) {
@@ -381,11 +439,11 @@ const Auth = () => {
                       <>
                         <div>
                           <label className="mb-1.5 block font-mono-label text-cream-dim">Full name</label>
-                          <input value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="Wanjiku Mwangi" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
+                          <input value={fullName} onChange={(e) => setFullName(e.target.value)} required pattern=".*[A-Za-z]+.*" placeholder="Wanjiku Mwangi" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
                         </div>
                         <div>
                           <label className="mb-1.5 block font-mono-label text-cream-dim">Country</label>
-                          <input value={country} onChange={(e) => setCountry(e.target.value)} required className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
+                          <input value={country} onChange={(e) => setCountry(e.target.value)} required pattern=".*\S+.*" className="w-full border border-cream/15 bg-ink-soft px-4 py-3 text-sm text-cream outline-none transition-colors focus:border-fezzy placeholder:text-ash" />
                         </div>
                       </>
                     )}
@@ -447,11 +505,13 @@ const Auth = () => {
                     )}
                     <button 
                       type="submit" 
-                      className="btn-ember w-full justify-center" 
-                      disabled={loading || (mode === "signup" && !acceptedTerms)}
+                      className="btn-ember w-full justify-center disabled:opacity-50" 
+                      disabled={loading || (mode === "signup" && (!acceptedTerms || cooldownTime > 0)) || (mode === "forgot-password" && cooldownTime > 0)}
                     >
                       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {mode === "signin" 
+                      {(cooldownTime > 0 && (mode === "forgot-password" || mode === "signup"))
+                        ? `Wait ${cooldownTime}s`
+                        : mode === "signin" 
                         ? "Sign in" 
                         : mode === "forgot-password" 
                           ? "Send reset link" 
