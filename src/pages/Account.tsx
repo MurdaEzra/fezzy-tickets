@@ -84,6 +84,9 @@ const Account = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [payoutPhone, setPayoutPhone] = useState("");
   const [submittingPhoneListingId, setSubmittingPhoneListingId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{ id: string; payout_phone: string | null } | null>(null);
+  const [payoutPhoneInput, setPayoutPhoneInput] = useState("");
+  const [isSavingPayoutPhone, setIsSavingPayoutPhone] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth?mode=signin", { replace: true });
@@ -103,6 +106,10 @@ const Account = () => {
   useEffect(() => {
     if (!user) return;
     fetchListings();
+    supabase.from("profiles").select("id, payout_phone").eq("id", user.id).single().then(({ data }) => {
+      setProfile(data);
+      if (data?.payout_phone) setPayoutPhoneInput(data.payout_phone);
+    });
   }, [user]);
 
   const fetchListings = async () => {
@@ -136,7 +143,7 @@ const Account = () => {
   const handleListTicket = (ticket: AccountTicket) => {
     setSelectedTicket(ticket);
     setResalePrice(ticket.ticket_tiers?.price_kes.toString() || "");
-    setListingPayoutPhone("");
+    setListingPayoutPhone(profile?.payout_phone || "");
     setIsListingDialogOpen(true);
   };
 
@@ -171,6 +178,20 @@ const Account = () => {
     } finally {
        setIsSubmitting(false);
        setSubmittingPhoneListingId(null);
+    }
+  };
+
+  const updatePayoutPhone = async () => {
+    try {
+      setIsSavingPayoutPhone(true);
+      const { error } = await supabase.from("profiles").update({ payout_phone: payoutPhoneInput }).eq("id", user!.id);
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, payout_phone: payoutPhoneInput } : null);
+      toast.success("Payout phone saved");
+    } catch (err) {
+      toast.error("Failed to save payout phone");
+    } finally {
+      setIsSavingPayoutPhone(false);
     }
   };
 
@@ -319,9 +340,10 @@ const Account = () => {
                         const tier = ticket.ticket_tiers;
                         const ticketStatus = getTicketStatusDisplay(ticket.status);
                         const isListed = listings.some(l => l.ticket_id === ticket.id && ["active", "pending", "pending_payment", "pending_approval"].includes(l.status));
+                        const isSold = listings.some(l => l.ticket_id === ticket.id && l.status === "sold") || ticket.status === "invalid";
                         const listingStatus = listings.find(l => l.ticket_id === ticket.id)?.status;
                         return (
-                          <div key={ticket.id} className="overflow-hidden rounded-3xl border border-border bg-card shadow-card-soft transition-all hover:-translate-y-0.5 hover:shadow-soft">
+                          <div key={ticket.id} className={`overflow-hidden rounded-3xl border ${isSold ? 'border-red-500/50 bg-red-500/5' : 'border-border bg-card'} shadow-card-soft transition-all hover:-translate-y-0.5 hover:shadow-soft`}>
                             <div className="flex gap-4 p-4">
                               <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-secondary">
                                 {event?.cover_image_url ? (
@@ -333,7 +355,9 @@ const Account = () => {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <h3 className="font-display text-lg font-bold leading-tight text-foreground">{event?.title ?? "Event unavailable"}</h3>
-                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ticketStatus.className}`}>{ticketStatus.label}</span>
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isSold ? 'bg-red-500/15 text-red-500' : ticketStatus.className}`}>
+                                    {isSold ? 'Sold / Invalid' : ticketStatus.label}
+                                  </span>
                                 </div>
                                 <p className="mt-1 text-xs text-muted-foreground">{event ? formatEventDate(event.starts_at) : ""}</p>
                                 <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -350,7 +374,7 @@ const Account = () => {
                               <div className="flex-1 px-4 py-2.5 text-sm text-muted-foreground">
                                 {tier?.name ?? "Ticket"} {ticket.orders ? `· ${formatPrice(ticket.orders.total_kes)}` : ""}
                               </div>
-                              {!isListed && (event?.resale_enabled || event?.allow_resale) && ticket.status === "valid" && (
+                              {!isListed && !isSold && (event?.resale_enabled || event?.allow_resale) && ticket.status === "valid" && (
                                 <Button variant="ghost" className="rounded-none border-l border-border px-4 text-primary hover:bg-primary/10" onClick={() => handleListTicket(ticket)}>
                                   <Tag className="h-4 w-4" /> List for Resale
                                 </Button>
@@ -530,16 +554,36 @@ const Account = () => {
                   <p className="mt-1 text-sm text-muted-foreground">Manage your account.</p>
                 </div>
 
-                <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-4">
-                  <h2 className="font-display text-lg font-bold text-foreground">Profile</h2>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Name</p>
-                      <p className="text-sm text-foreground">{name}</p>
+                <div className="rounded-3xl border border-border bg-card p-6 shadow-card-soft md:p-8 space-y-8">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-foreground mb-4">Profile</h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Name</p>
+                        <p className="text-sm text-foreground">{name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Email</p>
+                        <p className="text-sm text-foreground">{user.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Email</p>
-                      <p className="text-sm text-foreground">{user.email}</p>
+                  </div>
+
+                  <div className="space-y-4 border-t border-border pt-6">
+                    <h2 className="font-display text-lg font-bold text-foreground">Payout Settings</h2>
+                    <div className="max-w-md space-y-3">
+                       <Label htmlFor="payoutPhone">Default M-Pesa Payout Number</Label>
+                       <Input 
+                         id="payoutPhone" 
+                         value={payoutPhoneInput} 
+                         onChange={(e) => setPayoutPhoneInput(e.target.value)} 
+                         placeholder="0712 345 678" 
+                       />
+                       <p className="text-xs text-muted-foreground">Used securely to send payouts for your sold tickets.</p>
+                       <Button variant="acacia" onClick={updatePayoutPhone} disabled={isSavingPayoutPhone}>
+                         {isSavingPayoutPhone ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                         Save Number
+                       </Button>
                     </div>
                   </div>
                 </div>
