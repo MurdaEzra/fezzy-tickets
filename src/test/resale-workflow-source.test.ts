@@ -41,17 +41,29 @@ describe("resale workflow source guards", () => {
     const marketplace = read("src/pages/ResaleMarketplace.tsx");
 
     expect(marketplace).toContain("/functions/v1/resale-check-status");
-    expect(marketplace).toContain("headers: { \"Content-Type\": \"application/json\" }");
+    expect(marketplace).toContain("\"Content-Type\": \"application/json\"");
     expect(config).toContain("[functions.resale-check-status]");
     expect(config).toContain("verify_jwt = false");
   });
 
-  it("rolls back the listing when callback finalization fails", () => {
+  it("rolls back the listing when M-Pesa payment fails but keeps it for RPC errors", () => {
     const callback = read("supabase/functions/resale-mpesa-callback/index.ts");
 
+    // Callback still calls complete_resale_transfer
     expect(callback).toContain("complete_resale_transfer");
+    // Reservation release code exists for payment failure path (resultCode !== 0)
     expect(callback).toContain("status: \"active\"");
     expect(callback).toContain("buyer_user_id: null");
     expect(callback).toContain("payment_ref: null");
+    // On RPC failure, we do NOT release — the STK Query fallback handles recovery
+    expect(callback).toContain("We do NOT release the reservation here because the buyer already paid");
+  });
+
+  it("check-status has STK Query fallback for stale pending_payment listings", () => {
+    const checkStatus = read("supabase/functions/resale-check-status/index.ts");
+
+    expect(checkStatus).toContain("stkpushquery/v1/query");
+    expect(checkStatus).toContain("complete_resale_transfer");
+    expect(checkStatus).toContain("pending_payment");
   });
 });

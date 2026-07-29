@@ -79,11 +79,13 @@ Deno.serve(async (req) => {
 
     if (resultCode !== 0) {
       // Payment failed / cancelled — release the reservation so the buyer can retry.
-      console.log(`[resale-mpesa-callback] Payment failed for listing ${listingId}, code=${resultCode}`);
+      console.log(`[resale-mpesa-callback] Payment FAILED for listing=${listingId} code=${resultCode} ref=${reference}`);
       await releaseReservation(admin, listingId);
 
       return new Response(JSON.stringify({ ok: true, payment_failed: true }), { headers: cors });
     }
+
+    console.log(`[resale-mpesa-callback] Payment SUCCESS for listing=${listingId} ref=${reference} receipt=${receipt}`);
 
     // Store M-Pesa receipt on the listing
     await admin
@@ -100,17 +102,20 @@ Deno.serve(async (req) => {
     });
 
     if (error) {
-      console.error("[resale-mpesa-callback] complete_resale_transfer failed:", error);
-      await releaseReservation(admin, listingId);
-      return new Response(JSON.stringify({ ok: false, payment_failed: true, error: error.message }), {
+      console.error(`[resale-mpesa-callback] complete_resale_transfer FAILED for listing=${listingId} ref=${reference}:`, error.message, error);
+      // NOTE: We do NOT release the reservation here because the buyer already paid.
+      // The listing stays at pending_payment so the STK Query fallback in
+      // resale-check-status can detect it and retry the finalization.
+      return new Response(JSON.stringify({ ok: false, error: error.message }), {
         status: 200,
         headers: cors,
       });
     }
 
+    console.log(`[resale-mpesa-callback] Listing ${listingId} moved to pending_approval successfully`);
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {
-    console.error("[resale-mpesa-callback]", err);
+    console.error("[resale-mpesa-callback] Unhandled error:", err);
     return new Response(JSON.stringify({ ok: false, error: (err as Error).message }), {
       status: 200,
       headers: cors,
